@@ -775,15 +775,13 @@ class Singleton(LinearLogicUiPrimitiveArrow):
       return self.tgt().translate().backwardCommute().backwardFollow(lambda l:
           l.backwardRemoveFalse())
     elif self.type() == withType:
-      return self.src().translate().forwardIntroduceDoubleDual().forwardFollow(lambda l:
-          l.forwardOnNotFollow(lambda l:
-            l.backwardRemoveFalse().backwardFollow(lambda l:
-              l.backwardCommute())))
+      return self.src().translate().forwardIntroduceDoubleDual().forwardFollow(lambda claim:
+          claim.forwardOnNotFollow(lambda claim:
+            claim.backwardForgetFirst(linear.false)))
     elif self.type() == parType:
-      return self.tgt().translate.backwardRemoveDoubleDual().backwardFollow(lambda l:
-          l.backwardOnNotFollow(lambda l:
-            l.forwardCommute().forwardFollow(lambda l:
-              l.forwardIntroduceTrue())))
+      return self.src().translate().forwardIntroduceDoubleDual().forwardFollow(lambda claim:
+          claim.forwardOnNotFollow(lambda claim:
+            claim.backwardForgetFirst(linear.true)))
     else:
       raise Exception("Unrecognized self.type()")
 

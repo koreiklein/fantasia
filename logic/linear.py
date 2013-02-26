@@ -1129,7 +1129,7 @@ def reverse(arrow):
       return arrow.tgt().forwardRemoveFalse()
     else:
       return None
-  elif arrow.__class == Forget:
+  elif arrow.__class__ == Forget:
     if arrow.b() == true:
       return arrow.tgt().forwardIntroduceTrue()
     else:
