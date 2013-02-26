@@ -225,37 +225,28 @@ class Quantifier(LinearLogicPrimitiveObject):
   def backwardOnBodyFollow(self, f):
     return self.backwardOnBody(f(self.body()))
 
-class Unit(LinearLogicPrimitiveObject):
-  def __init__(self, type):
-    assert(type in [andType, orType])
-    self._type = type
-
-  def type(self):
-    return self._type
+class True(LinearLogicPrimitiveObject):
+  def __init__(self):
 
   def substituteVar(self, a, b):
     return self
 
   def assertEqual(self, other):
-    assert(self == other)
+    assert(self.__class__ == other.__class__)
 
   def updateVars(self):
     return self
 
   def __repr__(self):
-    if self.type() == andType:
-      return "1"
-    else:
-      assert(self.type() == orType)
-      return "0"
+    return "1"
 
   def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.type() == other.type()
+    return self.__class__ == other.__class__
   def __ne__(self, other):
     return not (self == other)
 
-true = Unit(andType)
-false = Unit(orType)
+true = True()
+false = Not(true)
 
 class Conj(LinearLogicPrimitiveObject):
   def __init__(self, left, right, type):
@@ -692,8 +683,9 @@ class IntroduceTrue(LinearLogicPrimitiveArrow):
     return Conj(type = andType, left = self.value(), right = true)
 
 class RemoveFalse(LinearLogicPrimitiveArrow):
-  #   -
-  #   -   --->  A
+  #   ||
+  #   *-
+  #   --   --->  A
   #   A
   def __init__(self, value):
     self._value = value
