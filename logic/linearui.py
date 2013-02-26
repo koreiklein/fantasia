@@ -56,6 +56,11 @@ class Logic(markable.Markable):
   def backwardRemoveQuantifier(self, quantifierType):
     return RemoveQuantifier(value = self, quantifierType = quantifierType)
 
+  def forwardSingleton(self, conjType):
+    return Singleton(self, conjType)
+  def backardUnsingleton(self, conjType):
+    return Unsingleton(self, conjType)
+
   def identity(self):
     return Identity(self)
 
@@ -145,6 +150,13 @@ class Conj(Logic):
     self._type = type
     self._values = values
     self.initMarkable(self.generateMethodNamesForList('value', values))
+
+  def forwardUnsingleton(self):
+    assert(len(self.values()) == 1)
+    return Unsingleton(self.values()[0], type = self.type())
+  def backwardSingleton(self):
+    assert(len(self.values()) == 1)
+    return Singleton(self.values()[0], type = self.type())
 
   def forwardForget(self, index):
     assert(self.type() in [andType, withType])
