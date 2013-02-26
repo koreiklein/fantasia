@@ -353,6 +353,9 @@ class Maybe(Logic):
     return self.transpose().translate().forwardOnAlways(
         self.value().transposeToNot()).forwardFollow(lambda x: x.forwardIntroduceDoubleDual())
 
+  def substituteVar(self, a, b):
+    return Maybe(self.value().substituteVar(a, b))
+
   def transpose(self):
     return Always(self.value().transpose())
 
@@ -564,6 +567,34 @@ def _onJandI(conj, j, i, linearTransitionF):
         x.forwardAssociateA().forwardFollow(lambda x:
         # x = % % (values[j] % values[i])
         x.forwardOnRightFollow(linearTransitionF))))
+
+class Eliminate(LinearLogicUiPrimitiveArrow):
+  def __init__(self, quantifier, index, replacementVar):
+    assert(quantifier.type() == forallType)
+    assert(0 <= index)
+    assert(index < len(quantifier.variables()))
+    self._quantifier = quantifier
+    self._index = index
+    self._replacementVar = replacementVar
+
+  def quantifier(self):
+    return self._quantifier
+  def index(self):
+    return self._index
+  def replacementVar(self):
+    return self._replacementVar
+
+  def src(self):
+    return self.quantifier()
+  def tgt(self):
+    variables = list(self.quantifier().variables())
+    quantifiedVar = variables.pop(self.index())
+    return Quantifier(type = forallType, variables = variables,
+        body = self.quantifier().body().substituteVar(quantifiedVar, self.replacementVar()))
+
+  def translate(self):
+    return _quantifierWithin(self.src().translate(), self.index(), lambda linearBody:
+        linearBody.forwardEliminteVar(replacementVar = self.replacementVar()))
 
 class Unsingleton(LinearLogicUiPrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
@@ -875,10 +906,22 @@ class OnBody(LinearLogicUiFunctorialArrow):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().tgt())
 
   def translate(self):
-    res = self.arrow().translate()
-    for variable in self.variables()[::-1]:
-      res = linear.OnBody(type = self.type(), var = variable, arrow = res)
-    return res
+    return _quantifierWithin(self.src().translate(), len(self.variables()), lambda body:
+        self.arrow().translate())
+
+# n: an integer >= 0
+# linearQuantifier: a linear quantifier.  It must consist of at least n of the same quantifier
+#                   type applied in sequence
+#         e.g. (n == 3)  forall a. forall b. forall c. forall d. <body>
+# f: a function between linear objects
+# return: the transition that applies f within the body of the first n quantifiers
+#         e.g. (n == 3)  forall a. forall b. forall c. f(forall d. <body>)
+def _quantifierWithin(linearQuantifier, n, f):
+  if n == 0:
+    return f(linearQuantifier)
+  else:
+    return linearQuantifier.forwardOnBodyFollow(lambda body:
+        _quantifierWithin(body, n - 1, f))
 
 # Compose any two arrows between linearui objects.
 def compose(left, right):

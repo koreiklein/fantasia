@@ -13,6 +13,12 @@ class IsNatural(linearui.Logic):
   def n(self):
     return self._n
 
+  def substituteVar(self, a, b):
+    if self.n() == a:
+      return IsNatural(b)
+    else:
+      return self
+
   def translate(self):
     return linear.Holds(natural = self.n().translate())
 
@@ -35,6 +41,15 @@ class Compare(linearui.Logic):
   def strict(self):
     return self._strict
 
+  def substituteVar(self, a, b):
+    lesser = self.lesser()
+    greater = self.greater()
+    if lesser = a:
+      lesser = b
+    if greater = a:
+      greater = b
+    return Compare(lesser = lesser, greater = greater, strict = self.strict())
+
   def translate(self):
     return linear.Holds(lesser = self.lesser().translate(), greater = self.greater().translate(),
         strict = self.strict())
@@ -53,6 +68,15 @@ class Successor(linearui.Logic):
     return self._a
   def b(self):
     return self._b
+
+  def substituteVar(self, a, b):
+    smaller = self.a()
+    larger = self.b()
+    if smaller == a:
+      smaller = b
+    if larger = a:
+      larger = b
+    return Successor(a = smaller, b = larger)
 
   def translate(self):
     return linear.Holds(succeeded = self.a().translate(),
