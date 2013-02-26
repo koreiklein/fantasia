@@ -104,7 +104,7 @@ m = common_vars.m()
 successorExists = linearui.Forall([n],
     linearui.Implies(predicate = IsNatural(n),
       consequent = linearui.Exists([m],
-        linearui.And([IsNatural(m), Successor(n, m)]))))
+        linearui.And([IsNatural(m), Successor(n, m), Successor(n, m)]))))
 
 a = common_vars.a()
 b = common_vars.b()

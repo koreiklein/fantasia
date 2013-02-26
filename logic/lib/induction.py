@@ -70,11 +70,10 @@ transitivity = "transitivity"
 
 starting_claim = linearui.And([ natural.increasing.addMark(increasing)
                               , main.addMark(marks.selection)
-                              , natural.weakening.addMark(weakening)
                               , natural.successorExists.addMark(successorExists)
                               , natural.transitivity.addMark(transitivity) ])
 
-transition = starting_claim.forwardImportToPar(3, 1, 1)
+transition = starting_claim.forwardImportToPar(2, 1, 1)
 transition.translate()
 
 transition = transition.forwardFollow(lambda claim:
