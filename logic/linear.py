@@ -59,6 +59,9 @@ class LinearLogicPrimitiveObject:
     return Forget(self, b)
   def backwardForgetFirst(self, b):
     return self.backwardForget(b).backwardFollow(lambda x: x.backwardCommute())
+  def backwardEliminateVar(self, quantifiedVar, replacementVar):
+    return Eliminate(value = self.substituteVar(replacementVar, quantifiedVar),
+        quantifiedVar = quantifiedVar, replacementVar = replacementVar)
   def identity(self):
     return Identity(self)
   def forwardIdentity(self):
@@ -173,6 +176,12 @@ class Quantifier(LinearLogicPrimitiveObject):
     assert(self.body().__class__ == Not)
     return NotQuant(variable = self.variable(), type = dualQuantifierType(self.type()),
         value = self.body().value())
+
+  def forwardEliminteVar(self, replacementVar):
+    assert(self.type() == forallType)
+    return Eliminate(value = self.body(),
+        quantifiedVar = self.variable(),
+        replacementVar = replacementVar)
 
   def forwardOnBody(self, arrow):
     assert(self.body() == arrow.src())
