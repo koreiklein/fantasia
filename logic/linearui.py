@@ -149,6 +149,10 @@ class Conj(Logic):
     res.translate()
     return res
 
+  def forwardAssociateIn(self, index):
+    # [A, [B, C], D] --> [A, B, C, D]
+    return AssociateIn(self, index)
+
   def forwardOnIthFollow(self, index, f):
     return self.forwardOnIth(index, f(self.values()[index]))
 
@@ -733,8 +737,8 @@ class Singleton(LinearLogicUiPrimitiveArrow):
 
 class AssociateOut(LinearLogicUiPrimitiveArrow):
   # e.g. index = 1
-  # [A, B, C, D] --> [A, [B, C], D] 
-  # clever: we cheat by reversing the translated associateIn transition.
+  # [A, B, C, D] --> [A, [B, C], D]
+  # We are clever, we cheat by reversing the translated associateIn transition.
   # conj: the tgt conj
   # index: the index of the first thing associated out
   def __init__(self, conj, index):
@@ -770,14 +774,14 @@ class AssociateIn(LinearLogicUiPrimitiveArrow):
     values = []
     for i in range(self.index()):
       values.append(self.src().values()[i])
-      values.extend(self.src().values()[i].values())
-      for i in range(self.index() + 1, len(self.src().values())):
-        values.append(self.src().values()[i])
-    return Conj(type = self.type(), values = values)
+    values.extend(self.src().values()[self.index()].values())
+    for i in range(self.index() + 1, len(self.src().values())):
+      values.append(self.src().values()[i])
+    return Conj(type = self.src().type(), values = values)
 
   def translate(self):
-    stationary = len(self.src().values()) - (index + 1)
-    if serf.src().demorganed():
+    stationary = len(self.src().values()) - (self.index() + 1)
+    if self.src().demorganed():
       linearObject = self.src().translate()
       assert(linearObject.__class__ == linear.Not)
       return linearObject.forwardOnNot(

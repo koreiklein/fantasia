@@ -83,11 +83,12 @@ transition = transition.forwardFollow(lambda claim:
         x.forwardConjQuantifier(0))))
 transition.translate()
 
-#transition = transition.forwardFollow(lambda claim:
-#    claim.forwardOnIthFollow(1, lambda x:
-#      x.forwardOnIthFollow(1, lambda x:
-#        x.forwardOnBodyFollow(lambda x:
-#          x.forwardAssociateA
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardAssociateIn(0)))))
+transition.translate()
 
 transition.translate()
 
