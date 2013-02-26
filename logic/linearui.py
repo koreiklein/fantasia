@@ -154,6 +154,9 @@ class Conj(Logic):
     values.insert(index, value)
     return Forget(Conj(type = self.type(), values = values), index)
 
+  def forwardRemoveUnit(self, index):
+    return RemoveUnit(self, index)
+
   def forwardApply(self, i, j):
     assert(self.type() == andType)
     return Apply(values = self.values(), i = i, j = j)
@@ -851,6 +854,41 @@ def _backwardAssociate(linearObject):
   else:
     return linearObject.backwardAssociateA().backwardFollow(lambda linearObject:
         linearObject.backwardOnLeft(_backwardAssociate(linearObject.left())))
+
+# Use this class only for conj with type in [orType, parType]
+#   the andType and withType units should be removed using forget.
+class RemoveUnit(LinearLogicUiPrimitiveArrow):
+  def __init__(self, conj, index):
+    assert(conj.__class__ == Conj)
+    assert(conj.type() in [orType, parType])
+    assert(conj.values()[index] == false)
+    self._conj = conj
+    self._index = index
+
+  def conj(self):
+    return self._conj
+  def index(self):
+    return self._index
+
+  def src(self):
+    return self.conj()
+  def tgt(self):
+    values = list(self.conj().values())
+    removed = values.pop(self.index())
+    return Conj(type = self.type(), values = values)
+
+  def translate(self):
+    if self.conj().type() == orType:
+      return _forwardWithin(self.src().translate(),
+          len(self.conj().values()) - (self.index() + 1), lambda claim:
+            claim.forwardRemoveFalse())
+    else:
+      assert(self.conj().type() == parType)
+      return self.src().translate().forwardOnNotFollow(lambda claim:
+          _backwardWithin(claim, len(self.conj().values()) - (self.index() + 1), lambda claim:
+            claim.backwardOnRightFollow(lambda claim:
+              claim.backwardRemoveDoubleDual()).backwardFollow(lambda claim:
+            claim.backwardIntroduceTrue())))
 
 class Apply(LinearLogicUiPrimitiveArrow):
   # Apply claim at spot i to the claim within the Not at spot j to get false.
