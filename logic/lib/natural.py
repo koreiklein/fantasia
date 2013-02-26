@@ -44,9 +44,9 @@ class Compare(linearui.Logic):
   def substituteVar(self, a, b):
     lesser = self.lesser()
     greater = self.greater()
-    if lesser = a:
+    if lesser == a:
       lesser = b
-    if greater = a:
+    if greater == a:
       greater = b
     return Compare(lesser = lesser, greater = greater, strict = self.strict())
 
@@ -74,7 +74,7 @@ class Successor(linearui.Logic):
     larger = self.b()
     if smaller == a:
       smaller = b
-    if larger = a:
+    if larger == a:
       larger = b
     return Successor(a = smaller, b = larger)
 
