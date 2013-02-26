@@ -17,14 +17,14 @@ from logic import linear
 # objectRep(A | B) ---> {python tuples (a, b) where a in objectRep(A), b in objectRep(B)}
 
 # objectRep(|) ---> The singleton set consisting of the number 1
-# objectRep(-) ---> The empty set.
 
 #          ( A )
 # objectRep( - )  ---> The union of sets X and Y
 #          ( B )         where X = {(0,a) | a in objectRep(A)}, Y = {(1,b) | b in objectRep(B)}
 
-# objectRep( |A )   --->   The set of python functions taking any a in rep(A) as an argument
-#          ( *- )            and returning nothing. (Let's hope the stack survives this decision.)
+# objectRep( |A )   --->   The set of python functions taking any a in objectRep(A) as an argument
+#          ( *- )            and returning an element of the empty set.
+#                          Note: While seemingly ridiculous, this definition is actually useful.
 
 # objectRep(!A)  ---> objectRep(A)   (With GC, ! is purely for keeping track of things while coding.)
 
@@ -32,6 +32,8 @@ from logic import linear
 
 # A kind of implementation of the functor rep on arrows.
 # Take each arrow A --> B to some python object in the set
+# Note that the only way to conclude that we've returned an element of the empty set
+# is to call a function assumed to return an element of the empty set.
 #    ( | A | |B )
 # rep( |   | *- )
 #    ( *------- )
@@ -246,6 +248,11 @@ def curry_howard(A):
 #                              *-------
 # x: an element of objectRep(X)
 # return: an element of Y obtained by "applying" a to x.
+#         We're being clever.  Since clearly the only way a can return an element of the empty set
+#         is by calling its second argument with an element of objectRep(Y) we can safely
+#         pass in the constant function INSTEAD OF an element of objectRep( |Y )
+#                                                                         ( *- )
+#         and know that a will ultimately return an element of objectRep(Y)
 def applyProgram(a, x):
   y = a( (x, lambda y: y) )
   return y

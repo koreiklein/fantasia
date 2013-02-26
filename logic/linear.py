@@ -225,37 +225,93 @@ class Quantifier(LinearLogicPrimitiveObject):
   def backwardOnBodyFollow(self, f):
     return self.backwardOnBody(f(self.body()))
 
-class Unit(LinearLogicPrimitiveObject):
-  def __init__(self, type):
-    assert(type in [andType, orType])
-    self._type = type
-
-  def type(self):
-    return self._type
+class TrueClass(LinearLogicPrimitiveObject):
+  def __init__(self):
+    pass
 
   def substituteVar(self, a, b):
     return self
 
   def assertEqual(self, other):
-    assert(self == other)
+    assert(self.__class__ == other.__class__)
 
   def updateVars(self):
     return self
 
   def __repr__(self):
-    if self.type() == andType:
-      return "1"
-    else:
-      assert(self.type() == orType)
-      return "0"
+    return "1"
 
   def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.type() == other.type()
+    return self.__class__ == other.__class__
   def __ne__(self, other):
     return not (self == other)
 
-true = Unit(andType)
-false = Unit(orType)
+class Not(LinearLogicPrimitiveObject):
+  def __init__(self, value):
+    self._value = value
+
+  def __repr__(self):
+    return "~( %s )"%(self.value(),)
+
+  def substituteVar(self, a, b):
+    return Not(self.value().substituteVar(a, b))
+
+  def updateVars(self):
+    return Not(self.value().updateVars())
+
+  def value(self):
+    return self._value
+
+  def assertEqual(self, other):
+    assert(other.__class__ == Not)
+    self.value().assertEqual(other.value())
+
+  def __eq__(self, other):
+    return self.__class__ == other.__class__ and self.value() == other.value()
+  def __ne__(self, other):
+    return not (self == other)
+
+  def forwardRemoveDoubleDual(self):
+    assert(self.value().__class__ == Not)
+    return RemoveDoubleDual(self.value().value())
+  def backwardIntroduceDoubleDual(self):
+    assert(self.value().__class__ == Not)
+    return IntroduceDoubleDual(self.value().value())
+
+  def backwardApply(self, b):
+    # | A | B  | B  --->  | A
+    # *------  |          *--
+    return Apply(a = self.value(), b = b)
+
+  def forwardNotQuant(self):
+    assert(self.value().__class__ == Quantifier)
+    return NotQuant(variable = self.value().variable(), type = self.value().type(),
+        value = self.value().value())
+
+  # src and tgt go the opposite direction since Not is contravariant.
+  def forwardOnNot(self, arrow):
+    assert(arrow.tgt() == self.value())
+    return OnNot(arrow)
+  def backwardOnNot(self, arrow):
+    assert(arrow.src() == self.value())
+    return OnNot(arrow)
+
+  # f is a function taking self.value() to an arrow other such that self.forwardOnNot(other) exists.
+  def forwardOnNotFollow(self, f):
+    return self.forwardOnNot(f(self.value()))
+  # f is a function taking self.value() to an arrow other such that self.backwardOnNot(other) exists.
+  def backwardOnNotFollow(self, f):
+    return self.backwardOnNot(f(self.value()))
+
+true = TrueClass()
+false = Not(true)
+
+def unit(conjType):
+  if conjType == andType:
+    return true
+  else:
+    assert(conjType == orType)
+    return false
 
 class Conj(LinearLogicPrimitiveObject):
   def __init__(self, left, right, type):
@@ -451,63 +507,6 @@ def Par(left, right):
 def Implies(predicate, consequent):
   return Not(And(left = predicate, right = Not(consequent)))
 
-class Not(LinearLogicPrimitiveObject):
-  def __init__(self, value):
-    self._value = value
-
-  def __repr__(self):
-    return "~( %s )"%(self.value(),)
-
-  def substituteVar(self, a, b):
-    return Not(self.value().substituteVar(a, b))
-
-  def updateVars(self):
-    return Not(self.value().updateVars())
-
-  def value(self):
-    return self._value
-
-  def assertEqual(self, other):
-    assert(other.__class__ == Not)
-    self.value().assertEqual(other.value())
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.value() == other.value()
-  def __ne__(self, other):
-    return not (self == other)
-
-  def forwardRemoveDoubleDual(self):
-    assert(self.value().__class__ == Not)
-    return RemoveDoubleDual(self.value().value())
-  def backwardIntroduceDoubleDual(self):
-    assert(self.value().__class__ == Not)
-    return IntroduceDoubleDual(self.value().value())
-
-  def backwardApply(self, b):
-    # | A | B  | B  --->  | A
-    # *------  |          *--
-    return Apply(a = self.value(), b = b)
-
-  def forwardNotQuant(self):
-    assert(self.value().__class__ == Quantifier)
-    return NotQuant(variable = self.value().variable(), type = self.value().type(),
-        value = self.value().value())
-
-  # src and tgt go the opposite direction since Not is contravariant.
-  def forwardOnNot(self, arrow):
-    assert(arrow.tgt() == self.value())
-    return OnNot(arrow)
-  def backwardOnNot(self, arrow):
-    assert(arrow.src() == self.value())
-    return OnNot(arrow)
-
-  # f is a function taking self.value() to an arrow other such that self.forwardOnNot(other) exists.
-  def forwardOnNotFollow(self, f):
-    return self.forwardOnNot(f(self.value()))
-  # f is a function taking self.value() to an arrow other such that self.backwardOnNot(other) exists.
-  def backwardOnNotFollow(self, f):
-    return self.backwardOnNot(f(self.value()))
-
 class Always(LinearLogicPrimitiveObject):
   def __init__(self, value):
     self._value = value
@@ -692,8 +691,9 @@ class IntroduceTrue(LinearLogicPrimitiveArrow):
     return Conj(type = andType, left = self.value(), right = true)
 
 class RemoveFalse(LinearLogicPrimitiveArrow):
-  #   -
-  #   -   --->  A
+  #   ||
+  #   *-
+  #   --   --->  A
   #   A
   def __init__(self, value):
     self._value = value

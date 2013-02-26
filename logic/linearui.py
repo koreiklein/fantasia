@@ -206,14 +206,14 @@ class Conj(Logic):
 
   def translateDemorganed(self):
     linearType = correspondingConcreteTypeInLinear(self.type())
-    res = linear.Unit(linearType)
+    res = linear.unit(linearType)
     for value in self.values():
       res = linear.Conj(type = linearType, left = res, right = linear.Not(value.translate()))
     return linear.Not(res)
 
   def translateUndemorganed(self):
     linearType = correspondingConcreteTypeInLinear(self.type())
-    res = linear.Unit(linearType)
+    res = linear.unit(linearType)
     for value in self.values():
       res = linear.Conj(type = linearType, left = res, right = value.translate())
     return res
@@ -221,7 +221,7 @@ class Conj(Logic):
 # e.g.
 # (1 | B.translate()) | C.translate() --> (1 | ~B.transpose().translate()) | ~C.transpose().translate()
 def _valuesToTransposeNot(type, linearConjOrUnit, linearUiValues):
-  if linearConjOrUnit == linear.Unit(type):
+  if linearConjOrUnit == linear.unit(type):
     assert(len(linearUiValues) == 0)
     return linearConjOrUnit.identitiy()
   else:
@@ -235,7 +235,7 @@ def _valuesToTransposeNot(type, linearConjOrUnit, linearUiValues):
 # e.g.
 # (1 | B.translate()) | C.translate() <-- (1 | ~B.transpose().translate()) | ~C.transpose().translate()
 def _transposeNotToValues(type, linearConjOrUnit, linearUiValues):
-  if linearConjOrUnit == linear.Unit(type):
+  if linearConjOrUnit == linear.unit(type):
     assert(len(linearUiValues) == 0)
     return linearConjOrUnit.identitiy()
   else:
