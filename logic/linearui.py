@@ -53,6 +53,9 @@ class Logic(markable.Markable):
   def substituteVar(self, a, b):
     raise Exception("Abstract Superclass")
 
+  def backwardRemoveQuantifier(self, quantifierType):
+    return RemoveQuantifier(value = self, quantifierType = quantifierType)
+
 forallType = linear.forallType
 existsType = linear.existsType
 
@@ -270,6 +273,10 @@ class Quantifier(Logic):
     return Quantifier(type = dualQuantifierType(self.type()),
         variables = self.variables(),
         body = self.body().transpose())
+
+  def forwardRemoveQuantifier(self):
+    assert(len(self.variables()) == 0)
+    return RemoveQuantifier(value = self.body(), quantifierType = self.type())
 
   def forwardEliminate(self, index, replacementVar):
     assert(self.type() == forallType)
@@ -588,6 +595,19 @@ def _onJandI(conj, j, i, linearTransitionF):
         # x = % % (values[j] % values[i])
         x.forwardOnRightFollow(linearTransitionF))))
 
+class RemoveQuantifier(LinearLogicUiPrimitiveArrow):
+  def __init__(self, value, quantifierType):
+    self._value = value
+    self._quantifierType = quantifierType
+
+  def src(self):
+    return self._value
+  def tgt(self):
+    return Quantifier(type = self._quantifierType, variables = [], body = self._value)
+
+  def translate(self):
+    return self.src().translate().identity()
+
 class ConjQuantifier(LinearLogicUiPrimitiveArrow):
   # move the quantifier at the given index in conj to just outside the conj
   def __init__(self, conj, index):
@@ -681,7 +701,7 @@ class Eliminate(LinearLogicUiPrimitiveArrow):
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda linearBody:
-        linearBody.forwardEliminteVar(replacementVar = self.replacementVar()))
+        linearBody.forwardEliminteVar(replacementVar = self.replacementVar().translate()))
 
 class Unsingleton(LinearLogicUiPrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
