@@ -264,6 +264,19 @@ class Quantifier(Logic):
         variables = self.variables(),
         body = self.body().transpose())
 
+  def forwardEliminate(self, index, replacementVar):
+    assert(self.type() == forallType)
+    return Eliminate(quantifier = self, index = index, replacementVar = replacementVar)
+
+  def backwardEliminate(self, index, quantifiedVar, replacementVar):
+    assert(self.type() == forallType)
+    variables = list(self.variables())
+    variables.insert(index, quantifiedVar)
+    return Eliminate(quantifier = Quantifier(type = forallType, variables = variables,
+      body = self.body().substituteVar(replacementVar, quantifiedVar)),
+      index = index,
+      replacementVar = replacementVar)
+
   def forwardOnBodyFollow(self, f):
     return self.forwardOnBody(f(self.body()))
 
