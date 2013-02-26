@@ -172,6 +172,34 @@ class Quantifier(LinearLogicPrimitiveObject):
   def __ne__(self, other):
     return not (self == other)
 
+  def backwardConjQuantifier(self):
+    # (Q x . A) % B --> Q x . (A % B)
+    assert(self.body().__class__ == Conj)
+    if self.type() == forallType:
+      assert(self.body().type() == orType)
+    else:
+      assert(self.type() == existsType)
+      assert(self.body().type() == andType)
+
+    return ConjQuantifier(quantifierType = self.type(), conjType = self.body().type(),
+        var = self.variable(), left = self.body().left(), right = self.body().right())
+
+  def forwardQuantifierConj(self):
+    # Q x . (A % B) --> (Q x . A) % (Q x . B)
+    assert(self.left().__class__ == Quantifier)
+    assert(self.right().__class__ == Quantifier)
+    assert(self.left().variable() == self.right().variable())
+    if self.type() == andType:
+      assert(self.left().type() == existsType)
+      assert(self.right().type() == existsType)
+    else:
+      assert(self.type() == orType)
+      assert(self.left().type() == forallType)
+      assert(self.right().type() == forallType)
+
+    return QuantifierConj(quantifierType = self.type(), conjType = self.left().type(),
+        var = self.left().variable(), left = self.left().body(), right = self.right().body())
+
   def backwardNotQuant(self):
     assert(self.body().__class__ == Not)
     return NotQuant(variable = self.variable(), type = dualQuantifierType(self.type()),
@@ -272,6 +300,36 @@ class Conj(LinearLogicPrimitiveObject):
         and self.left() == other.left() and self.right() == other.right())
   def __ne__(self, other):
     return not (self == other)
+
+  def backwardQuantifierConj(self):
+    # Q x . (A % B) --> (Q x . A) % (Q x . B)
+    assert(self.left().__class__ == Quantifier)
+    assert(self.right().__class__ == Quantifier)
+    assert(self.left().variable() == self.right().variable())
+    if self.type() == andType:
+      assert(self.left().type() == existsType)
+      assert(self.right().type() == existsType)
+    else:
+      assert(self.type() == orType)
+      assert(self.left().type() == forallType)
+      assert(self.right().type() == forallType)
+
+    return QuantifierConj(quantifierType = self.left().type(),
+        conjType = self.type(),
+        var = self.left().variable(),
+        left = self.left().body(), right = self.right().body())
+
+  def forwardConjQuantifier(self):
+    # (Q x . A) % B --> Q x . (A % B)
+    assert(self.left().__class__ == Quantifier)
+    if self.type() == andType:
+      assert(self.left().type() == existsType)
+    else:
+      assert(self.type() == orType)
+      assert(self.left().type() == forallType)
+
+    return ConjQuantifier(conjType = self.type(), quantifierType = self.left().type(),
+        var = self.left().variable(), left = self.left().body(), right = self.right())
 
   def backwardDiagonal(self):
     assert(self.type() == andType)
@@ -769,6 +827,51 @@ class Admit(LinearLogicPrimitiveArrow):
     return self.a()
   def tgt(self):
     return Conj(type = orType, left = self.a(), right = self.b())
+
+class QuantifierConj(LinearLogicPrimitiveArrow):
+  # Q x . (A % B) --> (Q x . A) % (Q x . B)
+  def __init__(self, quantifierType, conjType, var, left, right):
+    if quantifierType == forallType:
+      assert(conjType == orType)
+    else:
+      assert(quantifierType == existsType)
+      assert(conjType == andType)
+
+    self._quantifierType = quantifierTypes
+    self._conjType = conjType
+    self._var = var
+    self._left = left
+    self._right = right
+
+  def src(self):
+    return Quantifier(var = self._var, type = self._quantifierType,
+        body = Conj(type = self._conjType, left = self._left, right = self._right))
+  def tgt(self):
+    return Conj(type = self._conjType,
+        left = Quantifier(var = self._var, type = self._quantifierType, body = self._left),
+        right = Quantifier(var = self._var, type = self._quantifierType, body = self._right))
+
+class ConjQuantifier(LinearLogicPrimitiveArrow):
+  # (Q x . A) % B --> Q x . (A % B)
+  def __init__(self, quantifierType, conjType, var, left, right):
+    if quantifierType == forallType:
+      assert(conjType == orType)
+    else:
+      assert(quantifierType == existsType)
+      assert(conjType == andType)
+
+    self._quantifierType = quantifierTypes
+    self._conjType = conjType
+    self._var = var
+    self._left = left
+    self._right = right
+
+  def src(self):
+    return Conj(type = self._conjType, right = self._right,
+        left = Quantifier(var = self._var, type = self._quantifierType, body = self._left))
+  def tgt(self):
+    return Quantifier(var = self._var, type = self._quantifierType,
+        body = Conj(type = self._conjType, left = self._left, right = self._right))
 
 class Distribute(LinearLogicPrimitiveArrow):
   # B  |           (B | C)

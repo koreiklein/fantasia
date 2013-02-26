@@ -155,6 +155,9 @@ class Conj(Logic):
   def forwardOnIth(self, index, t):
     return OnIth(self, index, t)
 
+  def forwardConjQuantifier(self, index):
+    return ConjQuantifier(conj = self, index = index)
+
   def forwardImportToPar(self, i, j, k):
     assert(self.type() == andType)
     return ImportToPar(self.values(), i, j, k)
@@ -581,7 +584,73 @@ def _onJandI(conj, j, i, linearTransitionF):
         # x = % % (values[j] % values[i])
         x.forwardOnRightFollow(linearTransitionF))))
 
+class ConjQuantifier(LinearLogicUiPrimitiveArrow):
+  # move the quantifier at the given index in conj to just outside the conj
+  def __init__(self, conj, index):
+    assert(conj.values()[index].__class__ == Quantifier)
+    if conj.type() == andType:
+      assert(conj.values()[index].type() == existsType)
+    elif conj.type() == orType:
+      assert(conj.values()[index].type() == forallType)
+    else:
+      raise Exception("Not yet implemented: move a quantifier outside from within a" +
+          " demorganed Conj.")
+    self._conj = conj
+    self._index = index
+
+  def conj(self):
+    return self._conj
+  def index(self):
+    return self._index
+
+  def quantifier(self):
+    return self.conj().values()[self.index()]
+
+  def src(self):
+    return self.conj()
+  def tgt(self):
+    values = list(self.conj().values())
+    values[self.index()] = self.quantifier().body()
+    return Quantifier(type = self.quantifier().type(), variables = self.quantifier.variables(),
+        body = Conj(type = self.conj().type(), values = values))
+
+  # Note: Though this method generates a linear transition of quadratic size,
+  #       extraction can safely convert the entire linear transition into the identity
+  #       program transformation.  Therefore, there is no performance penalty.
+  def translate(self):
+    return _conjQuantifierWithin(linearConj = self.src().translate(),
+        m = len(self.quantifier().variables()),
+        n = len(self.conj().values()) - self.index())
+
+# linearConj: a linear Conj object containing a linear quantifier object
+# m: an integer, the number of nested quantifiers.
+# n: an integer, the number of nested conjs.
+#   e.g. m = 2, n = 3, linearConj = ((((1|a)|b) | (exists x. exists y. c)) | d) | e
+# return: a linearConj where the quantifiers have been moved to the outside
+#   e.g. exists x. exists y.  ((((1|a)|b)|c)|d)|e
+def _conjQuantifierWithin(linearConj, m, n):
+  if n == 0:
+    return linearConj.forwardCommute().forwardFollow(lambda claim:
+        _conjQuantifier(claim, m)).forwardFollow(lambda claim:
+            _quantifierWithin(claim, m, lambda claim:
+              claim.forwardCommute()))
+  else:
+    return linearConj.forwardOnLeftFollow(lambda left:
+        _conjQuantifierWithin(left, m, n - 1)).forwardFollow(lambda claim:
+            _conjQuantifier(claim, m))
+
+# m: an integer
+# linearConj: a linear conj with m nested quantifiers as its left argument.
+#  e.g. m = 2, linearConj = (  exists x. exists y. a )  | b
+def _conjQuantifier(linearConj, m):
+  if m == 0:
+    return linearConj
+  else:
+    return linearConj.forwardConjQuantifier().forwardOnBodyFollow(lambda claim:
+        _conjQuantifier(claim, m - 1))
+
 class Eliminate(LinearLogicUiPrimitiveArrow):
+  # Replace one quantified variable with a variable in scope
   def __init__(self, quantifier, index, replacementVar):
     assert(quantifier.type() == forallType)
     assert(0 <= index)
