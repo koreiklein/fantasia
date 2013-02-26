@@ -56,6 +56,9 @@ class Logic(markable.Markable):
   def backwardRemoveQuantifier(self, quantifierType):
     return RemoveQuantifier(value = self, quantifierType = quantifierType)
 
+  def identity(self):
+    return Identity(self)
+
 forallType = linear.forallType
 existsType = linear.existsType
 
@@ -143,6 +146,18 @@ class Conj(Logic):
     self._values = values
     self.initMarkable(self.generateMethodNamesForList('value', values))
 
+  def forwardForget(self, index):
+    assert(self.type() in [andType, withType])
+    return Forget(self, index)
+  def backwardForget(self, index, value):
+    values = list(self.values())
+    values.insert(index, value)
+    return Forget(Conj(type = self.type(), values = values), index)
+
+  def forwardApply(self, i, j):
+    assert(self.type() == andType)
+    return Apply(values = self.values(), i = i, j = j)
+
   def forwardShift(self, index, amount):
     return Shift(conj = self, index = index, amount = amount)
   def backwardShift(self, index, amount):
@@ -219,7 +234,9 @@ class Conj(Logic):
     return res
 
 # e.g.
-# (1 | B.translate()) | C.translate() --> (1 | ~B.transpose().translate()) | ~C.transpose().translate()
+# (1 | B.translate()) | C.translate(), [B, C]
+#      -->
+# (1 | ~B.transpose().translate()) | ~C.transpose().translate()
 def _valuesToTransposeNot(type, linearConjOrUnit, linearUiValues):
   if linearConjOrUnit == linear.unit(type):
     assert(len(linearUiValues) == 0)
@@ -834,6 +851,80 @@ def _backwardAssociate(linearObject):
   else:
     return linearObject.backwardAssociateA().backwardFollow(lambda linearObject:
         linearObject.backwardOnLeft(_backwardAssociate(linearObject.left())))
+
+class Apply(LinearLogicUiPrimitiveArrow):
+  # Apply claim at spot i to the claim within the Not at spot j to get false.
+  def __init__(self, values, i, j):
+    assert(i != j)
+    assert(values[j].__class__ == Not)
+    assert(values[j].value() == values[i])
+    self._values = values
+    self._i = i
+    self._j = j
+
+  def values(self):
+    return self._values
+  def i(self):
+    return self._i
+  def j(self):
+    return self._j
+
+  def src(self):
+    return Conj(type = andType, values = values)
+  def tgt(self):
+    return false
+
+  def translate(self):
+    # first, forget everything else:
+    a = min(self.i(), self.j())
+    b = max(self.i(), self.j())
+    t = self.src().identity()
+    for i in range(0, a):
+      t = t.forwardFollow(lambda claim: claim.forwardForget(0))
+    for i in range(a + 1, b):
+      t = t.forwardForget(lambda claim: claim.forwardForget(1))
+    for i in range(b + 1, len(self.values())):
+      t = t.forwardForget(lambda claim: claim.forwardForget(2))
+
+    # next, insure that claim j comes first
+    if self.i() < self.j():
+      t = t.forwardShift(index = 0, amount = 1)
+
+    return t.translate().forwardFollow(lambda claim:
+        claim.forwardOnLeftFollow(lambda claim:
+          claim.forwardForgetFirst().forwardFollow(lambda claim:
+            claim.forwardOnNotFollow(lambda claim:
+              claim.backwardForgetFirst(linear.true))))).forwardFollow(lambda claim:
+        claim.forwardApply())
+
+class Forget(LinearLogicUiPrimitiveArrow):
+  def __init__(self, conj, index):
+    assert(self._conj.type() in [andType, withType])
+    self._conj = conj
+    self._index = index
+
+  def conj(self):
+    return self._conj
+  def index(self):
+    return self._index
+
+  def src(self):
+    return self.conj()
+  def tgt(self):
+    values = list(self.conj().values())
+    values.pop(self.index())
+    return Conj(type = self.conj().type(), values = values)
+
+  def translate(self):
+    if self.conj().type() == andType:
+      return _forwardWithin(self.src().translate(),
+          len(self.conj().values()) - (self.index() + 1), lambda claim:
+            claim.forwardForget())
+    else:
+      assert(self.conj().type() == withType)
+      return self.src().translate().forwardOnNotFollow(lambda conj:
+          _backwardWithin(conj, len(self.conj().values()) - (self.index() + 1), lambda claim:
+            claim.backwardAdmit()))
 
 # An arrow that moves the indexth element of values forward amount places in the list of values.
 # amount may be negative or 0.
