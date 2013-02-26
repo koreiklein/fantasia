@@ -329,7 +329,7 @@ class Conj(LinearLogicPrimitiveObject):
       assert(self.left().type() == forallType)
 
     return ConjQuantifier(conjType = self.type(), quantifierType = self.left().type(),
-        var = self.left().variable(), left = self.left().body(), right = self.right())
+        var = self.left().var(), left = self.left().body(), right = self.right())
 
   def backwardDiagonal(self):
     assert(self.type() == andType)
@@ -837,7 +837,7 @@ class QuantifierConj(LinearLogicPrimitiveArrow):
       assert(quantifierType == existsType)
       assert(conjType == andType)
 
-    self._quantifierType = quantifierTypes
+    self._quantifierType = quantifierType
     self._conjType = conjType
     self._var = var
     self._left = left
@@ -860,7 +860,7 @@ class ConjQuantifier(LinearLogicPrimitiveArrow):
       assert(quantifierType == existsType)
       assert(conjType == andType)
 
-    self._quantifierType = quantifierTypes
+    self._quantifierType = quantifierType
     self._conjType = conjType
     self._var = var
     self._left = left

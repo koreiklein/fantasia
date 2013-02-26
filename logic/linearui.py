@@ -611,7 +611,7 @@ class ConjQuantifier(LinearLogicUiPrimitiveArrow):
   def tgt(self):
     values = list(self.conj().values())
     values[self.index()] = self.quantifier().body()
-    return Quantifier(type = self.quantifier().type(), variables = self.quantifier.variables(),
+    return Quantifier(type = self.quantifier().type(), variables = self.quantifier().variables(),
         body = Conj(type = self.conj().type(), values = values))
 
   # Note: Though this method generates a linear transition of quadratic size,
@@ -620,12 +620,12 @@ class ConjQuantifier(LinearLogicUiPrimitiveArrow):
   def translate(self):
     return _conjQuantifierWithin(linearConj = self.src().translate(),
         m = len(self.quantifier().variables()),
-        n = len(self.conj().values()) - self.index())
+        n = len(self.conj().values()) - (self.index() + 1))
 
 # linearConj: a linear Conj object containing a linear quantifier object
 # m: an integer, the number of nested quantifiers.
 # n: an integer, the number of nested conjs.
-#   e.g. m = 2, n = 3, linearConj = ((((1|a)|b) | (exists x. exists y. c)) | d) | e
+#   e.g. m = 2, n = 2, linearConj = ((((1|a)|b) | (exists x. exists y. c)) | d) | e
 # return: a linearConj where the quantifiers have been moved to the outside
 #   e.g. exists x. exists y.  ((((1|a)|b)|c)|d)|e
 def _conjQuantifierWithin(linearConj, m, n):
@@ -644,10 +644,11 @@ def _conjQuantifierWithin(linearConj, m, n):
 #  e.g. m = 2, linearConj = (  exists x. exists y. a )  | b
 def _conjQuantifier(linearConj, m):
   if m == 0:
-    return linearConj
+    return linearConj.identity()
   else:
-    return linearConj.forwardConjQuantifier().forwardOnBodyFollow(lambda claim:
-        _conjQuantifier(claim, m - 1))
+    return linearConj.forwardConjQuantifier().forwardFollow(lambda claim:
+        claim.forwardOnBodyFollow(lambda claim:
+          _conjQuantifier(claim, m - 1)))
 
 class Eliminate(LinearLogicUiPrimitiveArrow):
   # Replace one quantified variable with a variable in scope
@@ -744,7 +745,7 @@ class AssociateOut(LinearLogicUiPrimitiveArrow):
   def tgt(self):
     return self._associateIn.src()
 
-  def translate():
+  def translate(self):
     res = linear.reverse(self._associateIn.translate())
     assert(res is not None)
     return res
@@ -953,16 +954,16 @@ class OnIth(LinearLogicUiFunctorialArrow):
     values[self.index()] = self.arrow().tgt()
     return Conj(type = self.src().type(), values = values)
 
-  def translate():
+  def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
     if self.src().demorganed():
       linearObject = self.src().translate()
       assert(linearObject.__class__ == linear.Not)
-      return linearObject.forwardOnNot(
+      return linearObject.forwardOnNotFollow(lambda claim:
           _backwardWithin(
-            linearObject.value(),
+            claim,
             stationary,
-            lambda linearObject: linearObject.backwardOnRight(
+            lambda linearObject: linearObject.backwardOnRightFollow(lambda linearObject:
               linearObject.backwardOnNot(self.arrow().translate()))))
     else:
       return _forwardWithin(self.src().translate(), stationary,

@@ -74,10 +74,21 @@ starting_claim = linearui.And([ natural.increasing.addMark(increasing)
                               , natural.successorExists.addMark(successorExists)
                               , natural.transitivity.addMark(transitivity) ])
 
-ending_claim = starting_claim.forwardImportToPar(3, 1, 1).forwardFollow(lambda claim:
+transition = starting_claim.forwardImportToPar(3, 1, 1)
+transition.translate()
+
+transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
       x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnIthFollow(0, lambda x:
-          x.forwardOnBodyFollow(lambda x:
-            linearui.Identity(x)))))).tgt()
+        x.forwardConjQuantifier(0))))
+transition.translate()
 
+#transition = transition.forwardFollow(lambda claim:
+#    claim.forwardOnIthFollow(1, lambda x:
+#      x.forwardOnIthFollow(1, lambda x:
+#        x.forwardOnBodyFollow(lambda x:
+#          x.forwardAssociateA
+
+transition.translate()
+
+ending_claim = transition.tgt()
