@@ -870,7 +870,7 @@ class Apply(LinearLogicUiPrimitiveArrow):
     return self._j
 
   def src(self):
-    return Conj(type = andType, values = values)
+    return Conj(type = andType, values = self.values())
   def tgt(self):
     return false
 
