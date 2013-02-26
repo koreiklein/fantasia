@@ -137,4 +137,17 @@ transition = transition.forwardFollow(lambda claim:
             x.forwardUnsingleton())))))
 transition.translate()
 
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardConjQuantifier(2)))))
+transition.translate()
+
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardJoin())))
+transition.translate()
+
 ending_claim = transition.tgt()

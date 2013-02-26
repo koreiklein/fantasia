@@ -306,6 +306,9 @@ class Quantifier(Logic):
         variables = self.variables(),
         body = self.body().transpose())
 
+  def forwardJoin(self):
+    return QuantifierJoin(self)
+
   def forwardRemoveQuantifier(self):
     assert(len(self.variables()) == 0)
     return RemoveQuantifier(value = self.body(), quantifierType = self.type())
@@ -784,6 +787,27 @@ class Singleton(LinearLogicUiPrimitiveArrow):
             claim.backwardForgetFirst(linear.true)))
     else:
       raise Exception("Unrecognized self.type()")
+
+class QuantifierJoin(LinearLogicUiPrimitiveArrow):
+  def __init__(self, quantifier):
+    assert(quantifier.__class__ == Quantifier)
+    assert(quantifier.body().__class__ == Quantifier)
+    assert(quantifier.type() == quantifier.body().type())
+    self._quantifier = quantifier
+
+  def quantifier(self):
+    return self._quantifier
+
+  def src(self):
+    return self.quantifier()
+  def tgt(self):
+    variables = list(self.quantifier().body().variables())
+    variables.extend(self.quantifier().variables())
+    return Quantifier(type = self.quantifier().type(), variables = variables,
+        body = self.quantifier().body().body())
+
+  def translate(self):
+    return self.src().translate().identity()
 
 class AssociateOut(LinearLogicUiPrimitiveArrow):
   # e.g. index = 1
