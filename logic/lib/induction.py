@@ -150,4 +150,25 @@ transition = transition.forwardFollow(lambda claim:
         x.forwardJoin())))
 transition.translate()
 
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda q:
+        q.forwardOnBodyFollow(lambda x:
+          x.forwardOnIthFollow(1, lambda x:
+            x.forwardEliminate(0, q.variables()[0]).forwardFollow(lambda x:
+              x.forwardRemoveQuantifier()))))))
+transition.translate()
+
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardAssociateIn(2).forwardFollow(lambda x:
+          x.forwardImportToPar(2, 1, 0).forwardFollow(lambda x:
+            x.forwardOnIthFollow(1, lambda x:
+              x.forwardOnIthFollow(0, lambda x:
+                x.forwardApply(1, 0)).forwardFollow(lambda x:
+              x.forwardRemoveUnit(0)))))))))
+transition.translate()
+
 ending_claim = transition.tgt()
