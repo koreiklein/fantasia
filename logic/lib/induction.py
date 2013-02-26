@@ -121,6 +121,14 @@ transition = transition.forwardFollow(lambda claim:
               x.forwardApply(1, 0)))))))
 transition.translate()
 
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardOnIthFollow(2, lambda x:
+            x.forwardRemoveUnit(0))))))
+transition.translate()
+
 transition.translate()
 
 ending_claim = transition.tgt()

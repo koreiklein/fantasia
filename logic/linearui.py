@@ -875,7 +875,7 @@ class RemoveUnit(LinearLogicUiPrimitiveArrow):
   def tgt(self):
     values = list(self.conj().values())
     removed = values.pop(self.index())
-    return Conj(type = self.type(), values = values)
+    return Conj(type = self.conj().type(), values = values)
 
   def translate(self):
     if self.conj().type() == orType:
@@ -887,7 +887,7 @@ class RemoveUnit(LinearLogicUiPrimitiveArrow):
       return self.src().translate().forwardOnNotFollow(lambda claim:
           _backwardWithin(claim, len(self.conj().values()) - (self.index() + 1), lambda claim:
             claim.backwardOnRightFollow(lambda claim:
-              claim.backwardRemoveDoubleDual()).backwardFollow(lambda claim:
+              claim.backwardIntroduceDoubleDual()).backwardFollow(lambda claim:
             claim.backwardIntroduceTrue())))
 
 class Apply(LinearLogicUiPrimitiveArrow):
