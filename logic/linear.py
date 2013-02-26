@@ -516,6 +516,24 @@ class LinearLogicFunctorialArrow(LinearLogicPrimitiveArrow):
     covariant = True
     return self.asString(covariant)
 
+class Eliminate(LinearLogicPrimitiveArrow):
+  def __init__(self, value, quantifiedVar, replacementVar):
+    self._value = value
+    self._quantifiedVar = quantifiedVar
+    self._replacementVar = replacementVar
+
+  def value(self):
+    return self._value
+  def quantifiedVar(self):
+    return self._quantifiedVar
+  def replacementVar(self):
+    return self._replacementVar
+
+  def src(self):
+    return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
+  def tgt(self):
+    return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
+
 class NotQuant(LinearLogicPrimitiveArrow):
   # | q(t,x)    --> q(~t, | x )
   # *-------              *--
