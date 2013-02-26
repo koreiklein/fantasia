@@ -454,7 +454,7 @@ class Identity(LinearLogicUiPrimitiveArrow):
   def tgt(self):
     return self._value
   def translate(self):
-    return linear.Identity(self._value.translate())
+    return self._value.translate().identity()
 
 class Distribute(LinearLogicUiPrimitiveArrow):
   # Import claim i of the list into each clause of the OR at spot j.
@@ -548,7 +548,7 @@ class ImportToPar(LinearLogicUiPrimitiveArrow):
                 oneAndKClaim.backwardApply(parAndClaim.right()))).backwardFollow(lambda x:
                   x.backwardAssociateA())))).forwardFollow(lambda x: x.forwardApply())
     return _onJandI(self.src(), j = self._j, i = self._i, linearTransitionF = f).forwardCompose(
-        self.tgt().backwardShift(index = 0, amount = T).translate())
+        self.tgt().backwardShift(index = T, amount = -T).translate())
 
 # conjOrUnit: a linear conj of the form (((1 | A) | B) | C) | D
 # outer: an integer
@@ -601,9 +601,9 @@ class RemoveQuantifier(LinearLogicUiPrimitiveArrow):
     self._quantifierType = quantifierType
 
   def src(self):
-    return self._value
-  def tgt(self):
     return Quantifier(type = self._quantifierType, variables = [], body = self._value)
+  def tgt(self):
+    return self._value
 
   def translate(self):
     return self.src().translate().identity()
@@ -874,7 +874,7 @@ class Shift(LinearLogicUiPrimitiveArrow):
 
   def translate(self):
     if self.amount() == 0:
-      return linear.Identity(self.src())
+      return self.src().translate().identity()
     elif abs(self.amount()) == 1:
       return self.translate1()
     else:

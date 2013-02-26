@@ -106,6 +106,13 @@ transition = transition.forwardFollow(lambda claim:
             x.forwardRemoveQuantifier())))))
 transition.translate()
 
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardImportToPar(0, 3, 0)))))
+transition.translate()
+
 transition.translate()
 
 ending_claim = transition.tgt()
