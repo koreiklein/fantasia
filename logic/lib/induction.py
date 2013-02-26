@@ -90,6 +90,14 @@ transition = transition.forwardFollow(lambda claim:
           x.forwardAssociateIn(0)))))
 transition.translate()
 
+transition = transition.forwardFollow(lambda claim:
+    claim.forwardOnIthFollow(1, lambda x:
+      x.forwardOnIthFollow(1, lambda quantifier:
+        quantifier.forwardOnBodyFollow(lambda x:
+          x.forwardOnIthFollow(3, lambda x:
+            x.forwardEliminate(0, quantifier.variables()[0]))))))
+transition.translate()
+
 transition.translate()
 
 ending_claim = transition.tgt()

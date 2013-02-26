@@ -208,7 +208,7 @@ class Quantifier(LinearLogicPrimitiveObject):
   def forwardEliminteVar(self, replacementVar):
     assert(self.type() == forallType)
     return Eliminate(value = self.body(),
-        quantifiedVar = self.variable(),
+        quantifiedVar = self.var(),
         replacementVar = replacementVar)
 
   def forwardOnBody(self, arrow):
@@ -597,7 +597,7 @@ class Eliminate(LinearLogicPrimitiveArrow):
     return self._replacementVar
 
   def src(self):
-    return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
+    return Quantifier(type = forallType, var = self.quantifiedVar(), body = self.value())
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
 
