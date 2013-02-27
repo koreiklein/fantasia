@@ -27,6 +27,9 @@ class Var:
   def __ne__(self, other):
     return not (self == other)
 
+  def __hash__(self):
+    return hash(self._id)
+
 # Objects
 
 andType = "AND"
@@ -172,6 +175,11 @@ class Quantifier(LinearLogicPrimitiveObject):
   def __ne__(self, other):
     return not (self == other)
 
+  def forwardUnusedExistential(self):
+    assert(self.type() == existsType)
+    # TODO Check that self.var() is not free in self.body()
+    return UnusedExistential(variable = self.var(), body = self.body())
+
   def backwardConjQuantifier(self):
     # (Q x . A) % B --> Q x . (A % B)
     assert(self.body().__class__ == Conj)
@@ -182,13 +190,13 @@ class Quantifier(LinearLogicPrimitiveObject):
       assert(self.body().type() == andType)
 
     return ConjQuantifier(quantifierType = self.type(), conjType = self.body().type(),
-        var = self.variable(), left = self.body().left(), right = self.body().right())
+        var = self.var(), left = self.body().left(), right = self.body().right())
 
   def forwardQuantifierConj(self):
     # Q x . (A % B) --> (Q x . A) % (Q x . B)
     assert(self.left().__class__ == Quantifier)
     assert(self.right().__class__ == Quantifier)
-    assert(self.left().variable() == self.right().variable())
+    assert(self.left().var() == self.right().var())
     if self.type() == andType:
       assert(self.left().type() == existsType)
       assert(self.right().type() == existsType)
@@ -198,14 +206,14 @@ class Quantifier(LinearLogicPrimitiveObject):
       assert(self.right().type() == forallType)
 
     return QuantifierConj(quantifierType = self.type(), conjType = self.left().type(),
-        var = self.left().variable(), left = self.left().body(), right = self.right().body())
+        var = self.left().var(), left = self.left().body(), right = self.right().body())
 
   def backwardNotQuant(self):
     assert(self.body().__class__ == Not)
-    return NotQuant(variable = self.variable(), type = dualQuantifierType(self.type()),
+    return NotQuant(variable = self.var(), type = dualQuantifierType(self.type()),
         value = self.body().value())
 
-  def forwardEliminteVar(self, replacementVar):
+  def forwardEliminateVar(self, replacementVar):
     assert(self.type() == forallType)
     return Eliminate(value = self.body(),
         quantifiedVar = self.var(),
@@ -285,7 +293,7 @@ class Not(LinearLogicPrimitiveObject):
 
   def forwardNotQuant(self):
     assert(self.value().__class__ == Quantifier)
-    return NotQuant(variable = self.value().variable(), type = self.value().type(),
+    return NotQuant(variable = self.value().var(), type = self.value().type(),
         value = self.value().value())
 
   # src and tgt go the opposite direction since Not is contravariant.
@@ -361,7 +369,7 @@ class Conj(LinearLogicPrimitiveObject):
     # Q x . (A % B) --> (Q x . A) % (Q x . B)
     assert(self.left().__class__ == Quantifier)
     assert(self.right().__class__ == Quantifier)
-    assert(self.left().variable() == self.right().variable())
+    assert(self.left().var() == self.right().var())
     if self.type() == andType:
       assert(self.left().type() == existsType)
       assert(self.right().type() == existsType)
@@ -372,7 +380,7 @@ class Conj(LinearLogicPrimitiveObject):
 
     return QuantifierConj(quantifierType = self.left().type(),
         conjType = self.type(),
-        var = self.left().variable(),
+        var = self.left().var(),
         left = self.left().body(), right = self.right().body())
 
   def forwardConjQuantifier(self):
@@ -916,6 +924,24 @@ class Apply(LinearLogicPrimitiveArrow):
     return And(Not(And(self.a(), self.b())), self.b())
   def tgt(self):
     return Not(self.a())
+
+class UnusedExistential(LinearLogicPrimitiveArrow):
+  def __init__(self, variable, body):
+    self._variable = variable
+    self._body = body
+
+  def variable(self):
+    return self._variable
+  def body(self):
+    return self._body
+
+  def __repr__(self):
+    return "unused %s in %s"%(self.variable(), self.body())
+
+  def src(self):
+    return Quantifier(var = self.variable(), type = existsType, body = self.body())
+  def tgt(self):
+    return self.body()
 
 # Functorial Arrows
 

@@ -110,11 +110,18 @@ class Successor(linearui.Logic):
 
 zero = linearui.Var('zero')
 
+zero_natural = IsNatural(zero)
+
 t = common_vars.t()
 r = common_vars.r()
 increasing = linearui.Forall([t, r],
     linearui.Implies(predicate = Successor(t, r),
       consequent = Compare(lesser = t, greater = r, strict = True)))
+
+n = common_vars.n()
+reflexivity = linearui.Forall([n],
+    linearui.Implies(predicate = IsNatural(n),
+      consequent = Compare(lesser = n, greater = n, strict = False)))
 
 s = common_vars.s()
 l = common_vars.l()

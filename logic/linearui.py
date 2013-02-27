@@ -2,6 +2,7 @@
 
 import markable
 from logic import linear
+from sets import Set
 
 # This module contains objects and arrows in much the same was as linear.
 # This module defines a functor F.
@@ -27,6 +28,9 @@ class Var(markable.Markable):
   def __ne__(self, other):
     return not (self == other)
 
+  def __hash__(self):
+    return hash(self._base)
+
 #Objects
 
 class Logic(markable.Markable):
@@ -51,6 +55,10 @@ class Logic(markable.Markable):
   # place of a.
   # a must not be quantified in self.
   def substituteVar(self, a, b):
+    raise Exception("Abstract Superclass")
+
+  # return a set of the free variables in self.
+  def freeVariables(self):
     raise Exception("Abstract Superclass")
 
   def backwardRemoveQuantifier(self, quantifierType):
@@ -135,6 +143,9 @@ class Not(Logic):
   def transpose(self):
     return self.value()
 
+  def freeVariables(self):
+    return self.value().freeVariables()
+
 # This one class will is used to represent
 # n-ary AND, OR, WITH and PAR
 class Conj(Logic):
@@ -199,6 +210,19 @@ class Conj(Logic):
     assert(self.type() == andType)
     return ImportToPar(self.values(), i, j, k)
 
+  # Remove a clause from a par by importing a contradicting claim.
+  def forwardRemoveFromPar(self, i, j, k):
+    assert( Not(self.values()[i]).translate() == self.values()[j].values()[k].translate() )
+    if i < j:
+      b = j - 1
+    else:
+      b = j
+    return self.forwardImportToPar(i, j, k).forwardFollow(lambda x:
+        x.forwardOnIthFollow(b, lambda par:
+          par.forwardOnIthFollow(k, lambda x:
+            x.forwardApply(1, 0)).forwardFollow(lambda par:
+          par.forwardRemoveUnit(k))))
+
   def substituteVar(self, a, b):
     return Conj(type = self.type(),
         values = [value.substituteVar(a, b) for value in self.values()])
@@ -227,6 +251,12 @@ class Conj(Logic):
     return self._type
   def values(self):
     return self._values
+
+  def freeVariables(self):
+    res = Set()
+    for value in self.values():
+      res = res.union(value.freeVariables())
+    return res
 
   def translate(self):
     if self.demorganed():
@@ -292,6 +322,12 @@ class Quantifier(Logic):
     l.append('body')
     self.initMarkable(l)
 
+  def freeVariables(self):
+    res = self.body().freeVariables()
+    for variable in self.variables():
+      res = res.difference(Set([variable]))
+    return res
+
   def notToTranspose(self):
     return _forwardPushNotFollow(len(self.variables()), linear.Not(self.translate()), lambda notBody:
         self.body().notToTranspose())
@@ -306,6 +342,9 @@ class Quantifier(Logic):
         variables = self.variables(),
         body = self.body().transpose())
 
+  def forwardUnusedExistential(self, index):
+    return UnusedExistential(self, index)
+
   def forwardJoin(self):
     return QuantifierJoin(self)
 
@@ -316,6 +355,14 @@ class Quantifier(Logic):
   def forwardEliminate(self, index, replacementVar):
     assert(self.type() == forallType)
     return Eliminate(quantifier = self, index = index, replacementVar = replacementVar)
+
+  def forwardEliminateMultiple(self, replacementVars):
+    assert(self.type() == forallType)
+    res = self.identity()
+    for replacementVar in replacementVars:
+      res = res.forwardFollow(lambda x:
+          Eliminate(quantifier = x, index = 0, replacementVar = replacementVar))
+    return res
 
   def backwardEliminate(self, index, quantifiedVar, replacementVar):
     assert(self.type() == forallType)
@@ -347,7 +394,7 @@ class Quantifier(Logic):
 
   def translate(self):
     res = self.body().translate()
-    for variable in self.variables():
+    for variable in self.variables()[::-1]:
       res = linear.Quantifier(type = self.type(), var = variable.translate(), body = res)
     return res
 
@@ -381,6 +428,9 @@ class Always(Logic):
     self._value = value
     self.initMarkable(['value'])
 
+  def freeVariables(self):
+    return self.value().freeVariables()
+
   def notToTranspose(self):
     return linear.Not(self.translate()).forwardOnNotFollow(lambda alwaysValue:
         alwaysValue.backwardOnAlwaysFollow(lambda value:
@@ -406,6 +456,9 @@ class Maybe(Logic):
   def __init__(self, value):
     self._value = value
     self.initMarkable(['value'])
+
+  def freeVariables(self):
+    return self.value().freeVariables()
 
   def notToTranspose(self):
     return linear.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda alwaysNotValue:
@@ -736,7 +789,7 @@ class Eliminate(LinearLogicUiPrimitiveArrow):
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda linearBody:
-        linearBody.forwardEliminteVar(replacementVar = self.replacementVar().translate()))
+        linearBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
 
 class Unsingleton(LinearLogicUiPrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
@@ -788,6 +841,30 @@ class Singleton(LinearLogicUiPrimitiveArrow):
     else:
       raise Exception("Unrecognized self.type()")
 
+class UnusedExistential(LinearLogicUiPrimitiveArrow):
+  def __init__(self, quantifier, index):
+    assert(quantifier.__class__ == Quantifier)
+    assert(quantifier.type() == existsType)
+    assert(quantifier.variables()[index] not in quantifier.body().freeVariables())
+    self._quantifier = quantifier
+    self._index = index
+
+  def quantifier(self):
+    return self._quantifier
+  def index(self):
+    return self._index
+
+  def src(self):
+    return self.quantifier()
+  def tgt(self):
+    variables = list(self.quantifier().variables())
+    variables.pop(self.index())
+    return Quantifier(type = existsType, variables = variables, body = self.quantifier().body())
+
+  def translate(self):
+    return _quantifierWithin(self.src().translate(), self.index(), lambda x:
+        x.forwardUnusedExistential())
+
 class QuantifierJoin(LinearLogicUiPrimitiveArrow):
   def __init__(self, quantifier):
     assert(quantifier.__class__ == Quantifier)
@@ -801,8 +878,8 @@ class QuantifierJoin(LinearLogicUiPrimitiveArrow):
   def src(self):
     return self.quantifier()
   def tgt(self):
-    variables = list(self.quantifier().body().variables())
-    variables.extend(self.quantifier().variables())
+    variables = list(self.quantifier().variables())
+    variables.extend(self.quantifier().body().variables())
     return Quantifier(type = self.quantifier().type(), variables = variables,
         body = self.quantifier().body().body())
 

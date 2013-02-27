@@ -52,7 +52,7 @@ def renderQuantifier(quantifier):
   else:
     variablesStack = render(quantifier.variables()[0])
     for variable in quantifier.variables()[1:]:
-      variablesStack = render(variable).stack(variableStackingDimension, variablesStack,
+      variablesStack = variablesStack.stack(variableStackingDimension, render(variable),
           spacing = gl_distances.quantifier_variables_spacing)
   bodyStack = render(quantifier.body())
   divider = gl_primitives.quantifierDivider(quantifier.type(),
