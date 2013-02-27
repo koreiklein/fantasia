@@ -278,4 +278,27 @@ transition = transition.forwardFollow(lambda x:
       x.forwardUnsingleton()))
 transition.translate()
 
-ending_claim = transition.tgt()
+# Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
+
+s = linearui.And([starting_claim, natural.exists_five])
+
+t = s.forwardOnIthFollow(0, lambda x: transition)
+t = t.forwardFollow(lambda x:
+    x.forwardConjQuantifier(1))
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardOnIthFollow(0, lambda x:
+        x.forwardEliminate(0, natural.five).forwardFollow(lambda x:
+          x.forwardRemoveQuantifier()))))
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardRemoveFromPar(1, 0, 0)))
+
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardUnsingleton().forwardFollow(lambda x:
+        x.forwardUnsingleton())))
+
+ending_claim = t.tgt()
+
+

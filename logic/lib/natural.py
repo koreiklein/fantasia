@@ -110,7 +110,11 @@ class Successor(linearui.Logic):
 
 zero = linearui.Var('zero')
 
+five = linearui.Var('5')
+
 zero_natural = IsNatural(zero)
+
+exists_five = linearui.Exists([five], IsNatural(five))
 
 t = common_vars.t()
 r = common_vars.r()
