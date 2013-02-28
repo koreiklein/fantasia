@@ -1,37 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from logic import linearui
-from logic.lib import natural
-from logic.lib import common_vars
-import marks
-
-# These definitions of induction should by no means be considered final.
-# As the combinators in logic.linearui become more sophisticated, we may
-# wish to give more elaborate definitions of induction.
-# For example, all claims about numbers being natural might be hidden.
-# For another example, we may use m = n + 1 instead of natural.Successor(n, m).
-
-n = common_vars.n()
-m = common_vars.m()
-k = common_vars.k()
-# claim: a function from a variable to a formula saying the claim holds of
-# that variable.
-def byInduction(claim):
-  return linearui.Implies(
-      predicate = linearui.And([ claim(natural.zero)
-                               , linearui.Forall([n]
-                               , linearui.Implies(
-                                  predicate = linearui.And([ natural.IsNatural(n)
-                                                           , claim(n)]),
-                                  consequent =
-                                    linearui.Exists([m],
-                                      linearui.And([ natural.IsNatural(m)
-                                                   , natural.Successor(n, m)
-                                                   , claim(m)]))))]),
-      consequent = linearui.Forall([k],
-        linearui.Implies(
-          predicate = natural.IsNatural(k),
-          consequent = claim(k))))
+from extraction.python.lib import natural as naturalRep
+from calculus import enriched
+from lib import natural
+from mark import common as marks
 
 def ge_zero(n):
   return natural.Compare(natural.zero, n, False)
@@ -41,9 +13,9 @@ weakening = "weakening"
 successorExists = "successorExists"
 transitivity = "transitivity"
 reflexivity = "reflexivity"
-main = byInduction(ge_zero)
+main = natural.byInduction(ge_zero)
 
-starting_claim = linearui.And([ natural.increasing.addMark(increasing)
+starting_claim = enriched.And([ natural.increasing.addMark(increasing)
                               , main.addMark(marks.selection)
                               , natural.successorExists.addMark(successorExists)
                               , natural.transitivity.addMark(transitivity)
@@ -251,7 +223,7 @@ transition = transition.forwardFollow(lambda x:
 
 # Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
 
-s = linearui.And([starting_claim, natural.exists_five])
+s = enriched.And([starting_claim, natural.exists_five])
 
 t = s.forwardOnIthFollow(0, lambda x: transition)
 t = t.forwardFollow(lambda x:

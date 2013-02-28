@@ -1,20 +1,20 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import markable
-from logic import linear
+from mark import markable
+from calculus import basic
 from sets import Set
 
-# This module contains objects and arrows in much the same was as linear.
+# This module contains objects and arrows in much the same was as basic.
 # This module defines a functor F.
-# F assigns to every object in this module, an object in linear.
-# F also assigns to every arrow in this module an arrow in linear.
+# F assigns to every object in this module, an object in basic.
+# F also assigns to every arrow in this module an arrow in basic.
 # F satifies all the appropriate properties for a functor
 #     (it respects src, tgt, identity, and composition)
 # We use x.translate() to implement F.
 
 class Var(markable.Markable):
   def __init__(self, name):
-    self._base = linear.Var(name)
+    self._base = basic.Var(name)
     self.initMarkable([])
 
   def translate(self):
@@ -39,7 +39,7 @@ class Logic(markable.Markable):
     raise Exception("Abstract Superclass")
 
   # Note: There is an isomorphism:
-  #   linear.Not(self.translate()) <--> self.transpose().translate()
+  #   basic.Not(self.translate()) <--> self.transpose().translate()
   # notToTranspose implements the forward direction of this isomorphism.
   # transposeToNot implements the reverse direction of this isomorphism.
   def notToTranspose(self):
@@ -72,8 +72,8 @@ class Logic(markable.Markable):
   def identity(self):
     return Identity(self)
 
-forallType = linear.forallType
-existsType = linear.existsType
+forallType = basic.forallType
+existsType = basic.existsType
 
 # Possible types of a Conj
 andType = 'AND'
@@ -81,8 +81,8 @@ orType = 'OR'
 withType = 'WITH'
 parType = 'PAR'
 
-forallType = linear.forallType
-existsType = linear.existsType
+forallType = basic.forallType
+existsType = basic.existsType
 
 conjTypes = [andType, orType, withType, parType]
 concreteConjTypes = [andType, orType]
@@ -107,17 +107,17 @@ def dualConjType(type):
     return orType
 
 # type: the type of a Conj c
-# return: the type of a linear.Conj that can be used to represent c.
-def correspondingConcreteTypeInLinear(type):
+# return: the type of a basic.Conj that can be used to represent c.
+def correspondingConcreteBasicType(type):
   if type == andType:
-    return linear.andType
+    return basic.andType
   elif type == orType:
-    return linear.orType
+    return basic.orType
   elif type == withType:
-    return linear.orType
+    return basic.orType
   else:
     assert(type == parType)
-    return linear.andType
+    return basic.andType
 
 # For stylistic reasons, try to use Not sparingly.
 # Ideally, self.value() should never be a Conj, Quantifier, Maybe or Always.
@@ -133,10 +133,10 @@ class Not(Logic):
     return Not(self.value().substituteVar(a, b))
 
   def translate(self):
-    return linear.Not(self.value().translate())
+    return basic.Not(self.value().translate())
 
   def notToTranspose(self):
-    return linear.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
+    return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
         self.value().transpose().transposeToNot())
   def transposeToNot(self):
     return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
@@ -154,7 +154,7 @@ class Conj(Logic):
     if type in concreteConjTypes:
       self._demorganed = False
     else:
-      # F uses demorgan's laws to translate a demorganed Conj into an object in linear.
+      # F uses demorgan's laws to translate a demorganed Conj into an object in basic.
       # See Conj.translate()
       assert(type in demorganedConjTypes)
       self._demorganed = True
@@ -229,10 +229,10 @@ class Conj(Logic):
 
   def notToTranspose(self):
     if not self.demorganed():
-      return linear.Not(self.translate()).forwardOnNotFollow(lambda values:
+      return basic.Not(self.translate()).forwardOnNotFollow(lambda values:
           _valuesToTransposeNot(self.type(), values, self.values()))
     else:
-      return linear.Not(self.translate()).forwardRemoveDoubleDual()
+      return basic.Not(self.translate()).forwardRemoveDoubleDual()
 
   def transposeToNot(self):
     if not self.demorganed():
@@ -265,56 +265,56 @@ class Conj(Logic):
       return self.translateUndemorganed()
 
   def translateDemorganed(self):
-    linearType = correspondingConcreteTypeInLinear(self.type())
-    res = linear.unit(linearType)
+    basicType = correspondingConcreteBasicType(self.type())
+    res = basic.unit(basicType)
     for value in self.values():
-      res = linear.Conj(type = linearType, left = res, right = linear.Not(value.translate()))
-    return linear.Not(res)
+      res = basic.Conj(type = basicType, left = res, right = basic.Not(value.translate()))
+    return basic.Not(res)
 
   def translateUndemorganed(self):
-    linearType = correspondingConcreteTypeInLinear(self.type())
-    res = linear.unit(linearType)
+    basicType = correspondingConcreteBasicType(self.type())
+    res = basic.unit(basicType)
     for value in self.values():
-      res = linear.Conj(type = linearType, left = res, right = value.translate())
+      res = basic.Conj(type = basicType, left = res, right = value.translate())
     return res
 
 # e.g.
 # (1 | B.translate()) | C.translate(), [B, C]
 #      -->
 # (1 | ~B.transpose().translate()) | ~C.transpose().translate()
-def _valuesToTransposeNot(type, linearConjOrUnit, linearUiValues):
-  if linearConjOrUnit == linear.unit(type):
-    assert(len(linearUiValues) == 0)
-    return linearConjOrUnit.identitiy()
+def _valuesToTransposeNot(type, basicConjOrUnit, basicUiValues):
+  if basicConjOrUnit == basic.unit(type):
+    assert(len(basicUiValues) == 0)
+    return basicConjOrUnit.identitiy()
   else:
-    conj = linearConjOrUnit
-    assert(conj.__class__ == linear.Conj)
+    conj = basicConjOrUnit
+    assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
-    last = linearUiValues[-1]
+    last = basicUiValues[-1]
     return conj.forwardOnRight(last.transpose().transposeToNot()).forwardFollow(lambda conj:
         conj.forwardOnLeftFollow(lambda rest:
-          _valuesToTransposeNot(type, rest, linearUiValues[:-1])))
+          _valuesToTransposeNot(type, rest, basicUiValues[:-1])))
 # e.g.
 # (1 | B.translate()) | C.translate() <-- (1 | ~B.transpose().translate()) | ~C.transpose().translate()
-def _transposeNotToValues(type, linearConjOrUnit, linearUiValues):
-  if linearConjOrUnit == linear.unit(type):
-    assert(len(linearUiValues) == 0)
-    return linearConjOrUnit.identitiy()
+def _transposeNotToValues(type, basicConjOrUnit, basicUiValues):
+  if basicConjOrUnit == basic.unit(type):
+    assert(len(basicUiValues) == 0)
+    return basicConjOrUnit.identitiy()
   else:
-    conj = linearConjOrUnit
-    assert(conj.__class__ == linear.Conj)
+    conj = basicConjOrUnit
+    assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
-    last = linearUiValues[-1]
+    last = basicUiValues[-1]
     return conj.forwardOnRight(last.transpose().notToTranspose()).forwardFollow(lambda conj:
         conj.forwardOnLeftFollow(lambda rest:
-          _transposeNotToValues(type, rest, linearUiValues[:-1])))
+          _transposeNotToValues(type, rest, basicUiValues[:-1])))
 
 true = Conj(type = andType, values = [])
 false = Conj(type = orType, values = [])
 
 class Quantifier(Logic):
   def __init__(self, type, variables, body):
-    assert(type in linear.quantifierTypes)
+    assert(type in basic.quantifierTypes)
     self._type = type
     self._variables = variables
     self._body = body
@@ -329,7 +329,7 @@ class Quantifier(Logic):
     return res
 
   def notToTranspose(self):
-    return _forwardPushNotFollow(len(self.variables()), linear.Not(self.translate()), lambda notBody:
+    return _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
         self.body().notToTranspose())
   def transposeToNot(self):
     return self.transpose().translate().forwardIntroduceDoubleDual().forwardFollow(lambda notNotQ:
@@ -395,32 +395,32 @@ class Quantifier(Logic):
   def translate(self):
     res = self.body().translate()
     for variable in self.variables()[::-1]:
-      res = linear.Quantifier(type = self.type(), var = variable.translate(), body = res)
+      res = basic.Quantifier(type = self.type(), var = variable.translate(), body = res)
     return res
 
 # e.g.
 # | q(t, a, q(t, b, x))  -->  q(~t, a, q(~t, b, f(~x).tgt()))
 # *--------------------
-def _forwardPushNotFollow(n, linearObject, f):
+def _forwardPushNotFollow(n, basicObject, f):
   if n == 0:
-    return f(linearObject)
+    return f(basicObject)
   else:
     assert(n > 0)
-    assert(linearObject.__class__ == linear.Not)
-    return linearObject.forwardNotQuant().forwardFollow(lambda quant:
+    assert(basicObject.__class__ == basic.Not)
+    return basicObject.forwardNotQuant().forwardFollow(lambda quant:
         quant.onBody(_forwardPushNotFollow(n - 1, quant.body(), f)))
 
 # e.g.
 # | q(t, a, q(t, b, x))  <--  q(~t, a, q(~t, b, f(x).src()))
 # *--------------------
-def _backwardPullNotFollow(n, linearObject, f):
+def _backwardPullNotFollow(n, basicObject, f):
   if n == 0:
-    res = f(linearObject)
-    assert(res.tgt().__class__ == linear.Not)
+    res = f(basicObject)
+    assert(res.tgt().__class__ == basic.Not)
     return res
   else:
-    assert(linearObject.__class__ == linear.Not)
-    return linearObject.backwardNotQuant().backwardFollow(lambda quant:
+    assert(basicObject.__class__ == basic.Not)
+    return basicObject.backwardNotQuant().backwardFollow(lambda quant:
       _backwardPullNotFollow(n - 1, quant, f))
 
 class Always(Logic):
@@ -432,7 +432,7 @@ class Always(Logic):
     return self.value().freeVariables()
 
   def notToTranspose(self):
-    return linear.Not(self.translate()).forwardOnNotFollow(lambda alwaysValue:
+    return basic.Not(self.translate()).forwardOnNotFollow(lambda alwaysValue:
         alwaysValue.backwardOnAlwaysFollow(lambda value:
           self.value().transpose().notToTranspose()))
   def transposeToNot(self):
@@ -450,7 +450,7 @@ class Always(Logic):
     return self._value
 
   def translate(self):
-    return linear.Always(self.value().translate())
+    return basic.Always(self.value().translate())
 
 class Maybe(Logic):
   def __init__(self, value):
@@ -461,7 +461,7 @@ class Maybe(Logic):
     return self.value().freeVariables()
 
   def notToTranspose(self):
-    return linear.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda alwaysNotValue:
+    return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda alwaysNotValue:
         alwaysNotValue.forwardOnAlwaysFollow(lambda notValue:
           self.value().notToTranspose()))
   def transposeToNot(self):
@@ -478,9 +478,9 @@ class Maybe(Logic):
     return self._value
 
   def translate(self):
-    return linear.Not(linear.Always(linear.Not(self.value().translate())))
+    return basic.Not(basic.Always(basic.Not(self.value().translate())))
 
-# Utilities for contstructing linearui objects.
+# Utilities for contstructing enriched objects.
 def And(values):
   return Conj(type = andType, values = values)
 def Or(values):
@@ -505,8 +505,8 @@ def Implies(predicate, consequent):
 
 # Arrows
 
-# Abstract superclass of all nonfunctorial arrows between linear logic ui objects.
-class LinearLogicUiPrimitiveArrow:
+# Abstract superclass of all nonfunctorial arrows between enriched objects.
+class PrimitiveArrow:
   def src(self):
     raise Exception("Abstract superclass.")
   def tgt(self):
@@ -530,10 +530,10 @@ class LinearLogicUiPrimitiveArrow:
   def backwardFollow(self, f):
     return self.backwardCompose(f(self.src()))
 
-class LinearLogicUiFunctorialArrow(LinearLogicUiPrimitiveArrow):
+class FunctorialArrow(PrimitiveArrow):
   pass
 
-class Identity(LinearLogicUiPrimitiveArrow):
+class Identity(PrimitiveArrow):
   def __init__(self, value):
     self._value = value
 
@@ -544,7 +544,7 @@ class Identity(LinearLogicUiPrimitiveArrow):
   def translate(self):
     return self._value.translate().identity()
 
-class Distribute(LinearLogicUiPrimitiveArrow):
+class Distribute(PrimitiveArrow):
   # Import claim i of the list into each clause of the OR at spot j.
   # If the disjunction is par, values[i] must be exponential.
   # e.g.  [A, B, C, D0 - D1 - D2, E], 1, 3
@@ -579,20 +579,20 @@ class Distribute(LinearLogicUiPrimitiveArrow):
     return _onJandI(self.src(), j, i, _distribute).forwardCompose(
         Shift(conj = And(values), index = 0, amount = J).translate())
 
-# conj is a linear disjunctive list and a claim of the form (((- - a) - b) - c) | claim
-# return a linear arrow: (((- - a) - b) - c) | claim --> (((- - (a|claim)) - (b|claim)) - (c|claim))
+# conj is a basic disjunctive list and a claim of the form (((- - a) - b) - c) | claim
+# return a basic arrow: (((- - a) - b) - c) | claim --> (((- - (a|claim)) - (b|claim)) - (c|claim))
 def _distribute(conj):
-  assert(conj.__class__ == linear.Conj)
-  assert(conj.type() == linear.andType)
-  if conj.left() == linear.false:
+  assert(conj.__class__ == basic.Conj)
+  assert(conj.type() == basic.andType)
+  if conj.left() == basic.false:
     return conj.forwardForget()
   else:
-    assert(conj.left().__class__ == linear.Conj)
-    assert(conj.left().type() == linear.orType)
+    assert(conj.left().__class__ == basic.Conj)
+    assert(conj.left().type() == basic.orType)
     return conj.forwardDistribute().forwardFollow(lambda x:
           x.onLeft(_distribute(x.left())))
 
-class ImportToPar(LinearLogicUiPrimitiveArrow):
+class ImportToPar(PrimitiveArrow):
   # Import claim i of the list into the kth clause of the PAR at spot j.
   # If the disjunction is par, values[i] must be exponential.
   # e.g.  [A, B, C, D0 - D1 - D2, E], 1, 3, 0
@@ -635,13 +635,13 @@ class ImportToPar(LinearLogicUiPrimitiveArrow):
                   x.forwardCommute())).backwardFollow(lambda oneAndKClaim:
                 oneAndKClaim.backwardApply(parAndClaim.right()))).backwardFollow(lambda x:
                   x.backwardAssociateA())))).forwardFollow(lambda x: x.forwardApply())
-    return _onJandI(self.src(), j = self._j, i = self._i, linearTransitionF = f).forwardCompose(
+    return _onJandI(self.src(), j = self._j, i = self._i, basicTransitionF = f).forwardCompose(
         self.tgt().backwardShift(index = T, amount = -T).translate())
 
-# conjOrUnit: a linear conj of the form (((1 | A) | B) | C) | D
+# conjOrUnit: a basic conj of the form (((1 | A) | B) | C) | D
 # outer: an integer
-# f: a function from a linear conj to a linear conj
-# return: a linear transition from a  conj like conjOrUnit,
+# f: a function from a basic conj to a basic conj
+# return: a basic transition from a  conj like conjOrUnit,
 #         but in which f was applied to the outerth claim,
 #         and the right side of the result was commuted and associated all the way to the right.
 # e.g.
@@ -659,14 +659,14 @@ def _backwardBringToRight(conjOrUnit, outer, f):
                 right.backwardCommute())).backwardFollow(lambda x:
                   x.backwardAssociateA()))
 
-# conj: a linearui.Conj
+# conj: an enriched.Conj
 # i, j: i != j, are indices into the values of conj
-# linearTransitionF: a function generating a linear transition from:
+# basicTransitionF: a function generating a basic transition from:
 #     (conj.values()[j].translate() | conj.values()[i].translate())
-#   to any linear object L.
+#   to any basic object L.
 # return: a transition with src conj.translate() which removes the ith and jth elements and leaves
 #         L at the front.
-def _onJandI(conj, j, i, linearTransitionF):
+def _onJandI(conj, j, i, basicTransitionF):
   assert(conj.__class__ == Conj)
   assert(i != j)
   assert(0 <= i and i < len(conj.values()))
@@ -681,9 +681,9 @@ def _onJandI(conj, j, i, linearTransitionF):
         # x = (% % values[j]) % values[i]
         x.forwardAssociateA().forwardFollow(lambda x:
         # x = % % (values[j] % values[i])
-        x.forwardOnRightFollow(linearTransitionF))))
+        x.forwardOnRightFollow(basicTransitionF))))
 
-class RemoveQuantifier(LinearLogicUiPrimitiveArrow):
+class RemoveQuantifier(PrimitiveArrow):
   def __init__(self, value, quantifierType):
     self._value = value
     self._quantifierType = quantifierType
@@ -696,7 +696,7 @@ class RemoveQuantifier(LinearLogicUiPrimitiveArrow):
   def translate(self):
     return self.src().translate().identity()
 
-class ConjQuantifier(LinearLogicUiPrimitiveArrow):
+class ConjQuantifier(PrimitiveArrow):
   # move the quantifier at the given index in conj to just outside the conj
   def __init__(self, conj, index):
     assert(conj.values()[index].__class__ == Quantifier)
@@ -726,43 +726,43 @@ class ConjQuantifier(LinearLogicUiPrimitiveArrow):
     return Quantifier(type = self.quantifier().type(), variables = self.quantifier().variables(),
         body = Conj(type = self.conj().type(), values = values))
 
-  # Note: Though this method generates a linear transition of quadratic size,
-  #       extraction can safely convert the entire linear transition into the identity
+  # Note: Though this method generates a basic transition of quadratic size,
+  #       extraction can safely convert the entire basic transition into the identity
   #       program transformation.  Therefore, there is no performance penalty.
   def translate(self):
-    return _conjQuantifierWithin(linearConj = self.src().translate(),
+    return _conjQuantifierWithin(basicConj = self.src().translate(),
         m = len(self.quantifier().variables()),
         n = len(self.conj().values()) - (self.index() + 1))
 
-# linearConj: a linear Conj object containing a linear quantifier object
+# basicConj: a basic Conj object containing a basic quantifier object
 # m: an integer, the number of nested quantifiers.
 # n: an integer, the number of nested conjs.
-#   e.g. m = 2, n = 2, linearConj = ((((1|a)|b) | (exists x. exists y. c)) | d) | e
-# return: a linearConj where the quantifiers have been moved to the outside
+#   e.g. m = 2, n = 2, basicConj = ((((1|a)|b) | (exists x. exists y. c)) | d) | e
+# return: a basicConj where the quantifiers have been moved to the outside
 #   e.g. exists x. exists y.  ((((1|a)|b)|c)|d)|e
-def _conjQuantifierWithin(linearConj, m, n):
+def _conjQuantifierWithin(basicConj, m, n):
   if n == 0:
-    return linearConj.forwardCommute().forwardFollow(lambda claim:
+    return basicConj.forwardCommute().forwardFollow(lambda claim:
         _conjQuantifier(claim, m)).forwardFollow(lambda claim:
             _quantifierWithin(claim, m, lambda claim:
               claim.forwardCommute()))
   else:
-    return linearConj.forwardOnLeftFollow(lambda left:
+    return basicConj.forwardOnLeftFollow(lambda left:
         _conjQuantifierWithin(left, m, n - 1)).forwardFollow(lambda claim:
             _conjQuantifier(claim, m))
 
 # m: an integer
-# linearConj: a linear conj with m nested quantifiers as its left argument.
-#  e.g. m = 2, linearConj = (  exists x. exists y. a )  | b
-def _conjQuantifier(linearConj, m):
+# basicConj: a basic conj with m nested quantifiers as its left argument.
+#  e.g. m = 2, basicConj = (  exists x. exists y. a )  | b
+def _conjQuantifier(basicConj, m):
   if m == 0:
-    return linearConj.identity()
+    return basicConj.identity()
   else:
-    return linearConj.forwardConjQuantifier().forwardFollow(lambda claim:
+    return basicConj.forwardConjQuantifier().forwardFollow(lambda claim:
         claim.forwardOnBodyFollow(lambda claim:
           _conjQuantifier(claim, m - 1)))
 
-class Eliminate(LinearLogicUiPrimitiveArrow):
+class Eliminate(PrimitiveArrow):
   # Replace one quantified variable with a variable in scope
   def __init__(self, quantifier, index, replacementVar):
     assert(quantifier.type() == forallType)
@@ -788,10 +788,10 @@ class Eliminate(LinearLogicUiPrimitiveArrow):
         body = self.quantifier().body().substituteVar(quantifiedVar, self.replacementVar()))
 
   def translate(self):
-    return _quantifierWithin(self.src().translate(), self.index(), lambda linearBody:
-        linearBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
+    return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:
+        basicBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
 
-class Unsingleton(LinearLogicUiPrimitiveArrow):
+class Unsingleton(PrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
   def __init__(self, a, type):
     self._singleton = Singleton(a, type)
@@ -801,11 +801,11 @@ class Unsingleton(LinearLogicUiPrimitiveArrow):
   def tgt(self):
     return self._singleton.src()
   def translate(self):
-    res = linear.reverse(self._singleton.translate())
+    res = basic.reverse(self._singleton.translate())
     assert(res is not None)
     return res
 
-class Singleton(LinearLogicUiPrimitiveArrow):
+class Singleton(PrimitiveArrow):
   # type in conjTypes
   # a ---> [ a ]
   def __init__(self, a, type):
@@ -833,15 +833,15 @@ class Singleton(LinearLogicUiPrimitiveArrow):
     elif self.type() == withType:
       return self.src().translate().forwardIntroduceDoubleDual().forwardFollow(lambda claim:
           claim.forwardOnNotFollow(lambda claim:
-            claim.backwardForgetFirst(linear.false)))
+            claim.backwardForgetFirst(basic.false)))
     elif self.type() == parType:
       return self.src().translate().forwardIntroduceDoubleDual().forwardFollow(lambda claim:
           claim.forwardOnNotFollow(lambda claim:
-            claim.backwardForgetFirst(linear.true)))
+            claim.backwardForgetFirst(basic.true)))
     else:
       raise Exception("Unrecognized self.type()")
 
-class UnusedExistential(LinearLogicUiPrimitiveArrow):
+class UnusedExistential(PrimitiveArrow):
   def __init__(self, quantifier, index):
     assert(quantifier.__class__ == Quantifier)
     assert(quantifier.type() == existsType)
@@ -865,7 +865,7 @@ class UnusedExistential(LinearLogicUiPrimitiveArrow):
     return _quantifierWithin(self.src().translate(), self.index(), lambda x:
         x.forwardUnusedExistential())
 
-class QuantifierJoin(LinearLogicUiPrimitiveArrow):
+class QuantifierJoin(PrimitiveArrow):
   def __init__(self, quantifier):
     assert(quantifier.__class__ == Quantifier)
     assert(quantifier.body().__class__ == Quantifier)
@@ -886,7 +886,7 @@ class QuantifierJoin(LinearLogicUiPrimitiveArrow):
   def translate(self):
     return self.src().translate().identity()
 
-class AssociateOut(LinearLogicUiPrimitiveArrow):
+class AssociateOut(PrimitiveArrow):
   # e.g. index = 1
   # [A, B, C, D] --> [A, [B, C], D]
   # We are clever, we cheat by reversing the translated associateIn transition.
@@ -901,11 +901,11 @@ class AssociateOut(LinearLogicUiPrimitiveArrow):
     return self._associateIn.src()
 
   def translate(self):
-    res = linear.reverse(self._associateIn.translate())
+    res = basic.reverse(self._associateIn.translate())
     assert(res is not None)
     return res
 
-class AssociateIn(LinearLogicUiPrimitiveArrow):
+class AssociateIn(PrimitiveArrow):
   # e.g. index = 1
   # [A, [B, C], D] --> [A, B, C, D]
   def __init__(self, conj, index):
@@ -933,42 +933,42 @@ class AssociateIn(LinearLogicUiPrimitiveArrow):
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
     if self.src().demorganed():
-      linearObject = self.src().translate()
-      assert(linearObject.__class__ == linear.Not)
-      return linearObject.forwardOnNot(
-          _backwardWithin(linearObject.value(), stationary, _backwardAssociate))
+      basicObject = self.src().translate()
+      assert(basicObject.__class__ == basic.Not)
+      return basicObject.forwardOnNot(
+          _backwardWithin(basicObject.value(), stationary, _backwardAssociate))
     else:
       return _forwardWithin(self.src().translate(), stationary, _forwardAssociate)
 
-def _forwardAssociate(linearObject):
-  if linearObject.right().__class__ != linear.Conj:
-    if linearObject.right() == linear.true:
-      assert(linearObject.type() == linear.andType)
-      return linearObject.forwardForget()
+def _forwardAssociate(basicObject):
+  if basicObject.right().__class__ != basic.Conj:
+    if basicObject.right() == basic.true:
+      assert(basicObject.type() == basic.andType)
+      return basicObject.forwardForget()
     else:
-      assert(linearObject.right() == linear.false)
-      assert(linearObject.type() == linear.orType)
-      return linearObject.forwardRemoveFalse()
+      assert(basicObject.right() == basic.false)
+      assert(basicObject.type() == basic.orType)
+      return basicObject.forwardRemoveFalse()
   else:
-    return linearObject.forwardAssociateB().forwardFollow(lambda linearObject:
-        linearObject.forwardOnLeft(_forwardAssociate(linearObject.left())))
+    return basicObject.forwardAssociateB().forwardFollow(lambda basicObject:
+        basicObject.forwardOnLeft(_forwardAssociate(basicObject.left())))
 
-def _backwardAssociate(linearObject):
-  if linearObject.right().__class__ != linear.Conj:
-    if linearObject.right() == linear.true:
-      assert(linearObject.type() == linear.andType)
-      return linearObject.backwardIntroduceTrue()
+def _backwardAssociate(basicObject):
+  if basicObject.right().__class__ != basic.Conj:
+    if basicObject.right() == basic.true:
+      assert(basicObject.type() == basic.andType)
+      return basicObject.backwardIntroduceTrue()
     else:
-      assert(linearObject.right() == linear.false)
-      assert(linearObject.type() == linear.orType)
-      return linearObject.backwardAdmit()
+      assert(basicObject.right() == basic.false)
+      assert(basicObject.type() == basic.orType)
+      return basicObject.backwardAdmit()
   else:
-    return linearObject.backwardAssociateA().backwardFollow(lambda linearObject:
-        linearObject.backwardOnLeft(_backwardAssociate(linearObject.left())))
+    return basicObject.backwardAssociateA().backwardFollow(lambda basicObject:
+        basicObject.backwardOnLeft(_backwardAssociate(basicObject.left())))
 
 # Use this class only for conj with type in [orType, parType]
 #   the andType and withType units should be removed using forget.
-class RemoveUnit(LinearLogicUiPrimitiveArrow):
+class RemoveUnit(PrimitiveArrow):
   def __init__(self, conj, index):
     assert(conj.__class__ == Conj)
     assert(conj.type() in [orType, parType])
@@ -1001,7 +1001,7 @@ class RemoveUnit(LinearLogicUiPrimitiveArrow):
               claim.backwardIntroduceDoubleDual()).backwardFollow(lambda claim:
             claim.backwardIntroduceTrue())))
 
-class Apply(LinearLogicUiPrimitiveArrow):
+class Apply(PrimitiveArrow):
   # Apply claim at spot i to the claim within the Not at spot j to get false.
   def __init__(self, values, i, j):
     assert(i != j)
@@ -1043,10 +1043,10 @@ class Apply(LinearLogicUiPrimitiveArrow):
         claim.forwardOnLeftFollow(lambda claim:
           claim.forwardForgetFirst().forwardFollow(lambda claim:
             claim.forwardOnNotFollow(lambda claim:
-              claim.backwardForgetFirst(linear.true))))).forwardFollow(lambda claim:
+              claim.backwardForgetFirst(basic.true))))).forwardFollow(lambda claim:
         claim.forwardApply())
 
-class Forget(LinearLogicUiPrimitiveArrow):
+class Forget(PrimitiveArrow):
   def __init__(self, conj, index):
     assert(self._conj.type() in [andType, withType])
     self._conj = conj
@@ -1077,7 +1077,7 @@ class Forget(LinearLogicUiPrimitiveArrow):
 
 # An arrow that moves the indexth element of values forward amount places in the list of values.
 # amount may be negative or 0.
-class Shift(LinearLogicUiPrimitiveArrow):
+class Shift(PrimitiveArrow):
   # e.g. index = 1, amount = 2
   # [A, B, C, D, E] ---> [A, C, D, B, E]
   # e.g. index = 1, amount = -1
@@ -1139,41 +1139,41 @@ class Shift(LinearLogicUiPrimitiveArrow):
       stationary = len(self.src().values()) - (self.index() + 1)
 
     if self.src().demorganed():
-      linearObject = self.src().translate()
-      assert(linearObject.__class__ == linear.Not)
-      return linearObject.forwardOnNot(
-          _backwardWithin(linearObject.value(), stationary, _backwardSwap))
+      basicObject = self.src().translate()
+      assert(basicObject.__class__ == basic.Not)
+      return basicObject.forwardOnNot(
+          _backwardWithin(basicObject.value(), stationary, _backwardSwap))
     else:
       return _forwardWithin(self.src().translate(), stationary, _forwardSwap)
 
-def _forwardWithin(linearObject, stationary, f):
+def _forwardWithin(basicObject, stationary, f):
   if stationary > 0:
-    return linearObject.forwardOnLeftFollow(lambda left:
+    return basicObject.forwardOnLeftFollow(lambda left:
         _forwardWithin(left, stationary - 1, f))
   else:
-    return f(linearObject)
+    return f(basicObject)
 
-def _backwardWithin(linearObject, stationary, f):
+def _backwardWithin(basicObject, stationary, f):
   if stationary > 0:
-    return linearObject.backwardOnLeftFollow(lambda left:
+    return basicObject.backwardOnLeftFollow(lambda left:
         _backwardWithin(left, stationary - 1, f))
   else:
-    return f(linearObject)
+    return f(basicObject)
 
-def _forwardSwap(linearObject):
-  return linearObject.forwardAssociateA().forwardFollow(lambda linearObject:
-      linearObject.forwardOnRightFollow(lambda linearObject:
-        linearObject.forwardCommute()).forwardFollow(lambda linearObject:
-          linearObject.forwardAssociateB()))
+def _forwardSwap(basicObject):
+  return basicObject.forwardAssociateA().forwardFollow(lambda basicObject:
+      basicObject.forwardOnRightFollow(lambda basicObject:
+        basicObject.forwardCommute()).forwardFollow(lambda basicObject:
+          basicObject.forwardAssociateB()))
 
-def _backwardSwap(linearObject):
-  return linearObject.backwardAssociateB().backwardFollow(lambda linearObject:
-      linearObject.backwardOnRightFollow(lambda linearObject:
-        linearObject.backwardCommute()).backwardFollow(lambda linearObject:
-          linearObject.backwardAssociateA()))
+def _backwardSwap(basicObject):
+  return basicObject.backwardAssociateB().backwardFollow(lambda basicObject:
+      basicObject.backwardOnRightFollow(lambda basicObject:
+        basicObject.backwardCommute()).backwardFollow(lambda basicObject:
+          basicObject.backwardAssociateA()))
 
 # This Arrow is used to introduce a new claim
-class Begin(LinearLogicUiFunctorialArrow):
+class Begin(FunctorialArrow):
   def __init__(self, claim):
     self._claim = claim
 
@@ -1187,7 +1187,7 @@ class Begin(LinearLogicUiFunctorialArrow):
 
   # FIXME(koreiklein) Something here is broken.  Write tests and fix.
   def translate(self):
-    return linear.IntroduceDoubleDual(true).forwardFollow(lambda notNotTrue:
+    return basic.IntroduceDoubleDual(true).forwardFollow(lambda notNotTrue:
           notNotTrue.forwardOnNotFollow(lambda value:
             value.backwardApply(self.claim().translate()).backwardFollow(lambda x:
               x.backwardCommute().backwardFollow(lambda x:
@@ -1199,7 +1199,7 @@ class Begin(LinearLogicUiFunctorialArrow):
 
 # Functorial Arrows
 
-class OnIth(LinearLogicUiFunctorialArrow):
+class OnIth(FunctorialArrow):
   def __init__(self, conj, index, arrow):
     assert(conj.__class__ == Conj)
     self._src = conj
@@ -1221,21 +1221,21 @@ class OnIth(LinearLogicUiFunctorialArrow):
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
     if self.src().demorganed():
-      linearObject = self.src().translate()
-      assert(linearObject.__class__ == linear.Not)
-      return linearObject.forwardOnNotFollow(lambda claim:
+      basicObject = self.src().translate()
+      assert(basicObject.__class__ == basic.Not)
+      return basicObject.forwardOnNotFollow(lambda claim:
           _backwardWithin(
             claim,
             stationary,
-            lambda linearObject: linearObject.backwardOnRightFollow(lambda linearObject:
-              linearObject.backwardOnNot(self.arrow().translate()))))
+            lambda basicObject: basicObject.backwardOnRightFollow(lambda basicObject:
+              basicObject.backwardOnNot(self.arrow().translate()))))
     else:
       return _forwardWithin(self.src().translate(), stationary,
-          lambda linearObject: linearObject.forwardOnRight(self.arrow().translate()))
+          lambda basicObject: basicObject.forwardOnRight(self.arrow().translate()))
 
-class OnBody(LinearLogicUiFunctorialArrow):
+class OnBody(FunctorialArrow):
   def __init__(self, type, variables, arrow):
-    assert(type in linear.quantifierTypes)
+    assert(type in basic.quantifierTypes)
     self._type = type
     self._variables = variables
     self._arrow = arrow
@@ -1257,20 +1257,20 @@ class OnBody(LinearLogicUiFunctorialArrow):
         self.arrow().translate())
 
 # n: an integer >= 0
-# linearQuantifier: a linear quantifier.  It must consist of at least n of the same quantifier
+# basicQuantifier: a basic quantifier.  It must consist of at least n of the same quantifier
 #                   type applied in sequence
 #         e.g. (n == 3)  forall a. forall b. forall c. forall d. <body>
-# f: a function between linear objects
+# f: a function between basic objects
 # return: the transition that applies f within the body of the first n quantifiers
 #         e.g. (n == 3)  forall a. forall b. forall c. f(forall d. <body>)
-def _quantifierWithin(linearQuantifier, n, f):
+def _quantifierWithin(basicQuantifier, n, f):
   if n == 0:
-    return f(linearQuantifier)
+    return f(basicQuantifier)
   else:
-    return linearQuantifier.forwardOnBodyFollow(lambda body:
+    return basicQuantifier.forwardOnBodyFollow(lambda body:
         _quantifierWithin(body, n - 1, f))
 
-# Compose any two arrows between linearui objects.
+# Compose any two arrows between enriched objects.
 def compose(left, right):
   values = []
   if left.__class__ == Composite:
@@ -1285,7 +1285,7 @@ def compose(left, right):
 
   return Composite(values)
 
-class Composite(LinearLogicUiPrimitiveArrow):
+class Composite(PrimitiveArrow):
   def __init__(self, values):
     assert(len(values) > 0)
     self._values = values

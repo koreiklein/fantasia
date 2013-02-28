@@ -1,8 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from logic import linear
+from calculus import basic
 
-class StringPrimitive(linear.LinearLogicPrimitiveObject):
+class StringPrimitive(basic.PrimitiveObject):
   def __init__(self, s):
     self._s = s
   def __eq__(self, other):
@@ -20,22 +20,22 @@ class StringPrimitive(linear.LinearLogicPrimitiveObject):
 
 # These need have no real implementation.
 # TODO(koreiklein) Consider formally defining what properties we should require of the building blocks
-# for primitive Linear Logic formulas.
+# for primitive Logic formulas.
 cookie = StringPrimitive("cookie")
 milk = StringPrimitive("milk")
 napkin = StringPrimitive("napkin")
 
-cookie_implies_milk = linear.Implies(cookie, milk)
-milk_implies_napkin = linear.Implies(milk, napkin)
+cookie_implies_milk = basic.Implies(cookie, milk)
+milk_implies_napkin = basic.Implies(milk, napkin)
 
-starting_claim = linear.And(cookie_implies_milk, milk_implies_napkin)
+starting_claim = basic.And(cookie_implies_milk, milk_implies_napkin)
 
 # COMPACT VERSION
 #modus_ponens = starting_claim.identity().forwardFollow(lambda formula:
 #    formula.forwardOnLeftFollow(lambda formula:
 #      formula.forwardOnNotFollow(lambda formula:
 #        formula.backwardOnRightFollow(lambda formula:
-#          formula.backwardApply(linear.Not(napkin)).backwardFollow(lambda formula:
+#          formula.backwardApply(basic.Not(napkin)).backwardFollow(lambda formula:
 #          formula.backwardCommute())).backwardFollow(lambda formula:
 #        formula.backwardAssociateA()))).forwardFollow(lambda formula:
 #    formula.forwardApply()))
@@ -55,7 +55,7 @@ modus_ponens = starting_claim.identity().forwardFollow(lambda formula:
         formula.backwardOnRightFollow(lambda formula:
           # | milk
           # *-----
-          formula.backwardApply(linear.Not(napkin)).backwardFollow(lambda formula:
+          formula.backwardApply(basic.Not(napkin)).backwardFollow(lambda formula:
           # | milk | |napkin | |napkin
           # |      | *------ | *------
           # *----------------|

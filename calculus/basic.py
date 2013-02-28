@@ -1,8 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 import types
-# Backend objects and arrows for linear logic.
-# Implement only the primitive objects and arrows, derived forms will go elsewhere.
+# Backend objects and arrows for the basic logic category.
+# Implement only the primitive objects and arrows, derived forms go in a separate enriched
+# calculus.
 
 n_vars = 0
 
@@ -35,7 +36,7 @@ class Var:
 andType = "AND"
 orType = "OR"
 
-class LinearLogicPrimitiveObject:
+class PrimitiveObject:
   # Replace all occurences of a with b in self and return the result.
   # a must not be quantified anywhere in self.
   def substituteVar(self, a, b):
@@ -72,7 +73,7 @@ class LinearLogicPrimitiveObject:
   def backwardIdentity(self):
     return Identity(self)
 
-class Holds(LinearLogicPrimitiveObject):
+class Holds(PrimitiveObject):
   def __init__(self, **kwargs):
     self._d = kwargs
     for (key, value) in kwargs.items():
@@ -127,7 +128,7 @@ def dualQuantifierType(type):
 
 quantifierTypes = [forallType, existsType]
 
-class Quantifier(LinearLogicPrimitiveObject):
+class Quantifier(PrimitiveObject):
   def __init__(self, var, body, type):
     assert(type in quantifierTypes)
     self._var = var
@@ -233,7 +234,7 @@ class Quantifier(LinearLogicPrimitiveObject):
   def backwardOnBodyFollow(self, f):
     return self.backwardOnBody(f(self.body()))
 
-class TrueClass(LinearLogicPrimitiveObject):
+class TrueClass(PrimitiveObject):
   def __init__(self):
     pass
 
@@ -254,7 +255,7 @@ class TrueClass(LinearLogicPrimitiveObject):
   def __ne__(self, other):
     return not (self == other)
 
-class Not(LinearLogicPrimitiveObject):
+class Not(PrimitiveObject):
   def __init__(self, value):
     self._value = value
 
@@ -321,7 +322,7 @@ def unit(conjType):
     assert(conjType == orType)
     return false
 
-class Conj(LinearLogicPrimitiveObject):
+class Conj(PrimitiveObject):
   def __init__(self, left, right, type):
     assert(type in [andType, orType])
     self._type = type
@@ -515,7 +516,7 @@ def Par(left, right):
 def Implies(predicate, consequent):
   return Not(And(left = predicate, right = Not(consequent)))
 
-class Always(LinearLogicPrimitiveObject):
+class Always(PrimitiveObject):
   def __init__(self, value):
     self._value = value
 
@@ -556,8 +557,8 @@ class Always(LinearLogicPrimitiveObject):
 
 # Arrows
 
-# Abstract superclass of all primitive arrows between primitive linear logic objects.
-class LinearLogicPrimitiveArrow:
+# Abstract superclass of all primitive arrows between primitive objects.
+class PrimitiveArrow:
   def src(self):
     raise Exception("Abstract superclass.")
   def tgt(self):
@@ -585,12 +586,12 @@ class LinearLogicPrimitiveArrow:
   def backwardFollow(self, f):
     return self.backwardCompose(f(self.src()))
 
-class LinearLogicFunctorialArrow(LinearLogicPrimitiveArrow):
+class FunctorialArrow(PrimitiveArrow):
   def __repr__(self):
     covariant = True
     return self.asString(covariant)
 
-class Eliminate(LinearLogicPrimitiveArrow):
+class Eliminate(PrimitiveArrow):
   def __init__(self, value, quantifiedVar, replacementVar):
     self._value = value
     self._quantifiedVar = quantifiedVar
@@ -611,7 +612,7 @@ class Eliminate(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
 
-class NotQuant(LinearLogicPrimitiveArrow):
+class NotQuant(PrimitiveArrow):
   # | q(t,x)    --> q(~t, | x )
   # *-------              *--
   def __init__(self, variable, type, value):
@@ -634,9 +635,9 @@ class NotQuant(LinearLogicPrimitiveArrow):
     return Not(Quantifier(type = self.type(), variable = self.variable(), body = self.value()))
   def tgt(self):
     return Quantifier(type = dualQuantifierType(self.type()), variable = self.variable(),
-        body = linear.Not(self.body()))
+        body = Not(self.body()))
 
-class IntroduceDoubleDual(LinearLogicPrimitiveArrow):
+class IntroduceDoubleDual(PrimitiveArrow):
   #              ||A
   #   A   ---->  |*-
   #              *--
@@ -654,7 +655,7 @@ class IntroduceDoubleDual(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Not(Not(self.value()))
 
-class RemoveDoubleDual(LinearLogicPrimitiveArrow):
+class RemoveDoubleDual(PrimitiveArrow):
   # ||A
   # |*-   --->   A
   # *--
@@ -672,7 +673,7 @@ class RemoveDoubleDual(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self.value()
 
-class Diagonal(LinearLogicPrimitiveArrow):
+class Diagonal(PrimitiveArrow):
   # !A   ---> !A | !A
   def __init__(self, value):
     self._value = value
@@ -688,7 +689,7 @@ class Diagonal(LinearLogicPrimitiveArrow):
   def tgt(self):
     return And(Always(self.value()), Always(self.value().updateVars()))
 
-class IntroduceTrue(LinearLogicPrimitiveArrow):
+class IntroduceTrue(PrimitiveArrow):
   # A ---> A | |
   def __init__(self, value):
     self._value = value
@@ -704,7 +705,7 @@ class IntroduceTrue(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Conj(type = andType, left = self.value(), right = true)
 
-class RemoveFalse(LinearLogicPrimitiveArrow):
+class RemoveFalse(PrimitiveArrow):
   #   ||
   #   *-
   #   --   --->  A
@@ -723,7 +724,7 @@ class RemoveFalse(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self.value()
 
-class Commute(LinearLogicPrimitiveArrow):
+class Commute(PrimitiveArrow):
   # for % in {|, -}
   #   A % B --> B % A
   def __init__(self, a, b, type):
@@ -746,7 +747,7 @@ class Commute(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Conj(type = self.type(), left = self.b(), right = self.a())
 
-class AssociateA(LinearLogicPrimitiveArrow):
+class AssociateA(PrimitiveArrow):
   # (A % B) % C ---> A % (B % C)
   def __init__(self, a, b, c, type):
     self._a = a
@@ -774,7 +775,7 @@ class AssociateA(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self._conj(self.a(), self._conj(self.b(), self.c()))
 
-class AssociateB(LinearLogicPrimitiveArrow):
+class AssociateB(PrimitiveArrow):
   # A % (B % C) ---> (A % B) % C
   def __init__(self, a, b, c, type):
     self._a = a
@@ -802,7 +803,7 @@ class AssociateB(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self._conj(self._conj(self.a(), self.b()), self.c())
 
-class Forget(LinearLogicPrimitiveArrow):
+class Forget(PrimitiveArrow):
   # A | B --> A
   def __init__(self, a, b):
     self._a = a
@@ -821,7 +822,7 @@ class Forget(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self.a()
 
-class Admit(LinearLogicPrimitiveArrow):
+class Admit(PrimitiveArrow):
   #           B
   # A  --->  --
   #           A
@@ -842,7 +843,7 @@ class Admit(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Conj(type = orType, left = self.a(), right = self.b())
 
-class QuantifierConj(LinearLogicPrimitiveArrow):
+class QuantifierConj(PrimitiveArrow):
   # Q x . (A % B) --> (Q x . A) % (Q x . B)
   def __init__(self, quantifierType, conjType, var, left, right):
     if quantifierType == forallType:
@@ -868,7 +869,7 @@ class QuantifierConj(LinearLogicPrimitiveArrow):
         left = Quantifier(var = self._var, type = self._quantifierType, body = self._left),
         right = Quantifier(var = self._var, type = self._quantifierType, body = self._right))
 
-class ConjQuantifier(LinearLogicPrimitiveArrow):
+class ConjQuantifier(PrimitiveArrow):
   # (Q x . A) % B --> Q x . (A % B)
   def __init__(self, quantifierType, conjType, var, left, right):
     if quantifierType == forallType:
@@ -893,7 +894,7 @@ class ConjQuantifier(LinearLogicPrimitiveArrow):
     return Quantifier(var = self._var, type = self._quantifierType,
         body = Conj(type = self._conjType, left = self._left, right = self._right))
 
-class Distribute(LinearLogicPrimitiveArrow):
+class Distribute(PrimitiveArrow):
   # B  |           (B | C)
   # -- | C         ------
   # A  |    --->   (A | C)
@@ -917,7 +918,7 @@ class Distribute(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Or(And(self.a(), self.c()), And(self.b(), self.c()))
 
-class Apply(LinearLogicPrimitiveArrow):
+class Apply(PrimitiveArrow):
   # | A | B  | B  --->  | A
   # *------  |          *--
   def __init__(self, a, b):
@@ -937,7 +938,7 @@ class Apply(LinearLogicPrimitiveArrow):
   def tgt(self):
     return Not(self.a())
 
-class UnusedExistential(LinearLogicPrimitiveArrow):
+class UnusedExistential(PrimitiveArrow):
   def __init__(self, variable, body):
     self._variable = variable
     self._body = body
@@ -976,7 +977,7 @@ def shiftRight(s, variance):
 def functorToString(title, innerArrow, variance):
   return "%s{\n%s\n}%s"%(title, shiftRight(innerArrow.asString(variance), variance), title)
 
-class OnBody(LinearLogicFunctorialArrow):
+class OnBody(FunctorialArrow):
   def __init__(self, arrow, var, type):
     self._arrow = arrow
     self._var = var
@@ -997,7 +998,7 @@ class OnBody(LinearLogicFunctorialArrow):
   def tgt(self):
     return Quantifier(var = self.var(), type = self.type(), body = self.arrow().tgt())
 
-class OnLeft(LinearLogicFunctorialArrow):
+class OnLeft(FunctorialArrow):
   def __init__(self, right, arrow, type):
     self._right = right
     self._arrow = arrow
@@ -1018,7 +1019,7 @@ class OnLeft(LinearLogicFunctorialArrow):
   def tgt(self):
     return Conj(type = self.type(), left = self.arrow().tgt(), right = self.right())
 
-class OnRight(LinearLogicFunctorialArrow):
+class OnRight(FunctorialArrow):
   def __init__(self, left, arrow, type):
     self._left = left
     self._arrow = arrow
@@ -1039,7 +1040,7 @@ class OnRight(LinearLogicFunctorialArrow):
   def tgt(self):
     return Conj(type = self.type(), right = self.arrow().tgt(), left = self.left())
 
-class OnAlways(LinearLogicFunctorialArrow):
+class OnAlways(FunctorialArrow):
   def __init__(self, arrow):
     self._arrow = arrow
 
@@ -1054,7 +1055,7 @@ class OnAlways(LinearLogicFunctorialArrow):
   def tgt(self):
     return Always(self.arrow().tgt())
 
-class OnNot(LinearLogicFunctorialArrow):
+class OnNot(FunctorialArrow):
   def __init__(self, arrow):
     self._arrow = arrow
 
@@ -1072,7 +1073,7 @@ class OnNot(LinearLogicFunctorialArrow):
 
 # Composite Arrows
 
-class Identity(LinearLogicPrimitiveArrow):
+class Identity(PrimitiveArrow):
   def __init__(self, value):
     self._value = value
 
@@ -1090,14 +1091,14 @@ class Identity(LinearLogicPrimitiveArrow):
   def tgt(self):
     return self.value()
 
-class Composite(LinearLogicPrimitiveArrow):
+class Composite(PrimitiveArrow):
   # left and right are arrows such that left.src() == right.tgt()
   # construct their composite arrow.
   def __init__(self, left, right):
     left.tgt().assertEqual(right.src())
     assert(left.tgt() == right.src())
     if left.tgt() != right.src():
-      raise Exception(("Failed to compose linear arrows since src and tgt are"
+      raise Exception(("Failed to compose arrows since src and tgt are"
         + " unequal\n\n\nsrc = %s\n\ntgt= %s\n")%(left.tgt(), right.src()))
     self._left = left
     self._right = right

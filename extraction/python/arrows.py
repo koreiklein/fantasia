@@ -1,8 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from logic import linear
+from calculus import basic
 
-# A backend for the linear calculus.
+# A backend for the basic calculus.
 # This backend runs on a single machine.
 # This backend performs no optimizations.
 # This backend translates each primitive transition individually.
@@ -12,7 +12,7 @@ from logic import linear
 # This backend represents data as python objects in the following ways:
 # There is a functor rep.  rep is a realization of the Curry-Howard isomorphism.
 # Specifically, rep consist of two functions: objectRep and arrowRep
-# objectRep assigns to every linear logic object a set of python objects.
+# objectRep assigns to every basic logic object a set of python objects.
 # objectRep is not implemented in any way, but it is defined in the following comments.
 # objectRep(A | B) ---> {python tuples (a, b) where a in objectRep(A), b in objectRep(B)}
 
@@ -39,48 +39,48 @@ from logic import linear
 #    ( *------- )
 # As defined above.
 def arrowToProgram(arrow):
-  if arrow.__class__ == linear.IntroduceDoubleDual:
+  if arrow.__class__ == basic.IntroduceDoubleDual:
     return repIntroduceDoubleDual(arrow)
-  elif arrow.__class__ == linear.RemoveDoubleDual:
+  elif arrow.__class__ == basic.RemoveDoubleDual:
     return repRemoveDoubleDual(arrow)
-  elif arrow.__class__ == linear.Diagonal:
+  elif arrow.__class__ == basic.Diagonal:
     return repDiagonal(arrow)
-  elif arrow.__class__ == linear.IntroduceTrue:
+  elif arrow.__class__ == basic.IntroduceTrue:
     return repIntroduceTrue(arrow)
-  elif arrow.__class__ == linear.RemoveFalse:
+  elif arrow.__class__ == basic.RemoveFalse:
     return repRemoveFalse(arrow)
-  elif arrow.__class__ == linear.Commute:
+  elif arrow.__class__ == basic.Commute:
     return repCommute(arrow)
-  elif arrow.__class__ == linear.AssociateA:
+  elif arrow.__class__ == basic.AssociateA:
     return repAssociateA(arrow)
-  elif arrow.__class__ == linear.AssociateB:
+  elif arrow.__class__ == basic.AssociateB:
     return repAssociateB(arrow)
-  elif arrow.__class__ == linear.Forget:
+  elif arrow.__class__ == basic.Forget:
     return repForget(arrow)
-  elif arrow.__class__ == linear.Admit:
+  elif arrow.__class__ == basic.Admit:
     return repAdmit(arrow)
-  elif arrow.__class__ == linear.Distribute:
+  elif arrow.__class__ == basic.Distribute:
     return repDistribute(arrow)
-  elif arrow.__class__ == linear.Apply:
+  elif arrow.__class__ == basic.Apply:
     return repApply(arrow)
-  elif arrow.__class__ == linear.OnBody:
+  elif arrow.__class__ == basic.OnBody:
     return repOnBody(arrow)
-  elif arrow.__class__ == linear.OnLeft:
+  elif arrow.__class__ == basic.OnLeft:
     return repOnLeft(arrow)
-  elif arrow.__class__ == linear.OnRight:
+  elif arrow.__class__ == basic.OnRight:
     return repOnRight(arrow)
-  elif arrow.__class__ == linear.OnAlways:
+  elif arrow.__class__ == basic.OnAlways:
     return repOnAlways(arrow)
-  elif arrow.__class__ == linear.OnNot:
+  elif arrow.__class__ == basic.OnNot:
     return repOnNot(arrow)
-  elif arrow.__class__ == linear.Identity:
+  elif arrow.__class__ == basic.Identity:
     return repIdentity(arrow)
-  elif arrow.__class__ == linear.Composite:
+  elif arrow.__class__ == basic.Composite:
     return repComposite(arrow)
-  elif arrow.__class__ in [linear.ConjQuantifier, linear.Eliminate, linear.UnusedExistential]:
+  elif arrow.__class__ in [basic.ConjQuantifier, basic.Eliminate, basic.UnusedExistential]:
     return repIdentity(arrow)
   else:
-    raise Exception("Unrecognized Linear Arrow %s."%(arrow.__class__))
+    raise Exception("Unrecognized Arrow %s."%(arrow.__class__))
 
 
 def repIntroduceDoubleDual(arrow):
@@ -106,10 +106,10 @@ def repCommute(arrow):
 
 def repAssociateA(arrow):
   # (A % B) % C ---> A % (B % C)
-  if arrow.type() == linear.andType:
+  if arrow.type() == basic.andType:
     return (lambda (AB_C, notA_BC): notA_BC( (AB_C[0][0], (AB_C[0][1], AB_C[1])) ))
   else:
-    assert(arrow.type() == linear.orType)
+    assert(arrow.type() == basic.orType)
     def f((AB_C, notA_BC)):
       if AB_C[0] == 0:
         AB = AB_C[1]
@@ -128,10 +128,10 @@ def repAssociateA(arrow):
 
 def repAssociateB(arrow):
   # A % (B % C) ---> (A % B) % C
-  if arrow.type() == linear.andType:
+  if arrow.type() == basic.andType:
     return (lambda (A_BC, notAB_C): notAB_C( ((A_BC[0], A_BC[1][0]), A_BC[1][1]) ))
   else:
-    assert(arrow.type() == linear.orType)
+    assert(arrow.type() == basic.orType)
     def f((A_BC, notAB_C)):
       if A_BC[0] == 0:
         A = A_BC[1]
@@ -175,11 +175,11 @@ def repOnBody(arrow):
 def repOnLeft(arrow):
   # A % B ---> A' % B
   notAAndNotAprime = arrowToProgram(arrow.arrow())
-  if arrow.type() == linear.andType:
+  if arrow.type() == basic.andType:
     return (lambda ((A, B), notAprimeAndB): notAAndNotAprime( (A, lambda Aprime:
       notAprimeAndB( (Aprime, B)))))
   else:
-    assert(arrow.type() == linear.orType)
+    assert(arrow.type() == basic.orType)
     def f((AOrB, notAprimeOrB)):
       if AOrB[0] == 0:
         A = AOrB[1]
@@ -193,11 +193,11 @@ def repOnLeft(arrow):
 def repOnRight(arrow):
   # A % B ---> A % B'
   notBAndNotBprime = arrowToProgram(arrow.arrow())
-  if arrow.type() == linear.andType:
+  if arrow.type() == basic.andType:
     return (lambda ((A,B), notAAndBprime): notBAndNotBprime( (B, lambda Bprime:
       notAAndBprime( (A, Bprime) ))))
   else:
-    assert(arrow.type() == linear.orType)
+    assert(arrow.type() == basic.orType)
     def f((AOrB, notAOrBprime)):
       if AOrB[0] == 0:
         A = AOrB[1]
@@ -231,13 +231,13 @@ def repComposite(arrow):
   notBAndNotC = arrowToProgram(arrow.right())
   return (lambda (A, notC): notAAndNotB( (A, lambda B: notBAndNotC( (B, notC) )) ))
 
-# A: A Linear Logic Arrow
+# A: An Arrow
 # x: an element of objectRep(A.src())
 # return: an element y of objectRep(A.tgt())
 # You can also think of curry_howard as a conversion from
-# {ARROWS in the category of linear logic}
+# {ARROWS in the basic category}
 # to
-# {PROGRAM TRANSFORMATIONS in the category of elements of objectRep(X) for X a linear logic object}
+# {PROGRAM TRANSFORMATIONS in the category of elements of objectRep(X) for X a basic logic object}
 # Where each program transformation is represented as a python function.
 def curry_howard(A):
   def f(x):

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-# Constants for gl rendering of linearui are collected here.
+# Constants for gl rendering of enriched are collected here.
 
 epsilon = 0.0001
 
@@ -14,7 +14,7 @@ exponential_border_width = 4.0
 
 notThickness = 12.0
 notShiftThickness = notThickness + 11.0
-# Amount by which to shift the value contained inside a linearui.Not.
+# Amount by which to shift the value contained inside a enriched.Not.
 notShiftOffset = [notShiftThickness, notShiftThickness, 0.0]
 
 # Consider making short dividers much narrower.

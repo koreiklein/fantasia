@@ -4,8 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from logic import gl_render
-from logic.lib import induction
+from ui.render.gl.render_immediate import render
 
 from stack import gl
 
@@ -18,7 +17,13 @@ h = 680
 
 scale = 0.18
 
-def init():
+def display():
+  global startingStack
+  glClear(GL_COLOR_BUFFER_BIT)
+  startingStack._backend.render()
+  glFlush()
+
+def run(claim):
   global startingStack
   glutInit()
   glutInitWindowSize(w, h)
@@ -31,14 +36,5 @@ def init():
   glLoadIdentity()
   gluOrtho2D(0.0, w + 0.0, 0.0, h + 0.0)
   glScale(scale, scale, scale)
-  startingStack = gl_render.render(induction.ending_claim)
+  startingStack = render(claim)
   glutMainLoop()
-
-def display():
-  global startingStack
-  glClear(GL_COLOR_BUFFER_BIT)
-  startingStack._backend.render()
-  glFlush()
-
-def run():
-  init()

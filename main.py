@@ -1,14 +1,14 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from logic import linear_example, linear_example_python_backend
-from logic.lib import induction, induction_python_backend
-import glrunner
+from examples.easy_induction import ending_claim as claim
+from extraction.python.examples import easy_induction, silly
+from ui.run.glimmediate import static as static_gl_image
 
 from sys import setrecursionlimit
 
 setrecursionlimit(500000)
 
-linear_example_python_backend.test()
-induction_python_backend.test()
+silly.test()
+easy_induction.test()
 
-glrunner.run()
+static_gl_image.run(claim)

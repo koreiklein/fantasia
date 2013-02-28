@@ -1,10 +1,10 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-# Colors for gl rendering of linearui are collected here.
+# Colors for gl rendering of enriched are collected here.
 from OpenGL.GL import *
 
 from stack.color import Color
-from logic import linearui
+from calculus import enriched
 
 trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 falseDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
@@ -19,16 +19,16 @@ textColor = Color(r = 0.2, g = 0.2, b = 0.2, a= 1.0)
 variableColor = Color(r = 0.2, g = 0.5, b = 0.2, a= 1.0)
 
 def colorOfConjType(type):
-  if type in linearui.concreteConjTypes:
+  if type in enriched.concreteConjTypes:
     return concreteDividerColor
   else:
     return demorganedDividerColor
 
 def colorOfUnitType(type):
-  if type in [linearui.andType, linearui.withType]:
+  if type in [enriched.andType, enriched.withType]:
     return trueDividerColor
   else:
-    assert(type in [linearui.orType, linearui.parType])
+    assert(type in [enriched.orType, enriched.parType])
     return falseDividerColor
 
 

@@ -2,22 +2,24 @@
 
 from OpenGL.GL import *
 
+from calculus import enriched
+from ui.render.gl import colors, distances
+
 from stack.gl import newGLStack
 from stack.point import Point
-from logic import linearui, gl_colors, gl_distances
 
 def stackingDimensionOfConjType(type):
-  if type in [linearui.andType, linearui.withType]:
+  if type in [enriched.andType, enriched.withType]:
     return 0
   else:
-    assert(type in [linearui.orType, linearui.parType])
+    assert(type in [enriched.orType, enriched.parType])
     return 1
 
 def stackingDimensionOfQuanifierType(type):
-  if type == linearui.forallType:
+  if type == enriched.forallType:
     return 1
   else:
-    assert(type == linearui.existsType)
+    assert(type == enriched.existsType)
     return 0
 
 def transposeDimension(dimension):
@@ -31,7 +33,7 @@ def transposeDimension(dimension):
 # Like, say, off white.
 
 # Unit divider (2 Kinds)
-  # linearui makes it appear as though there are 4 units. 2 of them, however, can be converted
+  # enriched makes it appear as though there are 4 units. 2 of them, however, can be converted
   # into the other two.  We will burden the author of this code with keeping track of
   # the conversion in order to present the user with a mental model that involves only
   # two units.
@@ -42,7 +44,7 @@ def transposeDimension(dimension):
   # ? Light Blue for Always  (Good, light blue is a normal, unassuming, boring color)
   # ? Orange for Maybe       (Good, the Maybe combinator is INSANE and deserves to stand out)
 
-# return: a gl stack representing the unit for the given linearui conj type.
+# return: a gl stack representing the unit for the given enriched conj type.
 #
 #   e===================================d
 #  /                                     \
@@ -52,20 +54,20 @@ def transposeDimension(dimension):
 #
 def unitDivider(type, length):
   return divider(
-      color = gl_colors.colorOfUnitType(type),
+      color = colors.colorOfUnitType(type),
       dimension = stackingDimensionOfConjType(type),
       length = length,
-      width = gl_distances.widthOfDividerByLength(length),
-      capLength = gl_distances.capLengthOfDividerByLength(length))
+      width = distances.widthOfDividerByLength(length),
+      capLength = distances.capLengthOfDividerByLength(length))
 
-# return: a gl stack representing the conj divider for the given linearui conj type.
+# return: a gl stack representing the conj divider for the given enriched conj type.
 def conjDivider(type, length):
   return divider(
-      color = gl_colors.colorOfConjType(type),
+      color = colors.colorOfConjType(type),
       dimension = stackingDimensionOfConjType(type),
       length = length,
-      width = gl_distances.widthOfDividerByLength(length),
-      capLength = gl_distances.capLengthOfDividerByLength(length))
+      width = distances.widthOfDividerByLength(length),
+      capLength = distances.capLengthOfDividerByLength(length))
 
 def divider(color, dimension, length, width, capLength):
   widths = [0 for i in range(3)]
@@ -87,14 +89,14 @@ def divider(color, dimension, length, width, capLength):
     glEnd()
   return newGLStack(widths, render)
 
-# return: a gl stack representing the quantifier divider for the given linearui quantifier type.
+# return: a gl stack representing the quantifier divider for the given enriched quantifier type.
 def quantifierDivider(type, length):
   return divider(
-      color = gl_colors.quantifierDividerColor,
+      color = colors.quantifierDividerColor,
       dimension = stackingDimensionOfQuanifierType(type),
       length = length,
-      width = gl_distances.widthOfQuantifierDividerByLength(length),
-      capLength = gl_distances.capLengthOfDividerByLength(length))
+      width = distances.widthOfQuantifierDividerByLength(length),
+      capLength = distances.capLengthOfDividerByLength(length))
 
 # always: a boolean, True for always, false for Maybe.
 # widths: a list of the widths of the box.
@@ -105,7 +107,7 @@ def quantifierDivider(type, length):
 # d----------------a
 #
 def exponentialBox(always, widths):
-  return solidSquare(gl_colors.exponentialColor(always), widths)
+  return solidSquare(colors.exponentialColor(always), widths)
 
 def solidSquare(color, widths):
   d = Point(0.0, 0.0, 0.0)
@@ -121,6 +123,6 @@ def solidSquare(color, widths):
   return newGLStack(widths, render)
 
 def notSymbol(widths):
-  upper = [gl_distances.notThickness, widths[1], 0.0]
-  lower = [widths[0], gl_distances.notThickness, 0.0]
-  return solidSquare(gl_colors.notColor, upper).below(solidSquare(gl_colors.notColor, lower))
+  upper = [distances.notThickness, widths[1], 0.0]
+  lower = [widths[0], distances.notThickness, 0.0]
+  return solidSquare(colors.notColor, upper).below(solidSquare(colors.notColor, lower))
