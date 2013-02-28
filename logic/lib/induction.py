@@ -33,30 +33,6 @@ def byInduction(claim):
           predicate = natural.IsNatural(k),
           consequent = claim(k))))
 
-#p = common_vars.p()
-#n = common_vars.n()
-#m = common_vars.m()
-#k = common_vars.k()
-#induction = linearui.Forall([p],
-#    linearui.Implies(
-#      predicate = linearui.And([ linearui.Holds(p, [natural.zero])
-#                               , linearui.Forall([n],
-#                                 linearui.Implies(
-#                                  predicate = And([ natural.IsNatural(n)
-#                                                  , linearui.Holds(relation = p,
-#                                                    arg = n)]),
-#                                  consequent =
-#                                    linearui.Exists([m],
-#                                      linearui.And([ natural.IsNatural(m)
-#                                                   , natural.Successor(n, m)
-#                                                   , linearui.Holds(relation = p,
-#                                                     arg = m) ]))
-#                                  ))]),
-#      consequent = linearui.Forall([k],
-#        linearui.Implies(
-#          predicate = natural.IsNatural(n = k),
-#          consequent = linearui.Holds(relation = p, arg = k)))))
-
 def ge_zero(n):
   return natural.Compare(natural.zero, n, False)
 
@@ -65,9 +41,10 @@ weakening = "weakening"
 successorExists = "successorExists"
 transitivity = "transitivity"
 reflexivity = "reflexivity"
+main = byInduction(ge_zero)
 
 starting_claim = linearui.And([ natural.increasing.addMark(increasing)
-                              , byInduction(ge_zero).addMark(marks.selection)
+                              , main.addMark(marks.selection)
                               , natural.successorExists.addMark(successorExists)
                               , natural.transitivity.addMark(transitivity)
                               , natural.weakening.addMark(weakening)
@@ -240,7 +217,6 @@ transition = transition.forwardFollow(lambda x:
       x.forwardConjQuantifier(0).forwardFollow(lambda x:
         x.forwardOnBodyFollow(lambda x:
           x.forwardAssociateIn(0)))))
-transition.translate()
 
 transition = transition.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda q:
@@ -251,32 +227,27 @@ transition = transition.forwardFollow(lambda x:
               x.forwardRemoveFromPar(1, 2, 0).forwardFollow(lambda x:
                 x.forwardOnIthFollow(1, lambda x:
                   x.forwardUnsingleton()))))))
-transition.translate()
 
 transition = transition.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda x:
       x.forwardOnBodyFollow(lambda x:
         x.forwardOnIthFollow(0, lambda x:
           x.forwardUnsingleton()))))
-transition.translate()
 
 transition = transition.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda x:
       x.forwardOnBodyFollow(lambda x:
         x.forwardApply(1, 0))))
-transition.translate()
 
 transition = transition.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda x:
       x.forwardUnusedExistential(0).forwardFollow(lambda x:
         x.forwardUnusedExistential(0).forwardFollow(lambda x:
           x.forwardRemoveQuantifier()))))
-transition.translate()
 
 transition = transition.forwardFollow(lambda x:
     x.forwardRemoveUnit(0).forwardFollow(lambda x:
       x.forwardUnsingleton()))
-transition.translate()
 
 # Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
 

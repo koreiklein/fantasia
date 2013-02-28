@@ -603,6 +603,9 @@ class Eliminate(LinearLogicPrimitiveArrow):
   def replacementVar(self):
     return self._replacementVar
 
+  def __repr__(self):
+    return "eliminate(%s --> %s)"%(self.quantifiedVar(), self.replacementVar())
+
   def src(self):
     return Quantifier(type = forallType, var = self.quantifiedVar(), body = self.value())
   def tgt(self):
@@ -623,6 +626,9 @@ class NotQuant(LinearLogicPrimitiveArrow):
     return self._variable
   def value(self):
     return self._value
+
+  def __repr__(self):
+    return "NotQuant"
 
   def src(self):
     return Not(Quantifier(type = self.type(), variable = self.variable(), body = self.value()))
@@ -851,6 +857,9 @@ class QuantifierConj(LinearLogicPrimitiveArrow):
     self._left = left
     self._right = right
 
+  def __repr__(self):
+    return "quantConj"
+
   def src(self):
     return Quantifier(var = self._var, type = self._quantifierType,
         body = Conj(type = self._conjType, left = self._left, right = self._right))
@@ -873,6 +882,9 @@ class ConjQuantifier(LinearLogicPrimitiveArrow):
     self._var = var
     self._left = left
     self._right = right
+
+  def __repr__(self):
+    return "conjQuant"
 
   def src(self):
     return Conj(type = self._conjType, right = self._right,
@@ -936,7 +948,7 @@ class UnusedExistential(LinearLogicPrimitiveArrow):
     return self._body
 
   def __repr__(self):
-    return "unused %s in %s"%(self.variable(), self.body())
+    return "unused_existial(%s)"%(self.variable(),)
 
   def src(self):
     return Quantifier(var = self.variable(), type = existsType, body = self.body())
@@ -1067,6 +1079,9 @@ class Identity(LinearLogicPrimitiveArrow):
   def asString(self, variance):
     return "identity"
 
+  def __repr__(self):
+    return self.asString(True)
+
   def value(self):
     return self._value
 
@@ -1093,6 +1108,9 @@ class Composite(LinearLogicPrimitiveArrow):
       return "%s\n%s"%(leftString, rightString)
     else:
       return "%s\n%s"%(rightString, leftString)
+
+  def __repr__(self):
+    return self.asString(True)
 
   def left(self):
     return self._left

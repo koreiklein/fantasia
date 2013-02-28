@@ -498,10 +498,10 @@ def Exists(variables, body):
 def Implies(predicate, consequent):
   if predicate.__class__ == Conj and predicate.type() == andType:
     values = [value.transpose() for value in predicate.values()]
-    values.append(consequent)
-    return Par(values)
   else:
-    return Par([predicate.transpose(), consequent])
+    values = [predicate.transpose()]
+  values.append(consequent)
+  return Par(values)
 
 # Arrows
 

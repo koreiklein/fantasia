@@ -77,8 +77,10 @@ def arrowToProgram(arrow):
     return repIdentity(arrow)
   elif arrow.__class__ == linear.Composite:
     return repComposite(arrow)
+  elif arrow.__class__ in [linear.ConjQuantifier, linear.Eliminate, linear.UnusedExistential]:
+    return repIdentity(arrow)
   else:
-    raise Exception("Unrecognized Linear Arrow.")
+    raise Exception("Unrecognized Linear Arrow %s."%(arrow.__class__))
 
 
 def repIntroduceDoubleDual(arrow):
@@ -167,7 +169,7 @@ def repApply(arrow):
   # (The apply arrow is the essence of closure conversion.)
   return (lambda ((notAAndB, B), notnotA): notnotA(lambda A: notAAndB( (A, B) )))
 def repOnBody(arrow):
-  return (lambda (quantA, notA): notA(quantA))
+  return arrowToProgram(arrow.arrow())
 
 # Functorial Arrows
 def repOnLeft(arrow):
