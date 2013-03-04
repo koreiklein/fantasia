@@ -4,7 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-import stack
+from ui.stack import stack
 
 class GLBackend(stack.Backend):
   def __init__(self, render):

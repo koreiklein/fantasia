@@ -4,7 +4,7 @@ from calculus import enriched
 from ui.render.gl import primitives, distances, colors
 
 from lib import natural
-from stack import gl
+from ui.stack import gl
 
 
 # object: a enriched.Logic object

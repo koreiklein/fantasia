@@ -3,7 +3,7 @@
 # Colors for gl rendering of enriched are collected here.
 from OpenGL.GL import *
 
-from stack.color import Color
+from ui.stack.color import Color
 from calculus import enriched
 
 trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)

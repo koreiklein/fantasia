@@ -5,8 +5,8 @@ from OpenGL.GL import *
 from calculus import enriched
 from ui.render.gl import colors, distances
 
-from stack.gl import newGLStack
-from stack.point import Point
+from ui.stack.gl import newGLStack
+from ui.stack.point import Point
 
 def stackingDimensionOfConjType(type):
   if type in [enriched.andType, enriched.withType]:

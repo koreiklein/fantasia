@@ -6,7 +6,7 @@ from OpenGL.GLUT import *
 
 from ui.render.gl.render_immediate import render
 
-from stack import gl
+from ui.stack import gl
 
 import random
 
