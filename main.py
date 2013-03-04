@@ -2,14 +2,14 @@
 
 from examples.easy_induction import transition, ending_claim as claim
 from extraction.python.examples import easy_induction, silly
-from ui.run.glimmediate import slideshow, static as static_gl_image
+from ui.run.glimmediate import slideshow, static
 
 from sys import setrecursionlimit
 
 setrecursionlimit(500000)
 
-silly.test()
+#silly.test()
 easy_induction.test()
 
-#static_gl_image.run(claim)
+#static.run(claim)
 slideshow.run([t.tgt() for t in transition.values()])

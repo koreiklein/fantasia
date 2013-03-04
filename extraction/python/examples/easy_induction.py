@@ -15,12 +15,19 @@ starting_claimRep = utils.repAnd(
     , natural.reflexivityRep
     , natural.zero_naturalRep ])
 
-sRep = utils.repAnd(
-    [starting_claimRep, natural.exists_fiveRep])
-
 def test():
-  tProgramTransformation = curry_howard(t.translate())
-  ending_claimRep = tProgramTransformation(sRep)
+  # This function performs a program extraction and prints out the resulting program.
+  # The extraction is represented by the following commutative diagram:
+  #
+  # examples.easy_induction.s --examples.easy_induction.t----> examples.easy_induction.e
+  #       |                         |                                  |
+  #       |                         |                                  |
+  #       |                         |                                  |
+  #       v                         v                                  v
+  #     sRep ---------------------tRep----------------------------->> eRep
+  sRep = utils.repAnd([starting_claimRep, natural.exists_fiveRep])
+  tRep = curry_howard(t.translate())
+  eRep = tRep(sRep)
 
-  print "ending claim is:"
-  print ending_claimRep
+  print "ending claim is represented by:"
+  print eRep

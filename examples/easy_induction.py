@@ -242,6 +242,7 @@ t = t.forwardFollow(lambda x:
       x.forwardUnsingleton().forwardFollow(lambda x:
         x.forwardUnsingleton())))
 
-ending_claim = t.tgt()
+e = t.tgt()
+ending_claim = e
 
 
