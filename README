@@ -3,16 +3,15 @@ Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 SUMMARY:
   Fantasia is an interactive proof tool containing an embedded program extraction engine.
 
-  As a proof tool, fantasia is designed to provide the most pleasant possible user experience.
-  In fantasia's user experience, a human user makes use of fantasia to state Formulas and
-  construct Proofs of those formulas.
+  As a proof tool, fantasia is designed to provide the most pleasant possible user experience.  In
+  fantasia's user experience, a human user makes use of fantasia to state Formulas and construct
+  Proofs of those formulas.
 
-  Using an extraction engine, fantasia can convert proofs into programs and run them.
-  Therefore, fantasia can be used both as a tool for reasoning and as an environment for
-  software creation.
+  Using an extraction engine, fantasia can convert proofs into programs and run them.  Therefore,
+  fantasia can be used both as a tool for reasoning and as an environment for software creation.
 
-  By achieving excellence in the two roles of a) the experience of proving and b) the extraction
-  of high quality programs, fantasia aims to distinguish itself from other software projects.
+  By achieving excellence in the two roles of a) the experience of proving and b) the extraction of
+  high quality programs, fantasia aims to distinguish itself from other software projects.
 
 CODE OVERVIEW:
   The code for the fantasia project is organized hierarchically into python modules.
@@ -24,8 +23,8 @@ CODE OVERVIEW:
     extraction: This module has one submodule for each extraction engine.
                 Each extraction engine defines a way to convert proofs into programs.
 
-  These three modules form the "bridge" between the user and the machines that run
-  his software as shown in the below diagram:
+  These three modules form the "bridge" between the user and the machines that run his software as
+  shown in the below diagram:
             ____________________   ___________________   ______________________
             |                  |   |                 |   |                    |
   Machines--|   extraction:    |---|   calculus:     |---|    ui:             |--User
@@ -53,12 +52,13 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
           f) It is not the case that a < b
       Formulas can be built from each other by means of logical combinators.
         For example, the AND combinators
-          (e.g. calculus.basic.Conj(type = andType, ...), calculus.enriched.Conj(type = andType, ...))
+          (e.g. calculus.basic.Conj(type = andType, ...),
+                calculus.enriched.Conj(type = andType, ...))
         are used to form the logical "and" of other formulas.
 
     PROOFS IN THE CALCULUS MODULE:
-      A proof is a formal expression of a reason why one mathematical fact (the "source" or src
-      of the proof), follows logically from another mathematical fact (the "target" or tgt of the
+      A proof is a formal expression of a reason why one mathematical fact (the "source" or src of
+      the proof), follows logically from another mathematical fact (the "target" or tgt of the
       proof).
         Examples of proofs:
 
@@ -98,102 +98,101 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
       be as user friendly as possible.
 
       TRANSLATION FROM CALCULUS.ENRICHED INTO CALCULUS.BASIC:
-        Extraction does not operate directly on the proofs in calculus.enriched.  Instead,
-        when extracting a program from a proof p in this calculus, p is first "translated" into
-        a proof p' in calculus.basic, then the extraction engine is run on p' to generate
-        a program.
+        Extraction does not operate directly on the proofs in calculus.enriched.  Instead, when
+        extracting a program from a proof p in this calculus, p is first "translated" into a proof
+        p' in calculus.basic, then the extraction engine is run on p' to generate a program.
 
   THE UI MODULE:
-    The ui module is fairly straightforward.  It defines functions for rendering
-    formulas to a screen.  It will also define what actions the user should take
-    (e.g. pressing buttons, tapping a screen, ...) in order to generate proofs.
+    The ui module is fairly straightforward.  It defines functions for rendering formulas to a
+    screen.  It will also define what actions the user should take (e.g. pressing buttons, tapping a
+    screen, ...) in order to generate proofs.
 
   THE LIB MODULE:
     In order to prove interesting things, the user will need to start with appropriate axioms.
-    For example, a user will need a bunch of basic facts about lists, sets, and natural numbers
-    to use in his proofs.
+    For example, a user will need a bunch of basic facts about lists, sets, and natural numbers to
+    use in his proofs.
 
     The lib module contains various formulas of the logical calculi defined in the calculus module.
-    You can think of these formulas as the libraries which the user will start with and rely
-    on when performing his proofs.
+    You can think of these formulas as the libraries which the user will start with and rely on when
+    performing his proofs.
 
   THE EXTRACTION MODULE:
     The extraction module will contain one submodule for each extraction engine.
     The module for each extraction engine must have two submodules:
       a) the arrows submodule:
-          This submodule implements the conversion of the proofs of the calculus.basic
-          module into program transformations.
+          This submodule implements the conversion of the proofs of the calculus.basic module into
+          program transformations.
       b) the lib submodule:
-          This submodule will contain programs implementing the formulas defined in the top
-          level lib module (fantasia/lib).
+          This submodule will contain programs implementing the formulas defined in the top level
+          lib module (fantasia/lib).
 
     The theoretical basis of program extraction is the curry-howard isomorphism.  The curry-howard
     isomorphism pairs every formula with a program and every proof with a program transformation.
-    Each user of fantasia will start with a formula S defined in the lib module, and use the functions
-    defined for him in the ui module to generate a proof p in the enriched calculus.
-    That proof will be converted into a proof p' in the basic calculus.  The extraction engine
-    defines a program s corresponding to the source (S) of p.  It will also convert the
-    proof p' into a program transformation r.  It then applies the transformation r to the program
-    s to get a new program t which corresponds to the target (T) of p.  This process can be
-    summarized by the following commutative diagram:
+    Each user of fantasia will start with a formula S defined in the lib module, and use the
+    functions defined for him in the ui module to generate a proof p in the enriched calculus.  That
+    proof will be converted into a proof p' in the basic calculus.  The extraction engine defines a
+    program s corresponding to the source (S) of p.  It will also convert the proof p' into a
+    program transformation r.  It then applies the transformation r to the program s to get a new
+    program t which corresponds to the target (T) of p.  This process can be summarized by the
+    following commutative diagram:
 
-    *************************************************************************************************
-    | ENRICHED CALUCULUS:  Formula S  ----------------Proof p------------------> Formula T          |
-    |                          .                         .                           .              |
-    |                          .                         .                           .              |
-    |                          .                         .                           .              |
-    |                          v                         v                           v              |
-    |  BASIC CALUCULUS:     Formula S' ----------------Proof p'----------------> Formula T'         |
-    |                          |                         |                           |              |
-    |                          |                         |                           |              |
-    |                          |                         |                           |              |
-    |                          v                         v                           v              |
-    |  PROGRAMS:            Program s ------------Program Transformation r---->> Program t          |
-    |                                                                                               |
-    |                                                                                               |
-    |       LEGEND ******************************************************************************   |
-    |       |    S --------p--------> T          p is a proof with source S and target T        |   |
-    |       |***********************************************************************************|   |
-    |       |    s --------r------->> t          r is a program transformation that             |   |
-    |       |                                     transforms program s into program t           |   |
-    |       |***********************************************************************************|   |
-    |       |    S                               S' is the translation of the enriched formula  |   |
-    |       |    .                               S into a basic formula.                        |   |
-    |       |    .                                                                              |   |
-    |       |    V                                                                              |   |
-    |       |    S'                                                                             |   |
-    |       |***********************************************************************************|   |
-    |       |    p                               p' is the translation of the enriched proof    |   |
-    |       |    .                               p into a basic proof.                          |   |
-    |       |    .                                                                              |   |
-    |       |    V                                                                              |   |
-    |       |    p'                                                                             |   |
-    |       |***********************************************************************************|   |
-    |       |    S'                              Our extraction engine defines s to be the      |   |
-    |       |    |                               program corresponding to the basic formula S'. |   |
-    |       |    |                                                                              |   |
-    |       |    v                                                                              |   |
-    |       |    s                                                                              |   |
-    |       |***********************************************************************************|   |
-    |       |    p'                              Our extraction engine extracts the program r   |   |
-    |       |    |                               from the basic proof p'.                       |   |
-    |       |    |                                                                              |   |
-    |       |    v                                                                              |   |
-    |       |    r                                                                              |   |
-    |       *************************************************************************************   |
-    |                                                                                               |
-    *************************************************************************************************
+    ***********************************************************************************************
+    | ENRICHED CALUCULUS:  Formula S  ----------------Proof p------------------> Formula T        |
+    |                          .                         .                           .            |
+    |                          .                         .                           .            |
+    |                          .                         .                           .            |
+    |                          v                         v                           v            |
+    |  BASIC CALUCULUS:     Formula S' ----------------Proof p'----------------> Formula T'       |
+    |                          |                         |                           |            |
+    |                          |                         |                           |            |
+    |                          |                         |                           |            |
+    |                          v                         v                           v            |
+    |  PROGRAMS:            Program s ------------Program Transformation r---->> Program t        |
+    |                                                                                             |
+    |                                                                                             |
+    |       LEGEND ****************************************************************************** |
+    |       |    S --------p--------> T          p is a proof with source S and target T        | |
+    |       |***********************************************************************************| |
+    |       |    s --------r------->> t          r is a program transformation that             | |
+    |       |                                     transforms program s into program t           | |
+    |       |***********************************************************************************| |
+    |       |    S                               S' is the translation of the enriched formula  | |
+    |       |    .                               S into a basic formula.                        | |
+    |       |    .                                                                              | |
+    |       |    V                                                                              | |
+    |       |    S'                                                                             | |
+    |       |***********************************************************************************| |
+    |       |    p                               p' is the translation of the enriched proof    | |
+    |       |    .                               p into a basic proof.                          | |
+    |       |    .                                                                              | |
+    |       |    V                                                                              | |
+    |       |    p'                                                                             | |
+    |       |***********************************************************************************| |
+    |       |    S'                              Our extraction engine defines s to be the      | |
+    |       |    |                               program corresponding to the basic formula S'. | |
+    |       |    |                                                                              | |
+    |       |    v                                                                              | |
+    |       |    s                                                                              | |
+    |       |***********************************************************************************| |
+    |       |    p'                              Our extraction engine extracts the program r   | |
+    |       |    |                               from the basic proof p'.                       | |
+    |       |    |                                                                              | |
+    |       |    v                                                                              | |
+    |       |    r                                                                              | |
+    |       ************************************************************************************* |
+    |                                                                                             |
+    ***********************************************************************************************
 
   THE EXAMPLES MODULE:
-    This module contains example proofs.  Ideally, each example proof should have a source
-    defined in the lib module.
+    This module contains example proofs.  Ideally, each example proof should have a source defined
+    in the lib module.
 
     Also, program extraction engines can have their own example submodules.  In such a submodule,
     the extraction engine can contain code to perform an extraction of a proof defined in the top
     level examples module.  If you're looking for an illustrative example of a program extraction,
-    you should start by trying to understand one of these example extractions.  For example,
-    start by trying taking a brief look at main.py, and then trying to understand what is
-    happening in extraction/python/examples/easy_induction.py
+    you should start by trying to understand one of these example extractions.  For example, start
+    by trying taking a brief look at main.py, and then trying to understand what is happening in
+    extraction/python/examples/easy_induction.py
 
 RUNNING THE CODE:
   fantasia is currently in a state where it can showcase the proofs in the examples module, but
