@@ -194,3 +194,17 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
     you should start by trying to understand one of these example extractions.  For example,
     start by trying taking a brief look at main.py, and then trying to understand what is
     happening in extraction/python/examples/easy_induction.py
+
+RUNNING THE CODE:
+  fantasia is currently in a state where it can showcase the proofs in the examples module, but
+  fantasia's ui is not complete enough to allow users to actually construct any proofs themselves.
+
+  To see the formulas and proofs in the examples module, make sure to have installed:
+    make
+    python
+    pyOpenGL
+
+  If you like, make some modifications to main.py.
+
+  Then cd into fantasia/ and run the following command:
+    make
