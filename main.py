@@ -12,4 +12,6 @@ setrecursionlimit(500000)
 easy_induction.test()
 
 #static.run(claim)
-slideshow.run([t.tgt() for t in transition.values()])
+x = [transition.values()[0].src()]
+x.extend([t.tgt() for t in transition.values()])
+slideshow.run(x)
