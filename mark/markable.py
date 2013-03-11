@@ -91,8 +91,9 @@ class SingletonPath(Path):
 
 class Markable:
   # Subclasses must call this method as part of __init__.
-  # methodNames must be a list of the string names of the methods of this class which can contain marked data.
-  #   each of those methods must take no arguments and return a markable.
+  # methodNames must be a list of the string names of the methods
+  # of this class which can contain marked data.
+  # each of those methods must take no arguments and return a markable.
   def initMarkable(self, methodNames):
     self._methodNames = methodNames
     self._descendantMarks = []
