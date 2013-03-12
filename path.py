@@ -19,9 +19,9 @@ class Path():
         def f(self):
           res = method()
           if res.__class__ == list:
-            return [self.follow((name, i), res[i]) for i in range(len(res))]
+            return [self.follows((name, i), res[i]) for i in range(len(res))]
           else:
-            return self.follow(name, res)
+            return self.follows(name, res)
         assert(not self.__dict__.has_key(name))
         self.__dict__[name] = types.MethodType(f, self)
     for (name, method) in inspect.getmembers(first):
@@ -31,6 +31,20 @@ class Path():
     return self._first
   def path_singleton(self):
     return self._rest is None
+  def path_last(self):
+    if self.path_singleton():
+      return self.path_first()
+    else:
+      return self.path_rest().path_last()
+  def path_corest(self):
+    if self.path_singleton():
+      return None
+    else:
+      rec = self.path_rest().path_corest()
+      if rec is None:
+        return Path(first = self.first(), rest = None)
+      else:
+        return Path(first = self.first(), rest = (self.path_symbol(), rec))
   def path_rest(self):
     if self._rest == None:
       raise Exception("Singleton path has no rest.")
@@ -42,5 +56,7 @@ class Path():
     else:
       return self._rest[0]
   def follow(self, symbol, value):
+    return Path(first = value, rest = (symbol, self))
+  def follows(self, symbol, value):
     return Path(first = value, rest = (symbol, self))
 
