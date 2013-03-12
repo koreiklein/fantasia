@@ -188,6 +188,80 @@ class Conj(Logic):
     assert(self.type() == andType)
     return ApplyPartial(values = self.values(), i = i, j = j, k = k)
 
+  def forwardImportToContainedConj(self, i, j, k):
+    assert(self.type() == andType)
+    assert(self.values()[j].__class__ == Conj)
+    t = self.values()[j].type()
+    if t in [andType, parType]:
+      return self.forwardImportToClause(i, j, k)
+    else:
+      assert(t in [orType, withType])
+      return self.forwardDistributeToOne(i, j, k)
+
+  def forwardImportToPath(self, i, j, path):
+    return self.forwardImportToPathFollow(i, j, path, lambda x: x.identity())
+
+  # Note: This definition of the behavior of this function is sophisticated.
+  # self.type() must be andType
+  # i: an index into self.values()
+  # path: a path from self to some child.  It must not go through index i.
+  # f: a function.
+  #
+  # forwardImportToPathFollow may be called with a covariant or contravariant path.
+  #   It's code is largely the same in both cases, yet the only known way to define its
+  #   behavior breaks this situation down into cases:
+  #   A) If path is covariant, return a transition that brings clause i to the end of
+  #      path, constructing an AND of length 2, and follow by calling f on the result.
+  #   B) If path is contravariant, f must produce a transition to self from x when applied
+  #      to x where x is the clause at i paired with the end of path.  Return a transition
+  #      to self from whatever f produces, but with that residual claim i exported.
+  # TODO(koreiklein) The only reason I'm writing this function without any idea how to describe
+  #                  it succinctly is because of a HUGE intuitivie sense that I'm right anyway.
+  #                  Surely there must be a simpler description of how this function works.
+  #                  Figure it out, write it down here, and spare everyone a headache.
+  # TODO(koreiklein) Wow! This function seems to work.  Test it more to make sure.
+  def forwardImportToPathFollow(self, i, j, path, f):
+    assert(self.type() == andType)
+    if path.path_singleton():
+      if i < j:
+        J = j - 1
+      else:
+        J = j
+      def e(x):
+        values = list(x.values())
+        a = values.pop(J)
+        b = values.pop(J)
+        values.insert(J, And([a, b]))
+        return AssociateOut(And(values), J).forwardFollow(lambda x:
+            x.forwardOnIthFollow(J, f))
+      return self.forwardShift(i, (J - i) + 1).forwardFollow(e)
+    else:
+      def g(pair):
+        assert(pair.__class__ == Conj)
+        assert(pair.type() == andType)
+        symbol = path.path_symbol()
+        if symbol.__class__ == tuple:
+          (name, index) = symbol
+          return pair.forwardImportToContainedConj(1, 0, index).forwardFollow(lambda x:
+              x.forwardUnsingleton()).forwardFollow(lambda x:
+                  x.forwardOnIthFollow(index, f))
+        elif symbol == "value":
+          assert(pair.values()[0].__class__ == Not)
+          t = f(And([pair.values()[0].value(), pair.values()[1]]))
+          return pair.forwardOnIthFollow(0, lambda x:
+              x.forwardOnNot(t)).forwardFollow(lambda x:
+                  x.forwardApplyPartial(1, 0, 1).forwardFollow(lambda x:
+                    x.forwardUnsingleton()).forwardFollow(lambda x:
+                      x.forwardOnNotFollow(lambda x:
+                        x.backwardSingleton())))
+        elif symbol == "body":
+          assert(pair.values()[0].__class__ == Quantifier)
+          return pair.forwardConjQuantifier(0).forwardFollow(lambda x:
+              x.forwardOnBodyFollow(f))
+        else:
+          raise Exception("Unrecognized path symbol %s"%(symbol,))
+      return self.forwardImportToPathFollow(i, j, path.path_rest(), g)
+
   def forwardShift(self, index, amount):
     return Shift(conj = self, index = index, amount = amount)
   def backwardShift(self, index, amount):
