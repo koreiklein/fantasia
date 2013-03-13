@@ -23,7 +23,7 @@ starting_claim = enriched.And([ natural.increasing.addMark(increasing)
                               , natural.reflexivity.addMark(reflexivity)
                               , natural.zero_natural ])
 
-transition = starting_claim.forwardImportToPar(2, 1, 1)
+transition = starting_claim.forwardImportToClause(2, 1, 1)
 
 transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
@@ -54,7 +54,7 @@ transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardOnBodyFollow(lambda x:
-          x.forwardImportToPar(0, 3, 0)))))
+          x.forwardImportToClause(0, 3, 0)))))
 
 transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
@@ -102,7 +102,7 @@ transition = transition.forwardFollow(lambda claim:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardOnBodyFollow(lambda x:
           x.forwardAssociateIn(2).forwardFollow(lambda x:
-          x.forwardImportToPar(2, 1, 0).forwardFollow(lambda x:
+          x.forwardImportToClause(2, 1, 0).forwardFollow(lambda x:
             x.forwardOnIthFollow(1, lambda x:
               x.forwardOnIthFollow(0, lambda x:
                 x.forwardApply(1, 0)).forwardFollow(lambda x:
@@ -112,14 +112,14 @@ transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardOnBodyFollow(lambda x:
-          x.forwardImportToPar(2, 1, 0).forwardFollow(lambda x:
+          x.forwardImportToClause(2, 1, 0).forwardFollow(lambda x:
             x.forwardOnIthFollow(1, lambda x:
               x.forwardOnIthFollow(0, lambda x:
                 x.forwardApply(1, 0)).forwardFollow(lambda x:
               x.forwardRemoveUnit(0))))))))
 
 transition = transition.forwardFollow(lambda claim:
-    claim.forwardImportToPar(0, 1, 1).forwardFollow(lambda x:
+    claim.forwardImportToClause(0, 1, 1).forwardFollow(lambda x:
       x.forwardOnIthFollow(0, lambda x:
         x.forwardOnIthFollow(1, lambda x:
           x.forwardConjQuantifier(0).forwardFollow(lambda q:
@@ -134,7 +134,7 @@ transition = transition.forwardFollow(lambda x:
       x.forwardOnIthFollow(0, lambda x:
         x.forwardOnIthFollow(1, lambda x:
           x.forwardOnBodyFollow(lambda x:
-            x.forwardImportToPar(2, 3, 0).forwardFollow(lambda x:
+            x.forwardImportToClause(2, 3, 0).forwardFollow(lambda x:
               x.forwardOnIthFollow(2, lambda x:
                 x.forwardOnIthFollow(0, lambda x:
                   x.forwardApply(1, 0)).forwardFollow(lambda x:
@@ -142,7 +142,7 @@ transition = transition.forwardFollow(lambda x:
                       x.forwardUnsingleton()))))))))
 
 transition = transition.forwardFollow(lambda x:
-    x.forwardImportToPar(1, 0, 1).forwardFollow(lambda x:
+    x.forwardImportToClause(1, 0, 1).forwardFollow(lambda x:
       x.forwardOnIthFollow(0, lambda x:
         x.forwardOnIthFollow(1, lambda x:
           x.forwardConjQuantifier(0).forwardFollow(lambda x:
@@ -181,7 +181,7 @@ transition = transition.forwardFollow(lambda x:
     x.forwardRemoveFromPar(2, 0, 0))
 
 transition = transition.forwardFollow(lambda x:
-    x.forwardImportToPar(1, 0, 0)).forwardFollow(lambda x:
+    x.forwardImportToClause(1, 0, 0)).forwardFollow(lambda x:
         x.forwardUnsingleton())
 
 transition = transition.forwardFollow(lambda x:

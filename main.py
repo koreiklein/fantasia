@@ -6,12 +6,14 @@ from ui.run.glimmediate import slideshow, static
 
 from sys import setrecursionlimit
 
+from examples.new_easy_induction import transition as new_transition
+
 setrecursionlimit(500000)
 
 #silly.test()
 easy_induction.test()
 
-#static.run(claim)
-x = [transition.values()[0].src()]
-x.extend([t.tgt() for t in transition.values()])
-slideshow.run(x)
+static.run(new_transition.tgt())
+#x = [transition.values()[0].src()]
+#x.extend([t.tgt() for t in transition.values()])
+#slideshow.run(x)
