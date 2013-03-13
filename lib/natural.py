@@ -3,6 +3,8 @@
 from calculus import basic, enriched
 from lib import common_vars
 
+from sets import Set
+
 
 # Stating that a variable is a natural number.
 class IsNatural(enriched.Logic):
@@ -12,6 +14,9 @@ class IsNatural(enriched.Logic):
 
   def n(self):
     return self._n
+
+  def freeVariables(self):
+    return Set([self.n()])
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.n() == other.n()
@@ -39,6 +44,9 @@ class Compare(enriched.Logic):
     self._greater = greater
     self._strict = strict
     self.initMarkable([])
+
+  def freeVariables(self):
+    return Set([self.lesser(), self.greater()])
 
   def lesser(self):
     return self._lesser
@@ -83,6 +91,9 @@ class Successor(enriched.Logic):
     return self._a
   def b(self):
     return self._b
+
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and (
