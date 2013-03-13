@@ -193,6 +193,17 @@ class Conj(Logic):
     res.translate()
     return res
 
+  def forwardAssociateOut(self, i, j):
+    # e.g. [A, B, C, D], 1, 3 --> [A, [B, C], D]
+    assert(i <= j)
+    values = list(self.values())
+    kidValues = []
+    while i < j:
+      j -= 1
+      kidValues.append(values.pop(i))
+    values.insert(i, Conj(type = self.type(), values = kidValues))
+    return AssociateOut(Conj(type = self.type(), values = values), i)
+
   def forwardAssociateIn(self, index):
     # [A, [B, C], D] --> [A, B, C, D]
     return AssociateIn(self, index)
