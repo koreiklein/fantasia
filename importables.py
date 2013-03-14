@@ -14,6 +14,9 @@ class NullFeeder:
     return {}
   def formula(self):
     return self._formula
+  def importKeySet_feeder(self, keys):
+    assert(len(keys) == 0)
+    return (self.identity(), {})
 
 class Feeder:
   def __init__(self, formula):
@@ -102,6 +105,7 @@ class Intermediate:
     if index is None:
       assert(formula.__class__ == Quantifier)
     else:
+      assert(index is not None)
       assert(formula.__class__ == Conj)
       assert(formula.type() in [orType, withType, parType])
       assert(0 <= index)
@@ -194,11 +198,12 @@ class Importable:
   #         the relevant claims near self.formula() and applied the arrow of
   #         claimsUse to them.
   def use(self, claimsUse):
-    assert(self._importingIndex == -1)
-    t = self.importKeys(claimsUse.keys())
-    return t.forwardFollow(lambda x:
-        x.forwardOnIthFollow(len(t.values()) - 1, lambda x:
-          claimsUse.apply(x)))
+    (F, D) = self.importKeySet(Set(claimsUse.keys()))
+    return F(lambda selfAndXs:
+        selfAndXs.forwardOnIthFollow(1, lambda xs:
+          _applyPerm(D, claimsUse.keys(), xs).forwardFollow(lambda xs:
+            claimsUse.apply(xs))).forwardFollow(lambda x:
+              x.forwardAssociateIn(0)))
 
   # return an arrow t importing an And with the claims for each of keys to the
   #   last index in self.formula()
@@ -259,6 +264,42 @@ class Importable:
         x.forwardUnsingleton().forwardFollow(lambda x:
           x.forwardOnIthFollow(self._importingIndex, f))))
            , D)
+
+# keys: a list of keys of length n
+# conj: an enriched And of length n
+# d: a dictionary isomorphism from the keys in keys to the indices of conj.
+# return: an arrow a with src conj that permutes it according to d and keys.
+#         Explicitly: a.src() == conj
+#                     forall i. a.tgt().values()[i] == conj.values()[d[keys[i]]]
+# note: This function is essentially an aggrandized sorting function.
+#       The current implementation does not attempt to implement an efficient sort.
+# note: The fact that fantasia has a function that does this is RIDICULOUS and intuitively
+#       ugly.   Consider finding a clever way to make it unnecessary.
+def _applyPerm(d, keys, conj):
+  return _applyPermPartial(d, keys, 0, conj)
+
+# conj: an enriched conj of length N
+# n: an integer in [0,N]
+# keys: a list of keys of length N
+# d: a dictionary isomorphism between keys[n:] and [n:N)
+# return: an arrow a such that
+#           a.src() == conj
+#           a.tgt().values()[i] ==
+#                   | conj.values()[i]   when   i < n
+#                   | conj.values()[d[keys[i]]]   when   i >= n
+def _applyPermPartial(d, keys, n, conj):
+  if n == len(keys):
+    return conj.identity()
+  else:
+    i = d[keys[n]]
+    D = {}
+    for (key, value) in d.items():
+      if value > i:
+        D[key] = value
+      elif value < i:
+        D[key] = value + 1
+    return conj.forwardShift(i, n - i).forwardFollow(lambda x:
+          _applyPermPartial(D, keys, n + 1, x))
 
 def _associateAllButLast(conj):
   assert(conj.__class__ == Conj)
