@@ -7,6 +7,9 @@ from mark import common as marks
 
 from path import Path
 
+import about
+import importables
+
 def ge_zero(n):
   return natural.Compare(natural.zero, n, False)
 
@@ -112,15 +115,21 @@ transition = transition.forwardFollow(lambda claim:
               x.forwardRemoveUnit(0))))))))
 
 transition = transition.forwardFollow(lambda x:
-    x.forwardStartPushingPair(0, 1, lambda x:
-      x.forwardPushPairConj(1, lambda x:
-        x.forwardPushPairQuantifier(lambda x:
-          x.forwardAssociateIn(0)).forwardFollow(lambda q:
-            q.forwardOnBodyFollow(lambda x:
-              x.forwardOnIthFollow(3, lambda x:
-                x.forwardEliminate(1, q.variables()[1]).forwardFollow(lambda x:
-                  x.forwardEliminate(0, q.variables()[0]).forwardFollow(lambda x:
-                    x.forwardRemoveQuantifier()))))))))
+    importables.beginImportingOnIthFollow(x, 1, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 1, lambda q:
+        importables.continueImportingOnBodyFollow(q, lambda x:
+          importables.finishImporting(x, about.about(q.variables(), 0))))))
+
+#transition = transition.forwardFollow(lambda x:
+#    x.forwardStartPushingPair(0, 1, lambda x:
+#      x.forwardPushPairConj(1, lambda x:
+#        x.forwardPushPairQuantifier(lambda x:
+#          x.forwardAssociateIn(0)).forwardFollow(lambda q:
+#            q.forwardOnBodyFollow(lambda x:
+#              x.forwardOnIthFollow(3, lambda x:
+#                x.forwardEliminate(1, q.variables()[1]).forwardFollow(lambda x:
+#                  x.forwardEliminate(0, q.variables()[0]).forwardFollow(lambda x:
+#                    x.forwardRemoveQuantifier()))))))))
 
 #transition = transition.forwardFollow(lambda claim:
 #    claim.forwardImportToClause(0, 1, 1).forwardFollow(lambda x:

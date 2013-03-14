@@ -23,6 +23,9 @@ class Var(markable.Markable):
   def name(self):
     return self.translate().name()
 
+  def __repr__(self):
+    return self.name()
+
   def __eq__(self, other):
     return other.__class__ == Var and self._base == other._base
   def __ne__(self, other):
@@ -133,6 +136,9 @@ class Not(Logic):
     self._value = value
     self.initMarkable(['value'])
 
+  def __repr__(self):
+    return "~( " + repr(self.value()) + " )"
+
   def value(self):
     return self._value
 
@@ -190,6 +196,9 @@ class Conj(Logic):
     self._type = type
     self._values = values
     self.initMarkable(self.generateMethodNamesForList('value', values))
+
+  def __repr__(self):
+    return "( %s %s )"%(self.type(), self.values())
 
   def forwardUnsingleton(self):
     assert(len(self.values()) == 1)
@@ -531,6 +540,17 @@ def _transposeNotToValues(type, basicConjOrUnit, basicUiValues):
 true = Conj(type = andType, values = [])
 false = Conj(type = orType, values = [])
 
+# return an arrow with src conj which either:
+#    removes index i                 if it is a unit of conj
+#    leaves everything the same      otherwise
+def _maybeRemoveUnit(conj, i):
+  value = conj.values()[i]
+  if value.__class__ == Conj and value.type() == conj.type() and len(value.values()) == 0:
+    return conj.forwardAssociateIn(i)
+  else:
+    return conj.identity()
+
+
 class Quantifier(Logic):
   def __init__(self, type, variables, body):
     assert(type in basic.quantifierTypes)
@@ -592,6 +612,10 @@ class Quantifier(Logic):
       res = res.forwardFollow(lambda x:
           Eliminate(quantifier = x, index = 0, replacementVar = replacementVar))
     return res
+
+  def forwardEliminateAll(self, replacementVars):
+    return self.forwardEliminateMultiple(replacementVars).forwardFollow(lambda x:
+        x.forwardRemoveQuantifier())
 
   def backwardEliminate(self, index, quantifiedVar, replacementVar):
     assert(self.type() == forallType)

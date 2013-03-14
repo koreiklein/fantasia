@@ -87,10 +87,10 @@ class Holds(PrimitiveObject):
       return False
     else:
       for (key, value) in self._d.items():
-        if other[key] != value:
+        if (not other._d.has_key(key) ) or other[key] != value:
           return False
       for (key, value) in other._d.items():
-        if self[key] != value:
+        if (not self._d.has_key(key) ) or self[key] != value:
           return False
       return True
 

@@ -45,6 +45,13 @@ class Compare(enriched.Logic):
     self._strict = strict
     self.initMarkable([])
 
+  def __repr__(self):
+    if self._strict:
+      s = '%s < %s'
+    else:
+      s = '%s <= %s'
+    return s%(self._lesser, self._greater)
+
   def freeVariables(self):
     return Set([self.lesser(), self.greater()])
 
@@ -86,6 +93,9 @@ class Successor(enriched.Logic):
     self._a = a
     self._b = b
     self.initMarkable([])
+
+  def __repr__(self):
+    return "%s + 1 == %s"%(self.a(), self.b())
 
   def a(self):
     return self._a

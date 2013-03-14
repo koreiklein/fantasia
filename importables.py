@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import calculus.enriched
+from calculus.enriched import *
 
 from sets import Set
 
@@ -16,7 +16,9 @@ class NullFeeder:
     return self._formula
   def importKeySet_feeder(self, keys):
     assert(len(keys) == 0)
-    return (self.identity(), {})
+    return ( self.formula().forwardSingleton(andType).forwardFollow(lambda x:
+      x.forwardAssociateOut(1, 1))
+           , {})
 
 class Feeder:
   def __init__(self, formula):
@@ -53,21 +55,29 @@ class Feeder:
     else:
       return self._importKeySet_feeder_single(keys)
 
-  def _importKeySet_feeder_single(keys):
+  def _importKeySet_feeder_single(self, keys):
     if 'here' in keys:
       assert(len(keys) == 1)
       d = {'here' : 0}
-      t = self.formula().forwardSingleton().forwardFollow(lambda x:
-          x.forwardSingleton().forwardFollow(lambda x:
+      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
+          x.forwardSingleton(andType).forwardFollow(lambda x:
             x.forwardAssociateOut(0, 0)))
       return (t, d)
     else:
       assert(len(keys) == 0)
       d = {}
-      t = self.formula().forwardSingleton().forwardFollow(lambda x:
+      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
           x.forwardAssociateOut(1, 1))
       return (t, d)
 
+# conj: an enriched Conj
+# feeders: one feeder for each clause of conj
+# keys: a list of keys that can be imported at conj.  Each key must be for one of the feeders.
+# return: (T, D) where T is an arrow such that:
+#   T.src() == conj
+#   T.tgt().values()[0] is what's left of conj.values() after the import.
+#   T.tgt().values()[1] is a list L of the values extracted from the feeders.
+#   D maps each key in keys to the index in L at which you can find the corresponding claim.
 def _importKeySet_conj(conj, feeders, keys):
   feeder_keysets = [Set() for x in feeders]
   for (i, key) in keys:
@@ -78,23 +88,21 @@ def _importKeySet_conj(conj, feeders, keys):
   n = len(T.tgt().values())
   m = n
   newValues = 0
-  feeder_perms = []
   for i in range(len(feeders)):
     (t, d) = feeders[i].importKeySet_feeder(feeder_keysets[i])
     T = T.forwardFollow(lambda x:
         x.forwardOnIth(i, t).forwardFollow(lambda x:
           x.forwardAssociateIn(i).forwardFollow(lambda x:
-            x.forwardShift(i + 1, n - (i + 1)).forwardFollow(lambda x:
-              x.forwardAssociateIn(n)))))
+            x.forwardShift(i + 1, m - (i + 1)).forwardFollow(lambda x:
+              x.forwardAssociateIn(len(x.values()) - 1)))))
     for (key, value) in d.items():
-      D[key] = newValues + value
+      D[(i, key)] = newValues + value
     m = len(T.tgt().values())
-    newValues += m - n
-    n = m
+    newValues = m - n
   T = T.forwardFollow(lambda x:
-      x.forwardAssociateOut(n, m))
+      x.forwardAssociateOut(n, m).forwardFollow(lambda x:
+        x.forwardAssociateOut(0, n)))
   return (T, D)
-
 
 class Intermediate:
   # parent is an Intermediate or an Importable.
@@ -113,6 +121,9 @@ class Intermediate:
     self._formula = formula
     self._parent = parent
     self._index = index
+    self._claims = {}
+    for (key, value) in self.parent().claims().items():
+      self._claims[('parent', key)] = value
 
   def formula(self):
     return self._formula
@@ -127,7 +138,7 @@ class Intermediate:
     return self.parent().topmostParent()
 
   def claims(self):
-    return self.parent().claims()
+    return self._claims
 
   # keys: a set of keys into the dict self.claims()
   # return a pair (F, d),
@@ -142,7 +153,9 @@ class Intermediate:
       assert(parentString == 'parent')
       l.append(key)
     (parentF, parentD) = self.parent().importKeySetToChild(Set(l))
-    D = parentD
+    D = {}
+    for (parentKey, value) in parentD.items():
+      D[('parent', parentKey)] = value
     if self._index is None:
       F = lambda f: parentF(lambda selfAndXs:
         selfAndXs.forwardConjQuantifier(0).forwardFollow(lambda q:
@@ -161,14 +174,14 @@ class Importable:
   # at which to find other importables and Intermediates with self as a parent.
   def __init__(self, formula, importingIndex = -1, parent = None):
     assert(formula.__class__ == Conj and formula.type() == andType)
-    assert(importingIndex = -1 or 0 <= importingIndex)
+    assert(importingIndex == -1 or 0 <= importingIndex)
     assert(importingIndex < len(formula.values()))
     self._formula = formula
     self._importingIndex = importingIndex
     self._parent = parent
     self._claims = {}
     self._feeders = []
-    for i in range(len(formula.value())):
+    for i in range(len(formula.values())):
       if i == importingIndex:
         self._feeders.append(NullFeeder(formula.values()[i]))
       else:
@@ -203,23 +216,31 @@ class Importable:
         selfAndXs.forwardOnIthFollow(1, lambda xs:
           _applyPerm(D, claimsUse.keys(), xs).forwardFollow(lambda xs:
             claimsUse.apply(xs))).forwardFollow(lambda x:
-              x.forwardAssociateIn(0)))
-
-  # return an arrow t importing an And with the claims for each of keys to the
-  #   last index in self.formula()
-  def importKeys(self, keys):
-    raise Excepton("NYI")
+            x.forwardAssociateIn(0)))
 
   def _importFromParentOrNone(self, keys):
     if self.parent() is None:
       assert(len(keys) == 0)
-      return (lambda f: self.formula().forwardSingleton().forwardFollow(lambda x:
-        x.forwardAssociateOut(1, 1).forwardFollow(lambda x:
-          x.forwardOnIthFollow(0, f))), {})
+      return ( lambda f: self.formula().forwardSingleton(andType).forwardFollow(lambda x:
+        x.forwardAssociateOut(1, 1).forwardFollow(f))
+             , {})
     else:
-      return self.parent().importKeySetToChild(keys)
+      keysForParent = []
+      for (parentString, parentKey) in keys:
+        assert(parentString == 'parent')
+        keysForParent.append(parentKey)
+      (f, d) = self.parent().importKeySetToChild(keysForParent)
+      F = f
+      D = {}
+      for (parentKey, value) in d.items():
+        D[('parent', parentKey)] = value
+      return (F, D)
 
-  def _splitKeys(self, key):
+  # keys: keys that can be imported at self, not including 'here'
+  # return (parentKeys, feederKeys)
+  # where parentKeys is a list of the parent parts of the parent keys in keys
+  # where feederKeys is a list of the keys which are for feeders.
+  def _splitKeys(self, keys):
     parentKeys = Set()
     feederKeys = Set()
     for key in keys:
@@ -245,7 +266,7 @@ class Importable:
     n = len(_l)
     _l.extend([(key, value + n) for (key, value) in parentD.items()])
     D = dict(_l)
-    return ( lambda f: F(lambda selfAndPV
+    return ( lambda f: F(lambda selfAndPV:
       selfAndPV.forwardOnIth(0, T).forwardFollow(lambda selfAndFV_and_PV:
         # And([ And([ self', feederValues])
         #     , parentValues ])
@@ -258,7 +279,7 @@ class Importable:
 
   def importKeySetToChild(self, keys):
     assert(self._importingIndex != -1)
-    (D, F) = self.importKeySet(keys)
+    (F, D) = self.importKeySet(keys)
     return ( lambda f: F(lambda selfAndXs:
       selfAndXs.forwardImportToContainedConj(1, 0, self._importingIndex).forwardFollow(lambda x:
         x.forwardUnsingleton().forwardFollow(lambda x:
@@ -276,7 +297,8 @@ class Importable:
 # note: The fact that fantasia has a function that does this is RIDICULOUS and intuitively
 #       ugly.   Consider finding a clever way to make it unnecessary.
 def _applyPerm(d, keys, conj):
-  return _applyPermPartial(d, keys, 0, conj)
+  res = _applyPermPartial(d, keys, 0, conj)
+  return res
 
 # conj: an enriched conj of length N
 # n: an integer in [0,N]
@@ -302,11 +324,7 @@ def _applyPermPartial(d, keys, n, conj):
           _applyPermPartial(D, keys, n + 1, x))
 
 def _associateAllButLast(conj):
-  assert(conj.__class__ == Conj)
-  assert(conj.type() == andType)
-  values = list(conj.values())
-  last = values.pop(-1)
-  return AssociateOut(And([And(values), last]), 0)
+  return conj.forwardAssociateOut(0, len(conj.values()) - 1)
 
 class ClaimsUse:
   # keys, a list of keys into the claims() dictionaries returned by
@@ -328,7 +346,7 @@ class ClaimsUse:
   # key: the key for a new claim.
   # f: a function from And([the ultimate tgt of self, lookup(key)]) to an arrow leaving it.
   # return: a new ClaimsUse which gets all the keys, "applies" self, and then "applies" f.
-  def followWithNewClaim(self, key, f):
+  def forwardFollowWithNewClaim(self, key, f):
     keys = list(self._keys)
     keys.append(key)
     return ClaimsUse(keys, lambda x:
@@ -355,10 +373,11 @@ def continueImportingOnOnIthFollow(formula, i, f):
   if formula.type() == andType:
     return (lambda parent: f(formula.values()[i])(Importable( formula = formula
                                                             , parent = parent
-                                                            , index = i)))
+                                                            , importingIndex = i)))
   else:
     return (lambda parent: f(formula.values()[i])(Intermediate(formula = formula
-                                                              , parent = parent)))
+                                                              , parent = parent
+                                                              , index = i)))
 
 # formula: a Quantifier formula.
 # i: an index into formula.values()
