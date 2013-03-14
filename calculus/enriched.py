@@ -50,6 +50,11 @@ class Logic(markable.Markable):
   def transposeToNot(self):
     raise Exception("Abstract Superclass")
 
+  # return an arrow that does no real work but makes the formula a bit "cleaner".
+  # subclasses are welcome to override this method in reasonable ways.
+  def forwardClean(self):
+    return self.identity()
+
   # return a claim dual to self.
   # note: self.transpose().transpose() must be equal to self.
   def transpose(self):
@@ -199,6 +204,15 @@ class Conj(Logic):
 
   def __repr__(self):
     return "( %s %s )"%(self.type(), self.values())
+
+  def forwardClean(self):
+    t = self.identity()
+    for i in range(len(self.values()))[::-1]:
+      t = t.forwardFollow(lambda x:
+          x.forwardOnIthFollow(i, lambda x:
+            x.forwardClean()).forwardFollow(lambda x:
+              _maybeRemoveUnit(x, i)))
+    return t
 
   def forwardUnsingleton(self):
     assert(len(self.values()) == 1)
@@ -560,6 +574,10 @@ class Quantifier(Logic):
     l = self.generateMethodNamesForList('variables', variables)
     l.append('body')
     self.initMarkable(l)
+
+  def forwardClean(self):
+    return self.forwardOnBodyFollow(lambda x:
+        x.forwardClean())
 
   def freeVariables(self):
     res = self.body().freeVariables()

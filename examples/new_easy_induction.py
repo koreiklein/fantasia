@@ -120,6 +120,9 @@ transition = transition.forwardFollow(lambda x:
         importables.continueImportingOnBodyFollow(q, lambda x:
           importables.finishImporting(x, about.about(q.variables(), 0))))))
 
+transition = transition.forwardFollow(lambda x:
+    x.forwardClean())
+
 #transition = transition.forwardFollow(lambda x:
 #    x.forwardStartPushingPair(0, 1, lambda x:
 #      x.forwardPushPairConj(1, lambda x:

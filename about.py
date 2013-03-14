@@ -8,7 +8,6 @@ from importables import ClaimsUse
 # finishImporting (in importables).
 def about(variables, desiredIndex = None):
   def importableToUse(m):
-    print m.claims()
     (known, potential) = _knownAndFunctionClaims(variables, m.claims())
     res = [] # A list of pairs, (a ClaimsUse object, the claim it concludes)
     for (key, claim) in potential:
