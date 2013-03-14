@@ -312,7 +312,7 @@ class ClaimsUse:
   # keys, a list of keys into the claims() dictionaries returned by
   #   Feeders, Intermediates, and Importables
   # arrows has src And([lookup(key) for key in keys]), and an arbitrary tgt.
-  def __init__(self, keys, arrowF):
+  def __init__(self, keys, arrowF = lambda x: x.identity()):
     self._keys = keys
     self._arrowF = arrowF
 
@@ -334,4 +334,47 @@ class ClaimsUse:
     return ClaimsUse(keys, lambda x:
         _associateAllButLast(x).forwardFollow(lambda x:
           x.forwardOnIthFollow(0, self._arrowF)).forwardFollow(f))
+
+# define a critical to be either an Importable or an Intermediate.
+
+# formula: a Quantifier formula
+# f: a function taking the body of formula to a function taking m's parent
+#      critical to a critical m.
+# return: a function returning a critical m when given m's parent critical.
+def continueImportingOnBodyFollow(formula, f):
+  assert(formula.__class__ == Quantifier)
+  return (lambda parent: f(formula.body())(Intermediate(formula = formula, parent = parent)))
+
+# formula: a Conj formula
+# i: an index into formula.values()
+# f: a function taking the ith child of formula to a function taking a parent
+#      critical to a critical.
+# return: a function returning the final critical m when given a parent critical.
+def continueImportingOnOnIthFollow(formula, i, f):
+  assert(formula.__class__ == Conj)
+  if formula.type() == andType:
+    return (lambda parent: f(formula.values()[i])(Importable( formula = formula
+                                                            , parent = parent
+                                                            , index = i)))
+  else:
+    return (lambda parent: f(formula.values()[i])(Intermediate(formula = formula
+                                                              , parent = parent)))
+
+# formula: a Quantifier formula.
+# i: an index into formula.values()
+# f: a function taking the ith child of formula to a function taking a parent
+#      critical to a critical.
+# return: a top level critical.
+def beginImportingOnIthFollow(formula, i, f):
+  assert(formula.__class__ == Conj)
+  assert(formula.type() == andType)
+  return continueImportingOnOnIthFollow(formula, i, f)(None)
+
+def finishImporting(formula, importableToUseF):
+  def res(parent):
+    m = Importable(formula = formula, parent = parent)
+    return m.use(importableToUseF(m))
+  return res
+
+# TODO(koreiklein): The descriptions for the above 4 functions are TERRIBLE.  Fix them.
 
