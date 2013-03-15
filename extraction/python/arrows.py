@@ -69,6 +69,8 @@ def arrowToProgram(arrow):
     return repOnLeft(arrow)
   elif arrow.__class__ == basic.OnRight:
     return repOnRight(arrow)
+  elif arrow.__class__ == basic.OnConj:
+    return repOnConj(arrow)
   elif arrow.__class__ == basic.OnAlways:
     return repOnAlways(arrow)
   elif arrow.__class__ == basic.OnNot:
@@ -207,6 +209,10 @@ def repOnRight(arrow):
         B = AOrB[1]
         return notBAndNotBprime( (B, lambda Bprime: notAOrBprime( (1, Bprime) )))
     return f
+
+def repOnConj(arrow):
+  # A % B ---> A' % B'
+  return arrowToProgram(arrow.leftArrow().forwardCompose(arrow.rightArrow()))
 
 def repOnAlways(arrow):
   # Since the objectReps are the same, the arrowReps can be as well.

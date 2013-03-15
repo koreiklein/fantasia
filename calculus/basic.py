@@ -565,6 +565,10 @@ class PrimitiveArrow:
   def __repr__(self):
     raise Exception("Abstract superclass.")
 
+  # Return a more compact arrow than self, with the same src and tgt, but of a simpler nature.
+  def compress(self):
+    return self
+
   def asString(self, variance):
     return repr(self)
 
@@ -986,6 +990,9 @@ class OnBody(FunctorialArrow):
   def asString(self, variance):
     return functorToString("onBody", self.arrow(), variance)
 
+  def compress(self):
+    return OnBody( arrow = self._arrow.compress(), var = self.var(), type = self.type())
+
   def arrow(self):
     return self._arrow
   def var(self):
@@ -1006,6 +1013,9 @@ class OnLeft(FunctorialArrow):
 
   def asString(self, variance):
     return functorToString("onLeft(%s)"%(self.type(),), self.arrow(), variance)
+
+  def compress(self):
+    return OnLeft(right = self.right(), arrow = self.arrow().compress(), type = self.type())
 
   def right(self):
     return self._right
@@ -1028,6 +1038,9 @@ class OnRight(FunctorialArrow):
   def asString(self, variance):
     return functorToString("onRight(%s)"%(self.type(),), self.arrow(), variance)
 
+  def compress(self):
+    return OnRight(left = self.left(), arrow = self.arrow().compress(), type = self.type())
+
   def left(self):
     return self._left
   def arrow(self):
@@ -1040,6 +1053,24 @@ class OnRight(FunctorialArrow):
   def tgt(self):
     return Conj(type = self.type(), right = self.arrow().tgt(), left = self.left())
 
+class OnConj:
+  def __init__(self, type, leftArrow, rightArrow):
+    self._type = type
+    self._leftArrow = leftArrow
+    self._rightArrow = rightArrow
+
+  def type(self):
+    return self._type
+  def leftArrow(self):
+    return self._leftArrow
+  def rightArrow(self):
+    return self._rightArrow
+
+  def src(self):
+    return Conj(type = self.type(), left = self.leftArrow().src(), right = self.rightArrow().src())
+  def tgt(self):
+    return Conj(type = self.type(), left = self.leftArrow().tgt(), right = self.rightArrow().tgt())
+
 class OnAlways(FunctorialArrow):
   def __init__(self, arrow):
     self._arrow = arrow
@@ -1049,6 +1080,9 @@ class OnAlways(FunctorialArrow):
 
   def arrow(self):
     return self._arrow
+
+  def compress(self):
+    return OnAlways(self.arrow().compress())
 
   def src(self):
     return Always(self.arrow().src())
@@ -1061,6 +1095,9 @@ class OnNot(FunctorialArrow):
 
   def asString(self, variance):
     return functorToString("onNot", self.arrow(), not variance)
+
+  def compress(self):
+    return OnNot(self.arrow().compress())
 
   def arrow(self):
     return self._arrow
@@ -1096,7 +1133,6 @@ class Composite(PrimitiveArrow):
   # construct their composite arrow.
   def __init__(self, left, right):
     left.tgt().assertEqual(right.src())
-    assert(left.tgt() == right.src())
     if left.tgt() != right.src():
       raise Exception(("Failed to compose arrows since src and tgt are"
         + " unequal\n\n\nsrc = %s\n\ntgt= %s\n")%(left.tgt(), right.src()))
@@ -1109,6 +1145,60 @@ class Composite(PrimitiveArrow):
       return "%s\n%s"%(leftString, rightString)
     else:
       return "%s\n%s"%(rightString, leftString)
+
+  def compress(self):
+    left = self.left().compress()
+    right = self.right().compress()
+    if left.__class__ == Identity:
+      return right
+    elif right.__class__ == Identity:
+      return left
+    elif left.__class__ == Composite:
+      return left.left().forwardCompose(Composite(left.right(), right).compress())
+    elif right.__class__ == Composite:
+      return Composite(left, right.left()).compress().forwardCompose(right.right())
+    else:
+      if left.__class__ == OnConj and right.__class__ == OnConj:
+        return OnConj(left.type()
+                     , left.leftArrow().forwardCompose(right.leftArrow()).compress()
+                     , left.rightArrow().forwardCompose(right.rightArrow()).compress())
+      elif left.__class__ == OnConj and right.__class == OnLeft:
+        return OnConj( left.type()
+                     , left.leftArrow().forwardCompose(right.arrow()).compress()
+                     , left.rightArrow())
+      elif left.__class__ == OnConj and right.__class == OnRight:
+        return OnConj( left.type()
+                     , left.leftArrow()
+                     , left.rightArrow().forwardCompose(right.arrow()).compress())
+      elif left.__class__ == OnLeft and right.__class__ == OnConj:
+        return OnConj( left.type()
+                     , left.arrow().forwardCompose(right.leftArrow()).compress()
+                     , right.rightArrow())
+      elif left.__class__ == OnRight and right.__class__ == OnConj:
+        return OnConj( left.type()
+                     , right.leftArrow()
+                     , left.arrow().forwardCompose(right.rightArrow()).compress())
+      elif left.__class__ == OnLeft and right.__class__ == OnLeft:
+        assert(left.right() == right.right())
+        return OnLeft( type = left.type(),
+            right = left.right(),
+            arrow = left.arrow().forwardCompose(right.arrow()))
+      elif left.__class__ == OnRight and right.__class__ == OnRight:
+        assert(left.left() == right.left())
+        return OnRight( type = left.type(),
+            left = left.left(),
+            arrow = left.arrow().forwardCompose(right.arrow()))
+      elif left.__class__ == OnBody and right.__class__ == OnBody:
+        assert(left.type() == right.type())
+        assert(left.var() == right.var())
+        return OnBody(type = left.type(), var = left.var(),
+            arrow = left.arrow().forwardCompose(right.arrow()).compress())
+      elif left.__class__ == OnNot and right.__class__ == OnNot:
+        return OnNot(left.arrow().backwardCompose(right.arrow()).compress())
+      elif left.__class__ == OnAlways and right.__class__ == OnAlways:
+        return OnAlways(left.arrow().forwardCompose(right.arrow()).compress())
+      else:
+        return self
 
   def __repr__(self):
     return self.asString(True)
