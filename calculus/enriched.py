@@ -55,6 +55,11 @@ class Logic(markable.Markable):
   def forwardClean(self):
     return self.identity()
 
+  # return an arrow may aggresively try to make the formula "cleaner".
+  # subclasses are welcome to override this method in reasonable ways.
+  def forwardHeavyClean(self):
+    return self.identity()
+
   # return a claim dual to self.
   # note: self.transpose().transpose() must be equal to self.
   def transpose(self):
@@ -234,6 +239,27 @@ class Conj(Logic):
             return x.forwardForgetAllBut(i)
       return x.identity()
     return t.forwardFollow(_tryFalse)
+
+  def forwardHeavyClean(self):
+    t = self.identity()
+    for i in range(len(self.values()))[::-1]:
+      def _maybeAssociateIn(i, x):
+        if x.values()[i].__class__ == Conj and x.values()[i].type() == self.type():
+          return x.forwardAssociateIn(i)
+        else:
+          return x.identity()
+      t = t.forwardFollow(lambda x:
+          x.forwardOnIthFollow(i, lambda x:
+            x.forwardHeavyClean())).forwardFollow(lambda x:
+                _maybeAssociateIn(i, x))
+    def _maybeUnsingleton(x):
+      if len(x.values()) == 1:
+        return x.forwardUnsingleton()
+      else:
+        return x.identity()
+    return t.forwardFollow(_maybeUnsingleton).forwardFollow(lambda x:
+        x.forwardClean())
+
 
   def forwardForgetAllBut(self, i):
     assert(isEnrichedFalse(self.values()[i]))
@@ -621,6 +647,31 @@ class Quantifier(Logic):
     return self.forwardOnBodyFollow(lambda x:
         x.forwardClean()).forwardFollow(f)
 
+  def forwardHeavyClean(self):
+    t = self.forwardOnBodyFollow(lambda x:
+        x.forwardHeavyClean())
+    body = t.tgt().body()
+    joined = 0
+    if body.__class__ == Conj and body.type() == andType:
+      for i in range(len(body.values()))[::-1]:
+        if body.values()[i].__class__ == Quantifier and body.values()[i].type() == self.type():
+          joined += 1
+          t = t.forwardFollow(lambda x:
+              x.forwardOnBodyFollow(lambda x:
+                x.forwardConjQuantifier(i)).forwardFollow(lambda x:
+                  x.forwardJoin()))
+    def _maybeRemoveQuantifier(x):
+      if len(x.variables()) == 0:
+        return x.forwardRemoveQuantifier()
+      else:
+        return x.identity()
+    if joined > 0:
+      t = t.forwardFollow(lambda x:
+          x.forwardOnBodyFollow(lambda x:
+            x.forwardHeavyClean()))
+    return t.forwardFollow(_maybeRemoveQuantifier)
+
+
   def forwardTotallyUnusedQuantifier(self):
     t = self.identity()
     for i in range(len(self.variables())):
@@ -873,6 +924,11 @@ class Identity(PrimitiveArrow):
     return self._value
   def translate(self):
     return self._value.translate().identity()
+
+  def forwardFollow(self, f):
+    return f(self.src())
+  def backwardFollow(self, f):
+    return f(self.tgt())
 
 class Distribute(PrimitiveArrow):
   # Import claim i of the list into each clause of the OR at spot j.
@@ -1670,7 +1726,11 @@ class OnNot(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnNot(self._arrow.compress(), compressed = True)
+    kid = self._arrow.compress()
+    if kid.__class__ == identity:
+      return self.src().identity()
+    else:
+      return OnNot(kid, compressed = True)
 
 class OnIth(FunctorialArrow):
   def __init__(self, conj, index, arrow, compressed = False):
@@ -1695,7 +1755,10 @@ class OnIth(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnIth(self._src, self.index(), self.arrow().compress(), compressed = True)
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnIth(self._src, self.index(), kid, compressed = True)
 
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
@@ -1730,7 +1793,10 @@ class OnBody(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnBody(self.type(), self.variables(), self.arrow().compress(), compressed = True)
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnBody(self.type(), self.variables(), kid, compressed = True)
 
   def src(self):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().src())
@@ -1757,6 +1823,11 @@ def _quantifierWithin(basicQuantifier, n, f):
 
 # Compose any two arrows between enriched objects.
 def compose(left, right):
+  if left.__class__ == Identity:
+    return right
+  elif right.__class__ == Identity:
+    return left
+
   values = []
   if left.__class__ == Composite:
     values.extend(left.values())
