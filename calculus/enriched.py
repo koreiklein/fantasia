@@ -1726,7 +1726,11 @@ class OnNot(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnNot(self._arrow.compress(), compressed = True)
+    kid = self._arrow.compress()
+    if kid.__class__ == identity:
+      return self.src().identity()
+    else:
+      return OnNot(kid, compressed = True)
 
 class OnIth(FunctorialArrow):
   def __init__(self, conj, index, arrow, compressed = False):
@@ -1751,7 +1755,10 @@ class OnIth(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnIth(self._src, self.index(), self.arrow().compress(), compressed = True)
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnIth(self._src, self.index(), kid, compressed = True)
 
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
@@ -1786,7 +1793,10 @@ class OnBody(FunctorialArrow):
   def compress(self):
     if self._compressed:
       return self
-    return OnBody(self.type(), self.variables(), self.arrow().compress(), compressed = True)
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnBody(self.type(), self.variables(), kid, compressed = True)
 
   def src(self):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().src())
@@ -1813,6 +1823,11 @@ def _quantifierWithin(basicQuantifier, n, f):
 
 # Compose any two arrows between enriched objects.
 def compose(left, right):
+  if left.__class__ == Identity:
+    return right
+  elif right.__class__ == Identity:
+    return left
+
   values = []
   if left.__class__ == Composite:
     values.extend(left.values())
