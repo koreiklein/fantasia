@@ -207,12 +207,47 @@ class Conj(Logic):
 
   def forwardClean(self):
     t = self.identity()
+    def g(x):
+      if self.type() == parType:
+        if x.__class__ == Conj and x.type() == andType:
+          values = x.values()
+          n = len(values)
+          for j in range(n):
+            notClaim = values[j]
+            if notClaim.__class__ == Not:
+              for i in range(n):
+                if i != j:
+                  claim = values[i]
+                  if claim.translate() == notClaim.value().translate():
+                    return x.forwardApply(i, j)
+      return x.identity()
     for i in range(len(self.values()))[::-1]:
       t = t.forwardFollow(lambda x:
           x.forwardOnIthFollow(i, lambda x:
-            x.forwardClean()).forwardFollow(lambda x:
+            x.forwardClean().forwardFollow(g)).forwardFollow(lambda x:
               _maybeRemoveUnit(x, i)))
-    return t
+    def _tryFalse(x):
+      assert(x.__class__ == Conj)
+      if x.type() in [andType, withType]:
+        for i in range(len(x.values())):
+          if isEnrichedFalse(x.values()[i]):
+            return x.forwardForgetAllBut(i)
+      return x.identity()
+    return t.forwardFollow(_tryFalse)
+
+  def forwardForgetAllBut(self, i):
+    assert(isEnrichedFalse(self.values()[i]))
+    assert(0 <= i)
+    assert(i < len(self.values()))
+    t = self.identity()
+    for j in range(i + 1, len(self.values())):
+      t = t.forwardFollow(lambda x:
+          x.forwardForget(j))
+    for j in range(0, i):
+      t = t.forwardFollow(lambda x:
+          x.forwardForget(j))
+    return t.forwardFollow(lambda x:
+        x.forwardUnsingleton())
 
   def forwardUnsingleton(self):
     assert(len(self.values()) == 1)
@@ -559,10 +594,12 @@ false = Conj(type = orType, values = [])
 #    leaves everything the same      otherwise
 def _maybeRemoveUnit(conj, i):
   value = conj.values()[i]
-  if value.__class__ == Conj and value.type() == conj.type() and len(value.values()) == 0:
-    return conj.forwardAssociateIn(i)
-  else:
-    return conj.identity()
+  if value.__class__ == Conj and len(value.values()) == 0:
+    if value.type() == conj.type():
+      return conj.forwardAssociateIn(i)
+    elif conj.type() == parType and isEnrichedFalse(value):
+      return conj.forwardRemoveUnit(i)
+  return conj.identity()
 
 
 class Quantifier(Logic):
@@ -576,8 +613,21 @@ class Quantifier(Logic):
     self.initMarkable(l)
 
   def forwardClean(self):
+    def f(x):
+      if isEnrichedFalse(x.body()):
+        return x.forwardTotallyUnusedQuantifier()
+      else:
+        return x.identity()
     return self.forwardOnBodyFollow(lambda x:
-        x.forwardClean())
+        x.forwardClean()).forwardFollow(f)
+
+  def forwardTotallyUnusedQuantifier(self):
+    t = self.identity()
+    for i in range(len(self.variables())):
+      t = t.forwardFollow(lambda x:
+          x.forwardUnusedQuantifier(0))
+    return t.forwardFollow(lambda x:
+        x.forwardRemoveQuantifier())
 
   def freeVariables(self):
     res = self.body().freeVariables()
@@ -609,8 +659,8 @@ class Quantifier(Logic):
         body = values[index])
     return ConjQuantifier(conj = Conj(type = self.body().type(), values = values), index = index)
 
-  def forwardUnusedExistential(self, index):
-    return UnusedExistential(self, index)
+  def forwardUnusedQuantifier(self, index):
+    return UnusedQuantifier(self, index)
 
   def forwardJoin(self):
     return QuantifierJoin(self)
@@ -965,7 +1015,7 @@ class ImportToClause(PrimitiveArrow):
               x.forwardOnRightFollow(lambda x:
                 x.forwardIntroduceTrue().forwardFollow(lambda x:
                   x.forwardCommute())))).forwardFollow(lambda x:
-          _toAnd(x, len(self.values[self._j].values()) - (self._k + 1)))).forwardCompose(
+          _toAnd(x, len(self._values[self._j].values()) - (self._k + 1)))).forwardCompose(
               self.tgt().backwardShift(index = J, amount = -J).translate())
     else:
       return _onJandI(self.src(), self._j, self._i, lambda jAndi:
@@ -1185,7 +1235,7 @@ class Singleton(PrimitiveArrow):
     else:
       raise Exception("Unrecognized self.type()")
 
-class UnusedExistential(PrimitiveArrow):
+class UnusedQuantifier(PrimitiveArrow):
   def __init__(self, quantifier, index):
     assert(quantifier.__class__ == Quantifier)
     assert(quantifier.type() == existsType)
@@ -1207,7 +1257,7 @@ class UnusedExistential(PrimitiveArrow):
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda x:
-        x.forwardUnusedExistential())
+        x.forwardUnusedQuantifier())
 
 class QuantifierJoin(PrimitiveArrow):
   def __init__(self, quantifier):
@@ -1259,6 +1309,8 @@ class AssociateIn(PrimitiveArrow):
     assert(conj.values()[index].type() == conj.type())
     self._src = conj
     self._index = index
+    assert(self.src().translate() == self.translate().src())
+    assert(self.tgt().translate() == self.translate().tgt())
 
   def index(self):
     return self._index
@@ -1280,7 +1332,10 @@ class AssociateIn(PrimitiveArrow):
       basicObject = self.src().translate()
       assert(basicObject.__class__ == basic.Not)
       return basicObject.forwardOnNot(
-          _backwardWithin(basicObject.value(), stationary, _backwardAssociate))
+          _backwardWithin(basicObject.value(), stationary, lambda x:
+            x.backwardOnRightFollow(lambda x:
+              x.backwardIntroduceDoubleDual()).backwardFollow(lambda x:
+            _backwardAssociate(x))))
     else:
       return _forwardWithin(self.src().translate(), stationary, _forwardAssociate)
 
@@ -1314,7 +1369,7 @@ def isEnrichedTrue(x):
   return (x.__class__ == Conj and len(x.values()) == 0 and x.type() == andType
       or x.__class__ == Not and isEnrichedTrue(x.value()))
 def isEnrichedFalse(x):
-  return (x.__class__ == Conj and len(x.values()) == 0 and x.type() == orType
+  return (x.__class__ == Conj and len(x.values()) == 0 and x.type() in [orType, parType]
       or x.__class__ == Not and isEnrichedTrue(x.value()))
 
 # Use this class only for conj with type in [orType, parType]

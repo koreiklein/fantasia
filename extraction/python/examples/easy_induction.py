@@ -4,7 +4,7 @@ from extraction.python.arrows import curry_howard
 from extraction.python import utils
 from extraction.python.lib import natural
 
-from examples.easy_induction import t
+from examples.new_easy_induction import t
 
 starting_claimRep = utils.repAnd(
     [ natural.increasingRep

@@ -213,8 +213,8 @@ transition = transition.forwardFollow(lambda x:
 
 transition = transition.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda x:
-      x.forwardUnusedExistential(0).forwardFollow(lambda x:
-        x.forwardUnusedExistential(0).forwardFollow(lambda x:
+      x.forwardUnusedQuantifier(0).forwardFollow(lambda x:
+        x.forwardUnusedQuantifier(0).forwardFollow(lambda x:
           x.forwardRemoveQuantifier()))))
 
 transition = transition.forwardFollow(lambda x:

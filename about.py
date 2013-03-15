@@ -29,11 +29,10 @@ def _tryAllPerms(variables, key, claim, known):
     claimsUse = ClaimsUse(Set([key])).forwardFollow(lambda x:
         x.forwardUnsingleton().forwardFollow(lambda x:
           x.forwardEliminateAll(p)))
-          #x.forwardEliminateAll(p)))
     # Try to eliminate all the clauses of the par but one.
     claimsUseForClause = _tryEliminateClauses(par, claimsUse, known)
     if claimsUseForClause is not None:
-      res.append( (claimsUseForClause, _uniqueCovariantClaim(par)) )
+      res.append(claimsUseForClause)
   for p in _perms(variables):
     _g(p)
   return res
@@ -41,22 +40,41 @@ def _tryAllPerms(variables, key, claim, known):
 # par: a par with a single clause C which is not an enriched Not.
 # claimsUse: a ClaimsUse object that produces par.
 # known: a list of (key, claim) pairs which claimsUse can import.
-# return: a ClaimsUse object that concludes C, or None if doing so is too difficult.
+# return: (a ClaimsUse object that concludes C, C)
+#         , or None if doing so is too difficult.
 def _tryEliminateClauses(par, claimsUse, known):
-  for clauseIndex in range(len(par.values())):
+  eliminated = 0
+  uneliminatedIndices = []
+  for clauseIndex in range(len(par.values()))[::-1]:
     clause = par.values()[clauseIndex]
     if clause.__class__ == Not:
-      claimsUse = _tryEliminateOneClause(par, clauseIndex, clause, claimsUse, known)
-      if claimsUse is None:
-        return None
-  return claimsUse.forwardFollow(lambda x: x.forwardUnsingleton())
+      maybeClaimsUse = _tryEliminateOneClause(par, clauseIndex, clause, claimsUse, known)
+      if maybeClaimsUse is not None:
+        eliminated += 1
+        claimsUse = maybeClaimsUse
+      else:
+        uneliminatedIndices.append(clauseIndex)
+    else:
+      uneliminatedIndices.append(clauseIndex)
+  if eliminated > 0:
+    C = Par( [ par.values()[index] for index in uneliminatedIndices ] )
+    if eliminated == len(par.values()) - 1:
+      return (claimsUse.forwardFollow(lambda x: x.forwardUnsingleton()), C.values()[0])
+    else:
+      return (claimsUse, C)
+  else:
+    # Since we couldn't eliminate any of the clauses in the par, we assume our
+    # user would prefer we didn't offer it as an option for something to import.
+    return None
 
 def _tryEliminateOneClause(par, clauseIndex, clause, claimsUse, known):
+  def _g(key, claim):
+    return claimsUse.forwardFollowWithNewClaim(key, lambda parAndClaim1:
+        parAndClaim1.forwardRemoveFromPar(1, 0, clauseIndex).forwardFollow(lambda x:
+          x.forwardUnsingleton()))
   for (key, claim) in known:
     if claim.translate() == clause.value().translate():
-      return claimsUse.forwardFollowWithNewClaim(key, lambda parAndClaim1:
-          parAndClaim1.forwardRemoveFromPar(1, 0, clauseIndex).forwardFollow(lambda x:
-            x.forwardUnsingleton()))
+      return _g(key, claim)
   return None
 
 def _knownAndFunctionClaims(variables, claims):
@@ -92,8 +110,7 @@ def _functionOf(variables, claim):
           and claim.type() == forallType
           and len(claim.variables()) == len(variables)
           and claim.body().__class__ == Conj
-          and claim.body().type() == parType
-          and _uniqueCovariantClaim(claim.body()) is not None)
+          and claim.body().type() == parType)
 
 def _perms(xs):
   return _perms_(0, xs)

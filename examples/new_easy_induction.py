@@ -41,38 +41,14 @@ transition = transition.forwardFollow(lambda claim:
         x.forwardOnBodyFollow(lambda x:
           x.forwardAssociateIn(0)))))
 
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda quantifier:
-        quantifier.forwardOnBodyFollow(lambda x:
-          x.forwardOnIthFollow(3, lambda x:
-            x.forwardEliminate(0, quantifier.variables()[0]))))))
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda quantifier:
-        quantifier.forwardOnBodyFollow(lambda x:
-          x.forwardOnIthFollow(3, lambda x:
-            x.forwardRemoveQuantifier())))))
+transition = transition.forwardFollow(lambda x:
+    importables.beginImportingOnIthFollow(x, 1, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 1, lambda q:
+        importables.continueImportingOnBodyFollow(q, lambda x:
+          importables.finishImporting(x, about.about(q.variables(), 1))))))
 
 transition = transition.forwardFollow(lambda x:
-    x.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardStartPushingPair(0, 3, lambda x:
-            x.forwardPushPairConj(0, lambda x:
-              x.forwardPushPairNot(lambda x:
-                x.backwardPushPairExport())).forwardFollow(lambda x:
-                  x.forwardRemoveUnit(0)))))))
-
-
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardOnIthFollow(2, lambda x:
-            x.forwardUnsingleton())))))
+    x.forwardClean())
 
 transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
@@ -87,32 +63,9 @@ transition = transition.forwardFollow(lambda claim:
 
 transition = transition.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda q:
-        q.forwardOnBodyFollow(lambda x:
-          x.forwardOnIthFollow(1, lambda x:
-            x.forwardEliminate(0, q.variables()[1]).forwardFollow(lambda x:
-              x.forwardRemoveQuantifier()))))))
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardOnBodyFollow(lambda x:
-          x.forwardAssociateIn(2).forwardFollow(lambda x:
-          x.forwardImportToClause(2, 1, 0).forwardFollow(lambda x:
-            x.forwardOnIthFollow(1, lambda x:
-              x.forwardOnIthFollow(0, lambda x:
-                x.forwardApply(1, 0)).forwardFollow(lambda x:
-              x.forwardRemoveUnit(0)))))))))
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardImportToClause(2, 1, 0).forwardFollow(lambda x:
-            x.forwardOnIthFollow(1, lambda x:
-              x.forwardOnIthFollow(0, lambda x:
-                x.forwardApply(1, 0)).forwardFollow(lambda x:
-              x.forwardRemoveUnit(0))))))))
+          x.forwardAssociateIn(2)))))
 
 transition = transition.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 1, lambda x:
@@ -123,117 +76,77 @@ transition = transition.forwardFollow(lambda x:
 transition = transition.forwardFollow(lambda x:
     x.forwardClean())
 
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardStartPushingPair(0, 1, lambda x:
-#      x.forwardPushPairConj(1, lambda x:
-#        x.forwardPushPairQuantifier(lambda x:
-#          x.forwardAssociateIn(0)).forwardFollow(lambda q:
-#            q.forwardOnBodyFollow(lambda x:
-#              x.forwardOnIthFollow(3, lambda x:
-#                x.forwardEliminate(1, q.variables()[1]).forwardFollow(lambda x:
-#                  x.forwardEliminate(0, q.variables()[0]).forwardFollow(lambda x:
-#                    x.forwardRemoveQuantifier()))))))))
+def zero_and(rest):
+  res = [natural.zero]
+  res.extend(rest)
+  return res
 
-#transition = transition.forwardFollow(lambda claim:
-#    claim.forwardImportToClause(0, 1, 1).forwardFollow(lambda x:
-#      x.forwardOnIthFollow(0, lambda x:
-#        x.forwardOnIthFollow(1, lambda x:
-#          x.forwardConjQuantifier(0).forwardFollow(lambda q:
-#            q.forwardOnBodyFollow(lambda x:
-#              x.forwardAssociateIn(0).forwardFollow(lambda x:
-#                x.forwardOnIthFollow(3, lambda x:
-#                  x.forwardEliminate(1, q.variables()[1]).forwardFollow(lambda x:
-#                    x.forwardEliminate(0, q.variables()[0]).forwardFollow(lambda x:
-#                      x.forwardRemoveQuantifier()))))))))))
+transition = transition.forwardFollow(lambda x:
+    importables.beginImportingOnIthFollow(x, 0, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 1, lambda q:
+        importables.continueImportingOnBodyFollow(q, lambda x:
+          importables.finishImporting(x, about.about(zero_and(q.variables()), 0))))))
 
-#transition = transition.forwardFollow(lambda x:
-#      x.forwardOnIthFollow(0, lambda x:
-#        x.forwardOnIthFollow(1, lambda x:
-#          x.forwardOnBodyFollow(lambda x:
-#            x.forwardImportToClause(2, 3, 0).forwardFollow(lambda x:
-#              x.forwardOnIthFollow(2, lambda x:
-#                x.forwardOnIthFollow(0, lambda x:
-#                  x.forwardApply(1, 0)).forwardFollow(lambda x:
-#                    x.forwardRemoveUnit(0).forwardFollow(lambda x:
-#                      x.forwardUnsingleton()))))))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardImportToClause(1, 0, 1).forwardFollow(lambda x:
-#      x.forwardOnIthFollow(0, lambda x:
-#        x.forwardOnIthFollow(1, lambda x:
-#          x.forwardConjQuantifier(0).forwardFollow(lambda x:
-#            x.forwardOnBodyFollow(lambda x:
-#              x.forwardAssociateIn(0)))))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardOnIthFollow(1, lambda q:
-#        q.forwardOnBodyFollow(lambda x:
-#          x.forwardOnIthFollow(3, lambda x:
-#            x.forwardEliminateMultiple(
-#              [natural.zero, q.variables()[0], q.variables()[1]]).forwardFollow(lambda x:
-#                x.forwardRemoveQuantifier()))))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardOnIthFollow(1, lambda x:
-#        x.forwardOnBodyFollow(lambda x:
-#          x.forwardRemoveFromPar(0, 3, 0).forwardFollow(lambda x:
-#            x.forwardRemoveFromPar(1, 2, 0).forwardFollow(lambda x:
-#              x.forwardOnIthFollow(1, lambda x:
-#                x.forwardUnsingleton())))))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(2, lambda x:
-#      x.forwardEliminate(0, natural.zero).forwardFollow(lambda x:
-#        x.forwardRemoveQuantifier())))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardRemoveFromPar(3, 2, 0).forwardFollow(lambda x:
-#      x.forwardOnIthFollow(2, lambda x:
-#        x.forwardUnsingleton())))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardRemoveFromPar(2, 0, 0))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardImportToClause(1, 0, 0)).forwardFollow(lambda x:
-#        x.forwardUnsingleton())
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardConjQuantifier(0).forwardFollow(lambda x:
-#        x.forwardOnBodyFollow(lambda x:
-#          x.forwardAssociateIn(0)))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda q:
-#      q.forwardOnBodyFollow(lambda x:
-#        x.forwardOnIthFollow(2, lambda x:
-#          x.forwardEliminateMultiple([natural.zero, q.variables()[1]]).forwardFollow(lambda x:
-#            x.forwardRemoveQuantifier())).forwardFollow(lambda x:
-#              x.forwardRemoveFromPar(1, 2, 0).forwardFollow(lambda x:
-#                x.forwardOnIthFollow(1, lambda x:
-#                  x.forwardUnsingleton()))))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardOnBodyFollow(lambda x:
-#        x.forwardOnIthFollow(0, lambda x:
-#          x.forwardUnsingleton()))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardOnBodyFollow(lambda x:
-#        x.forwardApply(1, 0))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardOnIthFollow(0, lambda x:
-#      x.forwardUnusedExistential(0).forwardFollow(lambda x:
-#        x.forwardUnusedExistential(0).forwardFollow(lambda x:
-#          x.forwardRemoveQuantifier()))))
-#
-#transition = transition.forwardFollow(lambda x:
-#    x.forwardRemoveUnit(0).forwardFollow(lambda x:
-#      x.forwardUnsingleton()))
+transition = transition.forwardFollow(lambda x:
+    x.forwardClean())
+
+transition = transition.forwardFollow(lambda x:
+    x.forwardOnIthFollow(0, lambda x:
+      x.forwardOnIthFollow(0, lambda x:
+        x.forwardSingleton(enriched.andType))))
+
+transition = transition.forwardFollow(lambda x:
+    importables.beginImportingOnIthFollow(x, 0, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 0, lambda x:
+        importables.finishImporting(x, about.about([natural.zero], 0)))))
+
+transition = transition.forwardFollow(lambda x:
+    x.forwardClean())
+
+transition = transition.forwardFollow(lambda x:
+    importables.beginImportingOnIthFollow(x, 0, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 0, lambda q:
+        importables.continueImportingOnBodyFollow(q, lambda x:
+          importables.finishImporting(x, about.about(zero_and(q.variables()[1:]), 0))))))
+
+transition = transition.forwardFollow(lambda x:
+    x.forwardClean())
+
+transition = transition.forwardFollow(lambda x:
+    importables.beginImportingOnIthFollow(x, 0, lambda x:
+      importables.continueImportingOnOnIthFollow(x, 0, lambda q:
+        importables.continueImportingOnBodyFollow(q, lambda x:
+          importables.finishImporting(x, about.about(q.variables()[1:], 0))))))
+
+transition = transition.forwardFollow(lambda x:
+    x.forwardClean())
+
+transition = transition.forwardFollow(lambda x:
+    x.forwardUnsingleton().forwardFollow(lambda x:
+      x.forwardUnsingleton()))
+
+# Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
+
+s = enriched.And([starting_claim, natural.exists_five])
+
+t = s.forwardOnIthFollow(0, lambda x: transition)
+t = t.forwardFollow(lambda x:
+    x.forwardConjQuantifier(1))
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardOnIthFollow(0, lambda x:
+        x.forwardEliminate(0, natural.five).forwardFollow(lambda x:
+          x.forwardRemoveQuantifier()))))
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardRemoveFromPar(1, 0, 0)))
+
+t = t.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardUnsingleton().forwardFollow(lambda x:
+        x.forwardUnsingleton())))
+
+e = t.tgt()
+ending_claim = e
+
 
