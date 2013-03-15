@@ -1655,8 +1655,9 @@ class Begin(FunctorialArrow):
 # Functorial Arrows
 
 class OnNot(FunctorialArrow):
-  def __init__(self, arrow):
+  def __init__(self, arrow, compressed):
     self._arrow = arrow
+    self._compressed = compressed
 
   def src(self):
     return Not(self._arrow.tgt())
@@ -1667,14 +1668,17 @@ class OnNot(FunctorialArrow):
     return self.src().translate().forwardOnNot(self._arrow.translate())
 
   def compress(self):
-    return OnNot(self._arrow.compress())
+    if self._compressed:
+      return self
+    return OnNot(self._arrow.compress(), compressed = True)
 
 class OnIth(FunctorialArrow):
-  def __init__(self, conj, index, arrow):
+  def __init__(self, conj, index, arrow, compressed = False):
     assert(conj.__class__ == Conj)
     self._src = conj
     self._arrow = arrow
     self._index = index
+    self._compressed = compressed
 
   def arrow(self):
     return self._arrow
@@ -1689,7 +1693,9 @@ class OnIth(FunctorialArrow):
     return Conj(type = self.src().type(), values = values)
 
   def compress(self):
-    return OnIth(self._src, self.index(), self.arrow().compress())
+    if self._compressed:
+      return self
+    return OnIth(self._src, self.index(), self.arrow().compress(), compressed = True)
 
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
@@ -1707,11 +1713,12 @@ class OnIth(FunctorialArrow):
           lambda basicObject: basicObject.forwardOnRight(self.arrow().translate()))
 
 class OnBody(FunctorialArrow):
-  def __init__(self, type, variables, arrow):
+  def __init__(self, type, variables, arrow, compressed = False):
     assert(type in basic.quantifierTypes)
     self._type = type
     self._variables = variables
     self._arrow = arrow
+    self._compressed = compressed
 
   def type(self):
     return self._type
@@ -1721,7 +1728,9 @@ class OnBody(FunctorialArrow):
     return self._arrow
 
   def compress(self):
-    return OnBody(self.type(), self.variables(), self.arrow().compress())
+    if self._compressed:
+      return self
+    return OnBody(self.type(), self.variables(), self.arrow().compress(), compressed = True)
 
   def src(self):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().src())
@@ -1762,14 +1771,17 @@ def compose(left, right):
   return Composite(values)
 
 class Composite(PrimitiveArrow):
-  def __init__(self, values):
+  def __init__(self, values, compressed = False):
     assert(len(values) > 0)
     self._values = values
+    self._compressed = compressed
 
   def values(self):
     return self._values
 
   def compress(self):
+    if self._compressed:
+      return self
     compressedValues = [ value.compress() for value in self.values() ]
     nonIdentityValues = [ value for value in compressedValues if value.__class__ != Identity ]
     if len(nonIdentityValues) == 0:
@@ -1794,7 +1806,7 @@ class Composite(PrimitiveArrow):
           else:
             xs = [x]
             xs.extend(values[2:])
-            return Composite(xs)
+            return Composite(xs, compressed = True)
 
   def translate(self):
     res = self.values()[0].translate()
@@ -1810,16 +1822,20 @@ class Composite(PrimitiveArrow):
 class OnValues:
   # conj: a Conj
   # arrows: a list of (index, arrow) pairs where arrow can be applied to conj.values()[index]
-  def __init__(self, conj, arrows):
+  def __init__(self, conj, arrows, compressed = False):
     self._conj = conj
     self._arrows = arrows
+    self._compressed = compressed
 
   def arrows(self):
     return self._arrows
 
   def compress(self):
+    if self._compressed:
+      return self
     return OnValues(self._conj,
-        [ (index, arrow.compress()) for (index, arrow) in self.arrows() ])
+        [ (index, arrow.compress()) for (index, arrow) in self.arrows() ],
+        compressed = True)
 
   def type(self):
     return self._conj.type()

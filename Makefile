@@ -7,3 +7,6 @@ all:
 
 clean:
 	find . -name '*.pyc' | xargs rm -f
+
+profile:
+	python profile.py > /tmp/fantasia_profile.txt
