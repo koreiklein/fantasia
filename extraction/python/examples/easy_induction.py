@@ -26,7 +26,7 @@ def test():
   #       v                         v                                  v
   #     sRep ---------------------tRep----------------------------->> eRep
   sRep = utils.repAnd([starting_claimRep, natural.exists_fiveRep])
-  tRep = curry_howard(t.translate())
+  tRep = curry_howard(t.translate().compress())
   eRep = tRep(sRep)
 
   print "ending claim is represented by:"
