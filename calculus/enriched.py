@@ -1868,6 +1868,11 @@ def _compressTwo(a, b):
     else:
       arrows[a.index()] = a.arrow()
     return OnValues(a.src(), arrows.items())
+  elif a.__class__ == OnIth and b.__class__ == OnValues:
+    if a.index() == b.index():
+      return OnIth(a.src(), a.index(), a.arrow().forwardCompose(b.arrow()).compress())
+    else:
+      return OnValues(a.src(), [ (a.index(), a.arrow()), (b.index(), b.arrow()) ])
   elif a.__class__ != b.__class__:
     return None
   else:
