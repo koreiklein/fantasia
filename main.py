@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from examples.easy_induction import transition, ending_claim as claim
+from examples.easy_induction import transition #, ending_claim as claim
 from extraction.python.examples import easy_induction, silly
 from ui.run.glimmediate import slideshow, static
 

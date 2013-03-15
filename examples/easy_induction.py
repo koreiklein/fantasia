@@ -35,11 +35,8 @@ transition = transition.forwardFollow(lambda claim:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardConjQuantifier(0))))
 
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardAssociateIn(0)))))
+transition = transition.forwardFollow(lambda x:
+    x.forwardHeavyClean())
 
 transition = transition.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 1, lambda x:
@@ -47,24 +44,7 @@ transition = transition.forwardFollow(lambda x:
         importables.continueImportingOnBodyFollow(q, lambda x:
           importables.finishImporting(x,
             about.about(q.variables(), 1)))))).forwardFollow(lambda x:
-              x.forwardClean())
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardConjQuantifier(2)))))
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardJoin())))
-
-transition = transition.forwardFollow(lambda claim:
-    claim.forwardOnIthFollow(1, lambda x:
-      x.forwardOnIthFollow(1, lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardAssociateIn(2)))))
+              x.forwardHeavyClean())
 
 transition = transition.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 1, lambda x:
@@ -110,11 +90,10 @@ transition = transition.forwardFollow(lambda x:
       importables.continueImportingOnOnIthFollow(x, 0, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
           importables.finishImporting(x, about.about(q.variables()[1:], 0)))))).forwardFollow(lambda x:
-              x.forwardClean())
+              x.forwardHeavyClean())
 
 transition = transition.forwardFollow(lambda x:
-    x.forwardUnsingleton().forwardFollow(lambda x:
-      x.forwardUnsingleton()))
+    x.forwardUnsingleton())
 
 # Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
 
