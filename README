@@ -191,7 +191,7 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
     the extraction engine can contain code to perform an extraction of a proof defined in the top
     level examples module.  If you're looking for an illustrative example of a program extraction,
     you should start by trying to understand one of these example extractions.  For example, start
-    by trying taking a brief look at main.py, and then trying to understand what is happening in
+    by taking a brief look at main.py, and then trying to understand what is happening in
     extraction/python/examples/easy_induction.py
 
 RUNNING THE CODE:
