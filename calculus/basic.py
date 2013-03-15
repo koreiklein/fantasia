@@ -87,10 +87,10 @@ class Holds(PrimitiveObject):
       return False
     else:
       for (key, value) in self._d.items():
-        if other[key] != value:
+        if (not other._d.has_key(key) ) or other[key] != value:
           return False
       for (key, value) in other._d.items():
-        if self[key] != value:
+        if (not self._d.has_key(key) ) or self[key] != value:
           return False
       return True
 
@@ -176,10 +176,9 @@ class Quantifier(PrimitiveObject):
   def __ne__(self, other):
     return not (self == other)
 
-  def forwardUnusedExistential(self):
-    assert(self.type() == existsType)
+  def forwardUnusedQuantifier(self):
     # TODO Check that self.var() is not free in self.body()
-    return UnusedExistential(variable = self.var(), body = self.body())
+    return UnusedQuantifier(variable = self.var(), type = self.type(), body = self.body())
 
   def backwardConjQuantifier(self):
     # (Q x . A) % B --> Q x . (A % B)
@@ -938,9 +937,10 @@ class Apply(PrimitiveArrow):
   def tgt(self):
     return Not(self.a())
 
-class UnusedExistential(PrimitiveArrow):
-  def __init__(self, variable, body):
+class UnusedQuantifier(PrimitiveArrow):
+  def __init__(self, type, variable, body):
     self._variable = variable
+    self._type = type
     self._body = body
 
   def variable(self):
@@ -952,7 +952,7 @@ class UnusedExistential(PrimitiveArrow):
     return "unused_existial(%s)"%(self.variable(),)
 
   def src(self):
-    return Quantifier(var = self.variable(), type = existsType, body = self.body())
+    return Quantifier(var = self.variable(), type = self._type, body = self.body())
   def tgt(self):
     return self.body()
 

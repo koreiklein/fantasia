@@ -77,7 +77,7 @@ def arrowToProgram(arrow):
     return repIdentity(arrow)
   elif arrow.__class__ == basic.Composite:
     return repComposite(arrow)
-  elif arrow.__class__ in [basic.ConjQuantifier, basic.Eliminate, basic.UnusedExistential]:
+  elif arrow.__class__ in [basic.ConjQuantifier, basic.Eliminate, basic.UnusedQuantifier]:
     return repIdentity(arrow)
   else:
     raise Exception("Unrecognized Arrow %s."%(arrow.__class__))
