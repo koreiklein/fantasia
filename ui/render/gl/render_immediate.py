@@ -3,7 +3,7 @@
 from calculus import enriched
 from ui.render.gl import primitives, distances, colors
 
-from lib import oldNatural as natural
+from lib import oldNatural, natural
 from ui.stack import gl
 
 
@@ -23,12 +23,18 @@ def render(logic):
     return renderNot(logic)
   elif logic.__class__ == enriched.Var:
     return renderVariable(logic)
-  elif logic.__class__ == natural.IsNatural:
+  elif logic.__class__ == oldNatural.IsNatural:
     return renderIsNatural(logic)
-  elif logic.__class__ == natural.Compare:
+  elif logic.__class__ == oldNatural.Compare:
     return renderCompare(logic)
+  elif logic.__class__ == oldNatural.Successor:
+    return renderOldSuccessor(logic)
+  elif logic.__class__ == natural.Natural:
+    return renderNatural(logic)
   elif logic.__class__ == natural.Successor:
     return renderSuccessor(logic)
+  elif logic.__class__ == natural.Equal:
+    return renderNaturalEqual(logic)
   else:
     raise Exception("Unrecognized logic object %s"%(logic,))
 
@@ -94,7 +100,16 @@ def renderCompare(compare):
   return gl.newTextualGLStack(colors.textColor,
       compare.lesser().name() + c + compare.greater().name())
 
-def renderSuccessor(successor):
+def renderOldSuccessor(successor):
   return gl.newTextualGLStack(colors.textColor,
       "S( %s ) = %s"%(successor.a().name(), successor.b().name()))
 
+
+def renderNatural(logic):
+  return gl.newTextualGLStack(colors.textColor, repr(logic))
+
+def renderSuccessor(logic):
+  return gl.newTextualGLStack(colors.textColor, repr(logic))
+
+def renderNaturalEqual(logic):
+  return gl.newTextualGLStack(colors.textColor, repr(logic))

@@ -38,6 +38,41 @@ class Natural(enriched.Logic):
   def translate(self):
     return basic.Holds(natural = self.n().translate())
 
+class Equal:
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+
+  def a(self):
+    return self.a()
+  def b(self):
+    return self.b()
+
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
+
+  def __eq__(self, other):
+    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, x, y):
+    a = self.a()
+    b = self.b()
+    if a == x:
+      a = y
+    if b == x:
+      b = y
+    return Successor(a = a, b = b)
+
+  def transposeIsNot(self):
+    return True
+
+  def translate(self):
+    return basic.Holds(naturalEqualLeft = self.a().translate,
+        naturalEqualRight = self.b().translate())
+
 class Successor(enriched.Logic):
   def __init__(self, a, b):
     self._a = a
@@ -76,4 +111,14 @@ class Successor(enriched.Logic):
 
   def transposeIsNot(self):
     return True
+
+zero = enriched.Var('zero')
+
+n = common_vars.n()
+m = common_vars.m()
+successorExists = enriched.Forall([n],
+    enriched.Implies(
+      predicate = Natural(n),
+      consequent = enriched.Exists([m],
+        enriched.And([Natural(m), Successor(n, m)]))))
 
