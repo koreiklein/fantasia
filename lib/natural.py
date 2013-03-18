@@ -42,14 +42,30 @@ class Natural(enriched.Logic):
     else:
       return self
 
-  def translate(self):
-    if self.holds():
-      return basic.Holds(natural = self.n().translate())
-    else:
-      return basic.Holds(notNatural = self.n().translate())
+  def transposeIsNot(self):
+    return True
 
-  def transpose(self):
-    return Natural(n = self.n(), holds = not self.holds())
+  def translate(self):
+    return basic.Holds(natural = self.n().translate())
+
+# Stating some inequality (=, >=, <=) between two variables.
+class Compare(enriched.Logic):
+  # strict: a boolean indicating whether the inequality is strict.
+  def __init__(self, lesser, greater, strict):
+    self._lesser = lesser
+    self._greater = greater
+    self._strict = strict
+    self.initMarkable([])
+
+  def __repr__(self):
+    if self._strict:
+      s = '%s < %s'
+    else:
+      s = '%s <= %s'
+    return s%(self.lesser(), self.greater())
+
+  def transposeIsNot(self):
+    return True
 
 class Successor(enriched.Logic):
   def __init__(self, a, b, holds = True):
@@ -101,10 +117,16 @@ class Successor(enriched.Logic):
       return basic.Holds(notSucceeded = self.a().translate(),
           notSucceeding = self.b().translate())
 
-  def transpose(self):
-    return Successor(a = self.a(), b = self.b(), holds = not self.holds())
+  def transposeIsNot(self):
+    return True
 
-  def notToTranspose(
+zero = enriched.Var('zero')
+
+five = enriched.Var('5')
+
+zero_natural = IsNatural(zero)
+
+exists_five = enriched.Exists([five], IsNatural(five))
 
 zero = enriched.Var('zero')
 
