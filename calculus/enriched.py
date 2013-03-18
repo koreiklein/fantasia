@@ -41,14 +41,27 @@ class Logic(markable.Markable):
   def translate(self):
     raise Exception("Abstract Superclass")
 
+  # The treatment of this function is complex:
+  # When subclasses of Logic override this method to return true,
+  # they get their transpose, transposeToNot, and notToTranspose methods generated
+  # for them.  See those methods to understand how.
+  def transposeIsNot(self):
+    return False
+
   # Note: There is an isomorphism:
   #   basic.Not(self.translate()) <--> self.transpose().translate()
   # notToTranspose implements the forward direction of this isomorphism.
   # transposeToNot implements the reverse direction of this isomorphism.
   def notToTranspose(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return Not(self).identity()
+    else:
+      raise Exception("Abstract Superclass")
   def transposeToNot(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return self.transpose().identity()
+    else:
+      raise Exception("Abstract Superclass")
 
   # return an arrow that does no real work but makes the formula a bit "cleaner".
   # subclasses are welcome to override this method in reasonable ways.
@@ -63,7 +76,10 @@ class Logic(markable.Markable):
   # return a claim dual to self.
   # note: self.transpose().transpose() must be equal to self.
   def transpose(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return Not(self)
+    else:
+      raise Exception("Abstract Superclass")
   # Return a Logic object like this one, but with the variable b substituted in
   # place of a.
   # a must not be quantified in self.
@@ -164,7 +180,10 @@ class Not(Logic):
   def transposeToNot(self):
     return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
   def transpose(self):
-    return self.value()
+    if self.value().transposeIsNot():
+      return self.value()
+    else:
+      return Not(self.value().transpose())
 
   def freeVariables(self):
     return self.value().freeVariables()
