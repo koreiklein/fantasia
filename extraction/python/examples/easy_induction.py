@@ -2,7 +2,7 @@
 
 from extraction.python.arrows import curry_howard
 from extraction.python import utils
-from extraction.python.lib import natural
+from extraction.python.lib import oldNatural as natural
 
 from examples.easy_induction import t
 

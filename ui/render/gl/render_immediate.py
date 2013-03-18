@@ -3,7 +3,7 @@
 from calculus import enriched
 from ui.render.gl import primitives, distances, colors
 
-from lib import natural
+from lib import oldNatural as natural
 from ui.stack import gl
 
 

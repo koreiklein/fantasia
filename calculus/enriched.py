@@ -164,6 +164,7 @@ class Not(Logic):
   def transposeToNot(self):
     return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
   def transpose(self):
+    assert(False)
     return self.value()
 
   def freeVariables(self):

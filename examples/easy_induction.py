@@ -1,8 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from extraction.python.lib import natural as naturalRep
+from extraction.python.lib import oldNatural as naturalRep
 from calculus import enriched
-from lib import natural
+from lib import oldNatural as natural
 from mark import common as marks
 
 from path import Path
