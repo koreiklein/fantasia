@@ -33,8 +33,8 @@ class IsNatural(enriched.Logic):
   def translate(self):
     return basic.Holds(natural = self.n().translate())
 
-  def transpose(self):
-    return enriched.Not(self)
+  def transposeIsNot(self):
+    return True
 
 # Stating some inequality (=, >=, <=) between two variables.
 class Compare(enriched.Logic):
@@ -84,8 +84,8 @@ class Compare(enriched.Logic):
     return basic.Holds(lesser = self.lesser().translate(), greater = self.greater().translate(),
         strict = self.strict())
 
-  def transpose(self):
-    return enriched.Not(self)
+  def transposeIsNot(self):
+    return True
 
 # Stating that the successor of the natural number a is b.
 class Successor(enriched.Logic):
@@ -126,8 +126,8 @@ class Successor(enriched.Logic):
     return basic.Holds(succeeded = self.a().translate(),
         succeeding = self.b().translate())
 
-  def transpose(self):
-    return enriched.Not(self)
+  def transposeIsNot(self):
+    return True
 
 zero = enriched.Var('zero')
 
