@@ -960,6 +960,27 @@ class UnusedQuantifier(PrimitiveArrow):
   def tgt(self):
     return self.body()
 
+# For defining a new relation.
+class Definition(PrimitiveArrow):
+  def __init__(self, relation, definition):
+    self._relation = relation
+    self._definition = definition
+
+  def relation(self):
+    return self._relation
+  def definition(self):
+    return self._definition
+
+  def __repr__(self):
+    return "%s :| %s"%(self.relation(), self.definition)
+
+  def src(self):
+    return true
+  def tgt(self):
+    return And( Not(And(self.definition(), Not(self.relation)))
+              , Not(And(self.relation(), Not(self.definition()))))
+
+
 # Functorial Arrows
 
 def shiftRight(s, variance):

@@ -63,6 +63,8 @@ def arrowToProgram(arrow):
     return repDistribute(arrow)
   elif arrow.__class__ == basic.Apply:
     return repApply(arrow)
+  elif arrow.__class__ == basic.Definition:
+    return repDefinition(arrow)
   elif arrow.__class__ == basic.OnBody:
     return repOnBody(arrow)
   elif arrow.__class__ == basic.OnLeft:
@@ -170,6 +172,22 @@ def repApply(arrow):
   # How adroit, we use python closure convesion to implement closure conversion in the target language.
   # (The apply arrow is the essence of closure conversion.)
   return (lambda ((notAAndB, B), notnotA): notnotA(lambda A: notAAndB( (A, B) )))
+
+def repDefinition(arrow):
+  # 1  --->   |  d |  | r | |  r |  | d
+  #           |    |  *-- | |    |  *--
+  #           *---------- | *----------
+
+  # For simplicity, defined relations will be represented exactly the same as their definitions.
+  def construct(d, notR):
+    r = d
+    return notR(r)
+  def destruct(r, notD):
+    d = r
+    return notD(d)
+  return (lambda (one, notConstructDestruct):
+      notConstructDestruct( (construct, destruct) ))
+
 def repOnBody(arrow):
   return arrowToProgram(arrow.arrow())
 
