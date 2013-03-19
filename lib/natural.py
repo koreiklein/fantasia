@@ -114,6 +114,8 @@ class Successor(enriched.Logic):
 
 zero = enriched.Var('zero')
 
+zeroIsNatural = Natural(zero)
+
 n = common_vars.n()
 m = common_vars.m()
 successorExists = enriched.Forall([n],
@@ -122,3 +124,23 @@ successorExists = enriched.Forall([n],
       consequent = enriched.Exists([m],
         enriched.And([Natural(m), Successor(n, m)]))))
 
+n = common_vars.n()
+successorNotZero = enriched.Forall([n],
+    enriched.Not(Successor(n, zero)))
+
+def byInduction(claim):
+  return enriched.Implies(
+      predicate = enriched.And([ claim(zero)
+                               , enriched.Forall([n]
+                               , enriched.Implies(
+                                  predicate = enriched.And([ IsNatural(n)
+                                                           , claim(n)]),
+                                  consequent =
+                                    enriched.Exists([m],
+                                      enriched.And([ IsNatural(m)
+                                                   , Successor(n, m)
+                                                   , claim(m)]))))]),
+      consequent = enriched.Forall([k],
+        enriched.Implies(
+          predicate = IsNatural(k),
+          consequent = claim(k))))
