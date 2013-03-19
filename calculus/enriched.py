@@ -1683,6 +1683,39 @@ def _backwardSwap(basicObject):
         basicObject.backwardCommute()).backwardFollow(lambda basicObject:
           basicObject.backwardAssociateA()))
 
+class Definition(PrimitiveArrow):
+  def __init__(self, relation, definition):
+    # relation must not be used elsewhere in the larger surrounding src.
+    self._relation = relation
+    self._definition = definition
+
+  def relation(self):
+    return self._relation
+  def definition(self):
+    return self._definition
+
+  def src(self):
+    return true
+  def tgt(self):
+    return And([ Par([self.definition().transpose(), self.relation()])
+               , Par([self.relation().transpose(), self.definition()])])
+
+  def translate(self):
+    def f(notToTranspose):
+      return (lambda notAandNotB:
+        notAandNotB.forwardOnNotFollow(lambda aAndNotB:
+            aAndNotB.backwardOnLeftFollow(lambda a:
+              a.backwardRemoveDoubleDual().backwardFollow(lambda notNotA:
+                notNotA.backwardOnNot(notToTranspose).backwardFollow(lambda notAT:
+                  notAT.backwardForgetFirst(basic.true))))))
+
+    return basic.Define(relation = self.relation().translate(),
+        definition = self.definition().translate()).forwardFollow(lambda x:
+            x.forwardOnLeft(f(self.definition().notToTranspose())).forwardFollow(lambda x:
+            x.forwardIntroduceTrue().forwardFollow(lambda x:
+              x.forwardCommute()))).forwardFollow(lambda x:
+                  x.forwardOnRight(f(self.relation().notToTranspose())))
+
 # This Arrow is used to introduce a new claim
 class Begin(FunctorialArrow):
   def __init__(self, claim):
