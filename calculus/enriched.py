@@ -910,6 +910,53 @@ def Implies(predicate, consequent):
   values.append(consequent)
   return Par(values)
 
+# A formula stating that some arbitrary relation holds of some variables.
+class Holds(Logic):
+  def __init__(self, **kwargs):
+    self._d = kwargs
+    for (key, value) in kwargs.items():
+      self.__dict__[key] = types.MethodType(lambda self: value, self)
+
+  def __getitem__(self, x):
+    return self._d[x]
+
+  def __eq__(self, other):
+    if other.__class__ != Holds:
+      return False
+    else:
+      for (key, value) in self._d.items():
+        if (not other._d.has_key(key) ) or other[key] != value:
+          return False
+      for (key, value) in other._d.items():
+        if (not self._d.has_key(key) ) or self[key] != value:
+          return False
+      return True
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, a, b):
+    _d = {}
+    for (key, value) in self._d.items():
+      if value == a:
+        _d[key] = b
+      else:
+        _d[key] = value
+    return Holds(**_d)
+
+  def translate(self):
+    d = {}
+    for (key, value) in self._d:
+      d[key] = value.translate()
+    return basic.Holds(**d)
+
+  def transposeIsNot(self):
+    return True
+
+  # return a set of the free variables in self.
+  def freeVariables(self):
+    return self._d.values()
+
 # Arrows
 
 # Abstract superclass of all nonfunctorial arrows between enriched objects.
