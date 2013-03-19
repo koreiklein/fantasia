@@ -3,6 +3,7 @@
 from mark import markable
 from calculus import basic
 from sets import Set
+import types
 
 # This module contains objects and arrows in much the same was as basic.
 # This module defines a functor F.
@@ -175,10 +176,16 @@ class Not(Logic):
     return basic.Not(self.value().translate())
 
   def notToTranspose(self):
-    return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
-        self.value().transpose().transposeToNot())
+    if self.value().transposeIsNot():
+      return basic.Not(self.translate()).forwardRemoveDoubleDual()
+    else:
+      return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
+          self.value().transpose().transposeToNot())
   def transposeToNot(self):
-    return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
+    if self.value().transposeIsNot:
+      return self.value().translate().forwardIntroduceDoubleDual()
+    else:
+      return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
   def transpose(self):
     if self.value().transposeIsNot():
       return self.value()
@@ -280,12 +287,12 @@ class Conj(Logic):
         x.forwardClean())
 
 
-  def forwardAppendDefinition(self, relation, body):
+  def forwardAppendDefinition(self, relation, definition):
     assert(self.type() == andType)
     n = len(self.values())
     return self.forwardIntroduceUnit(n).forwardFollow(lambda x:
         x.forwardOnIthFollow(n, lambda one:
-          Definition(relation, body)))
+          Definition(relation, definition)))
 
   def forwardIntroduceUnit(self, i):
     return self.forwardAssociateOut(i, i)
@@ -537,10 +544,19 @@ class Conj(Logic):
 
   def notToTranspose(self):
     if not self.demorganed():
-      return basic.Not(self.translate()).forwardOnNotFollow(lambda values:
+      res = basic.Not(self.translate()).forwardOnNotFollow(lambda values:
           _valuesToTransposeNot(self.type(), values, self.values()))
+      # FIXME Remove this.
+      assert(res.tgt() == self.transpose().translate())
+      return res
     else:
-      return basic.Not(self.translate()).forwardRemoveDoubleDual()
+      def g(x):
+        return _forwardNotToTranspose(x, self.values())
+      res = basic.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda x:
+          g(x))
+      # FIXME Remove this.
+      assert(res.tgt() == self.transpose().translate())
+      return res
 
   def transposeToNot(self):
     if not self.demorganed():
@@ -612,7 +628,7 @@ def changePathFirst(path, f):
 
 # e.g.
 # (1 | B.translate()) | C.translate(), [B, C]
-#      -->
+#      <--
 # (1 | ~B.transpose().translate()) | ~C.transpose().translate()
 def _valuesToTransposeNot(type, basicConjOrUnit, basicUiValues):
   if basicConjOrUnit == basic.unit(type):
@@ -623,11 +639,30 @@ def _valuesToTransposeNot(type, basicConjOrUnit, basicUiValues):
     assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
     last = basicUiValues[-1]
-    return conj.forwardOnRight(last.transpose().transposeToNot()).forwardFollow(lambda conj:
-        conj.forwardOnLeftFollow(lambda rest:
+    # FIXME Remove this.
+    print last.__class__
+    print last.transpose().notToTranspose().tgt()
+    print last.translate()
+    assert(last.transpose().notToTranspose().tgt() == last.translate())
+    return conj.backwardOnRight(last.transpose().notToTranspose()).backwardFollow(lambda conj:
+        conj.backwardOnLeftFollow(lambda rest:
           _valuesToTransposeNot(type, rest, basicUiValues[:-1])))
+
 # e.g.
-# (1 | B.translate()) | C.translate() <-- (1 | ~B.transpose().translate()) | ~C.transpose().translate()
+# (1 | ~A.translate()) | ~B.translate(), [A, B]
+#   -->
+# (1 | A.transpose().translate()) | B.transpose().translate()
+def _forwardNotToTranspose(conjOrUnit, values):
+  if conjOrUnit.__class__ == basic.Conj:
+    return conjOrUnit.forwardOnRight(values[-1].notToTranspose()).forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          _forwardNotToTranspose(x, values[:-1])))
+  else:
+    return conjOrUnit.identity()
+
+# e.g.
+# (1 | ~B.transpose().translate()) | ~C.transpose().translate()
+#               <-- (1 | B.translate()) | C.translate()
 def _transposeNotToValues(type, basicConjOrUnit, basicUiValues):
   if basicConjOrUnit == basic.unit(type):
     assert(len(basicUiValues) == 0)
@@ -637,8 +672,8 @@ def _transposeNotToValues(type, basicConjOrUnit, basicUiValues):
     assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
     last = basicUiValues[-1]
-    return conj.forwardOnRight(last.transpose().notToTranspose()).forwardFollow(lambda conj:
-        conj.forwardOnLeftFollow(lambda rest:
+    return conj.backwardOnRight(last.transpose().transposeToNot()).backwardFollow(lambda conj:
+        conj.backwardOnLeftFollow(lambda rest:
           _transposeNotToValues(type, rest, basicUiValues[:-1])))
 
 true = Conj(type = andType, values = [])
@@ -716,8 +751,14 @@ class Quantifier(Logic):
     return res
 
   def notToTranspose(self):
-    return _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
+    res = _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
         self.body().notToTranspose())
+    # FIXME Remove this.
+    print res.tgt()
+    print self.transpose().translate()
+    assert(res.tgt() == self.transpose().translate())
+    return res
+
   def transposeToNot(self):
     return self.transpose().translate().forwardIntroduceDoubleDual().forwardFollow(lambda notNotQ:
         notNotQ.forwardOnNotFollow(lambda notQ:
@@ -802,7 +843,7 @@ class Quantifier(Logic):
   def translate(self):
     res = self.body().translate()
     for variable in self.variables()[::-1]:
-      res = basic.Quantifier(type = self.type(), var = variable.translate(), body = res)
+      res = basic.Quantifier(type = self.type(), variable = variable.translate(), body = res)
     return res
 
 # e.g.
@@ -815,11 +856,12 @@ def _forwardPushNotFollow(n, basicObject, f):
     assert(n > 0)
     assert(basicObject.__class__ == basic.Not)
     return basicObject.forwardNotQuant().forwardFollow(lambda quant:
-        quant.onBody(_forwardPushNotFollow(n - 1, quant.body(), f)))
+        quant.forwardOnBody(_forwardPushNotFollow(n - 1, quant.body(), f)))
 
 # e.g.
 # | q(t, a, q(t, b, x))  <--  q(~t, a, q(~t, b, f(x).src()))
 # *--------------------
+# Where f(~x) is an arrow with tgt ~x
 def _backwardPullNotFollow(n, basicObject, f):
   if n == 0:
     res = f(basicObject)
@@ -827,8 +869,9 @@ def _backwardPullNotFollow(n, basicObject, f):
     return res
   else:
     assert(basicObject.__class__ == basic.Not)
-    return basicObject.backwardNotQuant().backwardFollow(lambda quant:
-      _backwardPullNotFollow(n - 1, quant, f))
+    return basicObject.backwardQuantNot().backwardFollow(lambda quant:
+        quant.backwardOnBodyFollow(lambda x:
+          _backwardPullNotFollow(n - 1, x, f)))
 
 class Always(Logic):
   def __init__(self, value):
@@ -916,9 +959,16 @@ class Holds(Logic):
     self._d = kwargs
     for (key, value) in kwargs.items():
       self.__dict__[key] = types.MethodType(lambda self: value, self)
+    self.initMarkable([])
 
   def __getitem__(self, x):
     return self._d[x]
+
+  def __repr__(self):
+    s = ''
+    for (key, value) in self._d.items():
+      s += "%s : %s, "%(key, value)
+    return s
 
   def __eq__(self, other):
     if other.__class__ != Holds:
@@ -946,7 +996,7 @@ class Holds(Logic):
 
   def translate(self):
     d = {}
-    for (key, value) in self._d:
+    for (key, value) in self._d.items():
       d[key] = value.translate()
     return basic.Holds(**d)
 
@@ -1764,6 +1814,9 @@ class Definition(PrimitiveArrow):
     # relation must not be used elsewhere in the larger surrounding src.
     self._relation = relation
     self._definition = definition
+    # FIXME Remove this.
+    assert(self.src().translate() == self.src().translate())
+    assert(self.tgt().translate() == self.tgt().translate())
 
   def relation(self):
     return self._relation
@@ -1777,20 +1830,19 @@ class Definition(PrimitiveArrow):
                , Par([self.relation().transpose(), self.definition()])])
 
   def translate(self):
-    def f(notToTranspose):
-      return (lambda notAandNotB:
-        notAandNotB.forwardOnNotFollow(lambda aAndNotB:
-            aAndNotB.backwardOnLeftFollow(lambda a:
-              a.backwardRemoveDoubleDual().backwardFollow(lambda notNotA:
-                notNotA.backwardOnNot(notToTranspose).backwardFollow(lambda notAT:
-                  notAT.backwardForgetFirst(basic.true))))))
+    def f(notToTranspose, notAandNotB):
+      return notAandNotB.forwardOnNotFollow(lambda aAndNotB:
+          aAndNotB.backwardOnLeft(notToTranspose).backwardFollow(lambda x:
+            x.backwardForgetFirst(basic.true)))
 
-    return basic.Define(relation = self.relation().translate(),
+    return basic.Definition(relation = self.relation().translate(),
         definition = self.definition().translate()).forwardFollow(lambda x:
-            x.forwardOnLeft(f(self.definition().notToTranspose())).forwardFollow(lambda x:
-            x.forwardIntroduceTrue().forwardFollow(lambda x:
-              x.forwardCommute()))).forwardFollow(lambda x:
-                  x.forwardOnRight(f(self.relation().notToTranspose())))
+            x.forwardOnLeftFollow(lambda x:
+              f(self.definition().transpose().notToTranspose(), x).forwardFollow(lambda x:
+                x.forwardIntroduceTrue().forwardFollow(lambda x:
+                  x.forwardCommute()))).forwardFollow(lambda x:
+            x.forwardOnRightFollow(lambda x:
+              f(self.relation().transpose().notToTranspose(), x))))
 
 # This Arrow is used to introduce a new claim
 class Begin(FunctorialArrow):

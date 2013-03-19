@@ -30,6 +30,12 @@ from calculus import basic
 
 # objectRep(x . A) ---> objectRep(A) (Variables and quantifiers have to computational content.)
 
+quantifierArrowClasses = [ basic.QuantNot
+                         , basic.NotQuant
+                         , basic.ConjQuantifier
+                         , basic.Eliminate
+                         , basic.UnusedQuantifier ]
+
 # A kind of implementation of the functor rep on arrows.
 # Take each arrow A --> B to some python object in the set
 # Note that the only way to conclude that we've returned an element of the empty set
@@ -81,11 +87,10 @@ def arrowToProgram(arrow):
     return repIdentity(arrow)
   elif arrow.__class__ == basic.Composite:
     return repComposite(arrow)
-  elif arrow.__class__ in [basic.ConjQuantifier, basic.Eliminate, basic.UnusedQuantifier]:
+  elif arrow.__class__ in quantifierArrowClasses:
     return repIdentity(arrow)
   else:
     raise Exception("Unrecognized Arrow %s."%(arrow.__class__))
-
 
 def repIntroduceDoubleDual(arrow):
   return (lambda (A, notnotnotA): notnotnotA(lambda notA: notA(A)))

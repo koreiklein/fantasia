@@ -129,18 +129,47 @@ successorNotZero = enriched.Forall([n],
     enriched.Not(Successor(n, zero)))
 
 def byInduction(claim):
+  n = common_vars.n()
+  m = common_vars.m()
+  k = common_vars.k()
   return enriched.Implies(
       predicate = enriched.And([ claim(zero)
                                , enriched.Forall([n]
                                , enriched.Implies(
-                                  predicate = enriched.And([ IsNatural(n)
+                                  predicate = enriched.And([ Natural(n)
                                                            , claim(n)]),
                                   consequent =
                                     enriched.Exists([m],
-                                      enriched.And([ IsNatural(m)
+                                      enriched.And([ Natural(m)
                                                    , Successor(n, m)
                                                    , claim(m)]))))]),
       consequent = enriched.Forall([k],
         enriched.Implies(
-          predicate = IsNatural(k),
+          predicate = Natural(k),
           consequent = claim(k))))
+
+R = common_vars.R()
+allInduction = enriched.Forall([R],
+    byInduction(lambda v: enriched.Holds(holding = R, held = v)))
+
+n = common_vars.n()
+m = common_vars.m()
+t = common_vars.t()
+lessVar = common_vars.less()
+defLessStart = enriched.Forall([n, m],
+    enriched.Implies(
+      predicate = enriched.And([Natural(n), Natural(m)]),
+      consequent = enriched.true))
+defLessArrow = defLessStart.forwardOnBodyFollow(lambda x:
+    x.forwardOnIthFollow(2, lambda one:
+      one.forwardAppendDefinition(
+        relation = enriched.Holds(holding = lessVar, less = n, more = m),
+        definition = enriched.Or([ Successor(n, m)
+                                 , enriched.Exists([t],
+                                     enriched.And(
+                                       [ Successor(n, t)
+                                       , enriched.Holds(holding = lessVar,
+                                         less = t, more = m)]))]))))
+
+defLessArrow.translate()
+defLess = defLessArrow.tgt()
