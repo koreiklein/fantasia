@@ -23,6 +23,8 @@ def render(logic):
     return renderNot(logic)
   elif logic.__class__ == enriched.Var:
     return renderVariable(logic)
+  elif logic.__class__ == enriched.Holds:
+    return renderHolds(logic)
   elif logic.__class__ == oldNatural.IsNatural:
     return renderIsNatural(logic)
   elif logic.__class__ == oldNatural.Compare:
@@ -88,6 +90,9 @@ def renderNot(notObject):
 
 def renderVariable(variable):
   return gl.newTextualGLStack(colors.variableColor, variable.name())
+
+def renderHolds(holds):
+  return gl.newTextualGLStack(colors.textColor, repr(holds))
 
 def renderIsNatural(isNatural):
   return gl.newTextualGLStack(colors.textColor, isNatural.n().name()  + " : N")
