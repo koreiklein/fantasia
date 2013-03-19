@@ -261,6 +261,16 @@ class Conj(Logic):
         x.forwardClean())
 
 
+  def forwardAppendDefinition(self, relation, body):
+    assert(self.type() == andType)
+    n = len(self.values())
+    return self.forwardIntroduceUnit(n).forwardFollow(lambda x:
+        x.forwardOnIthFollow(n, lambda one:
+          Definition(relation, body)))
+
+  def forwardIntroduceUnit(self, i):
+    return self.forwardAssociateOut(i, i)
+
   def forwardForgetAllBut(self, i):
     assert(isEnrichedFalse(self.values()[i]))
     assert(0 <= i)
