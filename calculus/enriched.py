@@ -544,19 +544,11 @@ class Conj(Logic):
 
   def notToTranspose(self):
     if not self.demorganed():
-      res = basic.Not(self.translate()).forwardOnNotFollow(lambda values:
+      return basic.Not(self.translate()).forwardOnNotFollow(lambda values:
           _valuesToTransposeNot(self.type(), values, self.values()))
-      # FIXME Remove this.
-      assert(res.tgt() == self.transpose().translate())
-      return res
     else:
-      def g(x):
-        return _forwardNotToTranspose(x, self.values())
-      res = basic.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda x:
-          g(x))
-      # FIXME Remove this.
-      assert(res.tgt() == self.transpose().translate())
-      return res
+      return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda x:
+          _forwardNotToTranspose(x, self.values()))
 
   def transposeToNot(self):
     if not self.demorganed():
@@ -639,11 +631,6 @@ def _valuesToTransposeNot(type, basicConjOrUnit, basicUiValues):
     assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
     last = basicUiValues[-1]
-    # FIXME Remove this.
-    print last.__class__
-    print last.transpose().notToTranspose().tgt()
-    print last.translate()
-    assert(last.transpose().notToTranspose().tgt() == last.translate())
     return conj.backwardOnRight(last.transpose().notToTranspose()).backwardFollow(lambda conj:
         conj.backwardOnLeftFollow(lambda rest:
           _valuesToTransposeNot(type, rest, basicUiValues[:-1])))
@@ -753,10 +740,6 @@ class Quantifier(Logic):
   def notToTranspose(self):
     res = _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
         self.body().notToTranspose())
-    # FIXME Remove this.
-    print res.tgt()
-    print self.transpose().translate()
-    assert(res.tgt() == self.transpose().translate())
     return res
 
   def transposeToNot(self):
@@ -1814,9 +1797,6 @@ class Definition(PrimitiveArrow):
     # relation must not be used elsewhere in the larger surrounding src.
     self._relation = relation
     self._definition = definition
-    # FIXME Remove this.
-    assert(self.src().translate() == self.src().translate())
-    assert(self.tgt().translate() == self.tgt().translate())
 
   def relation(self):
     return self._relation

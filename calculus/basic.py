@@ -310,9 +310,7 @@ class Not(PrimitiveObject):
 
   # src and tgt go the opposite direction since Not is contravariant.
   def forwardOnNot(self, arrow):
-    # FIXME Remove this.
-    if not(arrow.tgt() == self.value()):
-      raise Exception("\n%s\n!=\n%s"%(arrow.tgt(), self.value()))
+    assert(arrow.tgt() == self.value()):
     assert(arrow.tgt() == self.value())
     return OnNot(arrow)
   def backwardOnNot(self, arrow):

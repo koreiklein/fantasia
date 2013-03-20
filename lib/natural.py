@@ -38,10 +38,11 @@ class Natural(enriched.Logic):
   def translate(self):
     return basic.Holds(natural = self.n().translate())
 
-class Equal:
+class Equal(enriched.Logic):
   def __init__(self, a, b):
     self._a = a
     self._b = b
+    self.initMarkable([])
 
   def a(self):
     return self.a()
@@ -112,6 +113,27 @@ class Successor(enriched.Logic):
   def transposeIsNot(self):
     return True
 
+n = common_vars.n()
+eqIdentitiy = enriched.Forall([n],
+    enriched.Implies(
+      predicate = Natural(n),
+      consequent = Equal(n, n)))
+
+n = common_vars.n()
+m = common_vars.m()
+eqSymmetric = enriched.Forall([n, m],
+    enriched.Implies(
+      predicate = Equal(n, m),
+      consequent = Equal(m, n)))
+
+a = common_vars.a()
+b = common_vars.b()
+c = common_vars.c()
+eqSymmetric = enriched.Forall([a, b, c],
+    enriched.Implies(
+      predicate = enriched.And([Equal(a, b), Equal(b, c)]),
+      consequent = Equal(a, c)))
+
 zero = enriched.Var('zero')
 
 zeroIsNatural = Natural(zero)
@@ -123,6 +145,22 @@ successorExists = enriched.Forall([n],
       predicate = Natural(n),
       consequent = enriched.Exists([m],
         enriched.And([Natural(m), Successor(n, m)]))))
+
+a = common_vars.a()
+n = common_vars.n()
+m = common_vars.m()
+successorUnique = enriched.Forall([a, n, m],
+    enriched.Implies(
+      predicate = enriched.And([ Successor(a, n), Successor(a, m) ]),
+      consequent = Equal(n, m)))
+
+b = common_vars.b()
+n = common_vars.n()
+m = common_vars.m()
+successorInjective = enriched.Forall([b, n, m],
+    enriched.Implies(
+      predicate = enriched.And([ Successor(n, b), Successor(m, b) ]),
+      consequent = Equal(n, m)))
 
 n = common_vars.n()
 successorNotZero = enriched.Forall([n],
