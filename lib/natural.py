@@ -215,6 +215,8 @@ n = common_vars.n()
 m = common_vars.m()
 t = common_vars.t()
 lessVar = common_vars.less()
+x = enriched.true.forwardFollow(lambda x:
+
 defLessStart = enriched.Forall([n, m],
     enriched.Implies(
       predicate = enriched.And([Natural(n), Natural(m)]),
