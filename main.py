@@ -22,4 +22,4 @@ setrecursionlimit(500000)
 #x.extend([t.tgt() for t in transition.compress().values()])
 #slideshow.run(x)
 
-static.run(natural.defLess)
+static.run(natural.preludeFormula)

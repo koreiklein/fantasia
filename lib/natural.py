@@ -237,3 +237,22 @@ defLessArrow = defLessArrow.forwardFollow(lambda x:
 defLessArrow.translate()
 defLess = defLessArrow.tgt()
 
+# This is the formula for which extraction engines must give an implementation.
+startingFormula = enriched.And([ zeroIsNatural
+                               , enriched.And(eqClaims)
+                               , enriched.And(successorClaims)
+                               , allInduction])
+
+
+# This library wishes to provide as simple as possible a formula for extractions
+# engines to implement and as useful a formula for users to start with.
+# Therefore, it defines the following preludeArrow for converting the startingFormula
+# into a formula more useful for clients of the library.  Proofs using this library should
+# simply append their proofs to this preludeArrow.
+preludeArrow = startingFormula.forwardAssociateOut(0, 0).forwardFollow(lambda x:
+    x.forwardOnIth(0, defLessArrow))
+
+preludeArrow.translate()
+
+# This is the formula which users of this library should start with.
+preludeFormula = preludeArrow.tgt()
