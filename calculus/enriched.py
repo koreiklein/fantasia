@@ -1919,9 +1919,8 @@ class Begin(FunctorialArrow):
 # Functorial Arrows
 
 class OnNot(FunctorialArrow):
-  def __init__(self, arrow, compressed):
+  def __init__(self, arrow):
     self._arrow = arrow
-    self._compressed = compressed
 
   def src(self):
     return Not(self._arrow.tgt())
@@ -1932,21 +1931,18 @@ class OnNot(FunctorialArrow):
     return self.src().translate().forwardOnNot(self._arrow.translate())
 
   def compress(self):
-    if self._compressed:
-      return self
     kid = self._arrow.compress()
     if kid.__class__ == identity:
       return self.src().identity()
     else:
-      return OnNot(kid, compressed = True)
+      return OnNot(kid)
 
 class OnIth(FunctorialArrow):
-  def __init__(self, conj, index, arrow, compressed = False):
+  def __init__(self, conj, index, arrow):
     assert(conj.__class__ == Conj)
     self._src = conj
     self._arrow = arrow
     self._index = index
-    self._compressed = compressed
 
   def arrow(self):
     return self._arrow
@@ -1961,12 +1957,10 @@ class OnIth(FunctorialArrow):
     return Conj(type = self.src().type(), values = values)
 
   def compress(self):
-    if self._compressed:
-      return self
     kid = self.arrow().compress()
     if kid.__class__ == Identity:
       return self.src().identity()
-    return OnIth(self._src, self.index(), kid, compressed = True)
+    return OnIth(self._src, self.index(), kid)
 
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
@@ -1984,12 +1978,11 @@ class OnIth(FunctorialArrow):
           lambda basicObject: basicObject.forwardOnRight(self.arrow().translate()))
 
 class OnBody(FunctorialArrow):
-  def __init__(self, type, variables, arrow, compressed = False):
+  def __init__(self, type, variables, arrow):
     assert(type in basic.quantifierTypes)
     self._type = type
     self._variables = variables
     self._arrow = arrow
-    self._compressed = compressed
 
   def type(self):
     return self._type
@@ -1999,12 +1992,10 @@ class OnBody(FunctorialArrow):
     return self._arrow
 
   def compress(self):
-    if self._compressed:
-      return self
     kid = self.arrow().compress()
     if kid.__class__ == Identity:
       return self.src().identity()
-    return OnBody(self.type(), self.variables(), kid, compressed = True)
+    return OnBody(self.type(), self.variables(), kid)
 
   def src(self):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().src())
@@ -2049,43 +2040,81 @@ def compose(left, right):
 
   return Composite(values)
 
+def _getValuesList(arrow):
+  values = []
+  if arrow.__class__ == Composite:
+    for kidArrow in arrow.values():
+      values.extend(_getValuesList(kidArrow))
+  else:
+    return [arrow]
+  return values
+
+# arrow: either an OnValues or an OnIth arrow.
+# return: an equivalent OnValues arrow.
+def _promoteToOnValues(arrow):
+  if arrow.__class__ == OnValues:
+    return arrow
+  elif arrow.__class__ == OnIth:
+    return OnValues(conj = arrow.src(), arrows = (arrow.index(), arrow.arrow()))
+  else:
+    raise Exception("Can only promote to OnValues arrows that are either OnValues or OnIth")
+
+# left, right: arrows with left.tgt().translate() == right.src().translate()
+# return: either:
+#           A list [combined] where combined is a single compressed arrow (not a Composite)
+#             which is equivalent to compose(left, right) if such an arrow exists.
+#           The list [left, right] otherwise
+def _tryMergePair(left, right):
+  if left.__class__ == Identity:
+    return [right]
+  elif right.__class__ == Identity:
+    return [left]
+  if left.__class__ in [OnValues, OnIth] and right.__class__ in [OnValues, OnIth]:
+    left = _promoteToOnValues(left)
+    right = _promoteToOnValues(right)
+    arrows = dict(left.arrows())
+    for (index, arrow) in right.arrows():
+      if arrows.has_key(index):
+        arrows[index] = arrows[index].forwardCompose(arrow).compress()
+      else:
+        arrows[index] = arrow
+    return [OnValues(left.src(), arrows.items())]
+  elif left.__class__ != right.__class__:
+    return [left, right]
+  else:
+    c = left.__class__
+    if c == OnBody:
+      # This assert should succeed because left and right are composable.
+      assert(left.type() == right.type() and left.variables() == right.variables())
+      return [OnBody(type = left.type(), variables = left.variables(),
+          arrow = left.arrow().forwardCompose(right.arrow()).compress())]
+    elif c == OnNot:
+      return [OnNot(left.arrow().backwardCompose(right.arrow()).compress())]
+    else:
+      return [left, right]
+
 class Composite(PrimitiveArrow):
-  def __init__(self, values, compressed = False):
+  def __init__(self, values):
     assert(len(values) > 0)
     self._values = values
-    self._compressed = compressed
 
   def values(self):
     return self._values
 
   def compress(self):
-    if self._compressed:
-      return self
-    compressedValues = [ value.compress() for value in self.values() ]
-    nonIdentityValues = [ value for value in compressedValues if value.__class__ != Identity ]
-    if len(nonIdentityValues) == 0:
-      return Identity(self.values()[0].src())
-    elif len(nonIdentityValues) == 1:
-      return nonIdentityValues[0]
-    else:
-      assert(len(nonIdentityValues) >= 2)
-      firstValue = nonIdentityValues[0]
-      T = firstValue.forwardCompose(Composite(nonIdentityValues[1:]).compress())
-      assert(T.__class__ == Composite)
-      values = T.values()
-      if len(values) == 1:
-        return values[0]
-      else:
-        x = _compressTwo(values[0], values[1])
-        if x is None:
-          return T
-        else:
-          if len(values) == 2:
-            return x
-          else:
-            xs = [x]
-            xs.extend(values[2:])
-            return Composite(xs, compressed = True)
+    kidArrows = _getValuesList(self)
+    i = 0
+    while i + 1 < len(kidArrows):
+      # Invariant: no pair of adjacent arrows at indices <= i
+      #            can be merged.
+      left = kidArrows.pop(i)
+      right = kidArrows.pop(i)
+      # This loop runs 1 or 2 times
+      for arrow in _tryMergePair(left, right):
+        kidArrows.insert(i, arrow)
+        i += 1
+      i -= 1
+    return Composite(kidArrows)
 
   def translate(self):
     res = self.values()[0].translate()
@@ -2101,20 +2130,16 @@ class Composite(PrimitiveArrow):
 class OnValues:
   # conj: a Conj
   # arrows: a list of (index, arrow) pairs where arrow can be applied to conj.values()[index]
-  def __init__(self, conj, arrows, compressed = False):
+  def __init__(self, conj, arrows):
     self._conj = conj
     self._arrows = arrows
-    self._compressed = compressed
 
   def arrows(self):
     return self._arrows
 
   def compress(self):
-    if self._compressed:
-      return self
-    return OnValues(self._conj,
-        [ (index, arrow.compress()) for (index, arrow) in self.arrows() ],
-        compressed = True)
+    return On/alues(self._conj,
+        [ (index, arrow.compress()) for (index, arrow) in self.arrows() ])
 
   def type(self):
     return self._conj.type()
@@ -2136,50 +2161,4 @@ class OnValues:
       t = t.forwardFollow(lambda x:
           x.forwardOnIth(index, arrow))
     return t.translate()
-
-# a, b: Enriched Arrows, they must be composable.
-# return: a single compressed arrow, not a Composite, which is equivalent to Composite([a, b])
-#         or None if no such suitable arrow exists.
-def _compressTwo(a, b):
-  if a.__class__ == OnValues and b.__class__ == OnValues:
-    arrows = dict(a.arrows())
-    for (index, arrow) in b.arrows():
-      if arrows.has_key(index):
-        arrows[index] = arrows[index].forwardCompose(arrow).compress()
-      else:
-        arrows[index] = arrow
-    return OnValues(a.src(), arrows.items())
-  elif a.__class__ == OnValues and b.__class__ == OnIth:
-    arrows = dict(a.arrows())
-    if arrows.has_key(b.index()):
-      arrows[b.index()] = arrows[b.index()].forwardCompose(b.arrow()).compress()
-    else:
-      arrows[b.index()] = b.arrow()
-    return OnValues(a.src(), arrows.items())
-  elif a.__class__ == OnIth and b.__class__ == OnValues:
-    arrows = dict(b.arrows())
-    if arrows.has_key(a.index()):
-      arrows[a.index()] = arrows[a.index()].backwardCompose(a.arrow()).compress()
-    else:
-      arrows[a.index()] = a.arrow()
-    return OnValues(a.src(), arrows.items())
-  elif a.__class__ == OnIth and b.__class__ == OnValues:
-    if a.index() == b.index():
-      return OnIth(a.src(), a.index(), a.arrow().forwardCompose(b.arrow()).compress())
-    else:
-      return OnValues(a.src(), [ (a.index(), a.arrow()), (b.index(), b.arrow()) ])
-  elif a.__class__ != b.__class__:
-    return None
-  else:
-    c = a.__class__
-    if c == OnBody:
-      # This assert should succeed because a and b are composable.
-      assert(a.type() == b.type() and a.variables() == b.variables())
-      return OnBody(type = a.type(), variables = a.variables(),
-          arrow = a.arrow().forwardCompose(b.arrow()).compress())
-    elif c == OnNot:
-      return OnNot(a.arrow().backwardCompose(b.arrow()).compress())
-    else:
-      return None
-
 
