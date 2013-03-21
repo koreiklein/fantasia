@@ -2055,20 +2055,20 @@ def _promoteToOnValues(arrow):
   if arrow.__class__ == OnValues:
     return arrow
   elif arrow.__class__ == OnIth:
-    return OnValues(conj = arrow.src(), arrows = (arrow.index(), arrow.arrow()))
+    return OnValues(conj = arrow.src(), arrows = [(arrow.index(), arrow.arrow())])
   else:
     raise Exception("Can only promote to OnValues arrows that are either OnValues or OnIth")
 
-# left, right: arrows with left.tgt().translate() == right.src().translate()
+# left, right: non composite arrows with left.tgt().translate() == right.src().translate()
 # return: either:
 #           A list [combined] where combined is a single compressed arrow (not a Composite)
 #             which is equivalent to compose(left, right) if such an arrow exists.
-#           The list [left, right] otherwise
+#           The list [left.compress(), right.compress()] otherwise
 def _tryMergePair(left, right):
   if left.__class__ == Identity:
-    return [right]
+    return [right.compress()]
   elif right.__class__ == Identity:
-    return [left]
+    return [left.compress()]
   if left.__class__ in [OnValues, OnIth] and right.__class__ in [OnValues, OnIth]:
     left = _promoteToOnValues(left)
     right = _promoteToOnValues(right)
@@ -2080,7 +2080,7 @@ def _tryMergePair(left, right):
         arrows[index] = arrow
     return [OnValues(left.src(), arrows.items())]
   elif left.__class__ != right.__class__:
-    return [left, right]
+    return [left.compress(), right.compress()]
   else:
     c = left.__class__
     if c == OnBody:
@@ -2091,7 +2091,7 @@ def _tryMergePair(left, right):
     elif c == OnNot:
       return [OnNot(left.arrow().backwardCompose(right.arrow()).compress())]
     else:
-      return [left, right]
+      return [left.compress(), right.compress()]
 
 class Composite(PrimitiveArrow):
   def __init__(self, values):
@@ -2138,7 +2138,7 @@ class OnValues:
     return self._arrows
 
   def compress(self):
-    return On/alues(self._conj,
+    return OnValues(self._conj,
         [ (index, arrow.compress()) for (index, arrow) in self.arrows() ])
 
   def type(self):
