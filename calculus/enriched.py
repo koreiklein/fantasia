@@ -99,6 +99,9 @@ class Logic(markable.Markable):
   def backwardUnsingleton(self, conjType):
     return Unsingleton(self, conjType)
 
+  def forwardIntroduceQuantifier(self, type, variables):
+    return IntroduceQuantifier(type = type, variables = variables, body = self)
+
   def identity(self):
     return Identity(self)
 
@@ -1038,6 +1041,32 @@ class Identity(PrimitiveArrow):
     return f(self.src())
   def backwardFollow(self, f):
     return f(self.tgt())
+
+class IntroduceQuantifier(PrimitiveArrow):
+  def __init__(self, type, variables, body):
+    assert(type in basic.quantifierTypes)
+    self._type = type
+    self._variables = variables
+    self._body = body
+
+  def type(self):
+    return self._type
+  def variables(self):
+    return self._variables
+  def body(self):
+    return self._body
+
+  def src(self):
+    return self.body()
+  def tgt(self):
+    return Quantifier(type = self.type(), variables = self.variables(), body = self.body())
+
+  def translate(self):
+    t = self.src().identity()
+    for variable in self.variables()[::-1]:
+      t = t.forwardFollow(lambda x:
+          x.forwardIntroduceQuantifier(self.type(), variable))
+    return t
 
 class Distribute(PrimitiveArrow):
   # Import claim i of the list into each clause of the OR at spot j.
