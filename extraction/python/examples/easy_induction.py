@@ -29,7 +29,7 @@ def test():
   # With the 03/21/13 implementation, this compression reduces the amount of data associated
   # with t by about a factor of 2.
   compressedT = t.compress().translate().compress()
-  print >>open('arrow.txt', 'w'), t.translate().compress()
+  #print >>open('arrow.txt', 'w'), t.translate().compress()
   tRep = curry_howard(compressedT)
   eRep = tRep(sRep)
 
