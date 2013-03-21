@@ -45,9 +45,12 @@ class Equal(enriched.Logic):
     self.initMarkable([])
 
   def a(self):
-    return self.a()
+    return self._a
   def b(self):
-    return self.b()
+    return self._b
+
+  def __repr__(self):
+    return "%s == %s"%(self.a(), self.b())
 
   def freeVariables(self):
     return Set([self.a(), self.b()])
@@ -119,6 +122,7 @@ eqIdentitiy = enriched.Forall([n],
       predicate = Natural(n),
       consequent = Equal(n, n)))
 
+
 n = common_vars.n()
 m = common_vars.m()
 eqSymmetric = enriched.Forall([n, m],
@@ -129,10 +133,19 @@ eqSymmetric = enriched.Forall([n, m],
 a = common_vars.a()
 b = common_vars.b()
 c = common_vars.c()
-eqSymmetric = enriched.Forall([a, b, c],
+eqTransitive = enriched.Forall([a, b, c],
     enriched.Implies(
       predicate = enriched.And([Equal(a, b), Equal(b, c)]),
       consequent = Equal(a, c)))
+
+n = common_vars.n()
+m = common_vars.m()
+eqDiscrete = enriched.Forall([n, m],
+    enriched.Implies(
+      predicate = enriched.And([Natural(n), Natural(m)]),
+      consequent = enriched.Or([Equal(n,m), Equal(n, m).transpose()])))
+
+eqClaims = [eqIdentitiy, eqSymmetric, eqTransitive, eqDiscrete]
 
 zero = enriched.Var('zero')
 
@@ -186,9 +199,17 @@ def byInduction(claim):
           predicate = Natural(k),
           consequent = claim(k))))
 
+successorClaims = [successorExists, successorUnique, successorInjective, successorNotZero]
+
 R = common_vars.R()
 allInduction = enriched.Forall([R],
     byInduction(lambda v: enriched.Holds(holding = R, held = v)))
+
+startingFormula = enriched.And([ zeroIsNatural
+                               , enriched.And(eqClaims)
+                               , enriched.And(successorClaims)
+                               , allInduction])
+
 
 n = common_vars.n()
 m = common_vars.m()

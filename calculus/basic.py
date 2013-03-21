@@ -59,6 +59,8 @@ class PrimitiveObject:
     return RemoveFalse(value = self)
   def forwardAdmit(self, b):
     return Admit(self, b)
+  def forwardIntroduceQuantifier(self, type, variable):
+    return IntroduceQuantifier(type = type, variable = variable, body = self)
   def backwardForget(self, b):
     return Forget(self, b)
   def backwardForgetFirst(self, b):
@@ -175,6 +177,11 @@ class Quantifier(PrimitiveObject):
         return self.body() == other.body().substituteVar(other.variable(), self.variable())
   def __ne__(self, other):
     return not (self == other)
+
+  def backwardIntroduceQuantifier(self):
+    assert(self.variable() not in self.body().freeVariables())
+    return IntroduceQuantifier(type = self.type(), variable = self.variable(),
+        body = self.body())
 
   def forwardUnusedQuantifier(self):
     # TODO Check that self.variable() is not free in self.body()
@@ -310,7 +317,7 @@ class Not(PrimitiveObject):
 
   # src and tgt go the opposite direction since Not is contravariant.
   def forwardOnNot(self, arrow):
-    assert(arrow.tgt() == self.value()):
+    assert(arrow.tgt() == self.value())
     assert(arrow.tgt() == self.value())
     return OnNot(arrow)
   def backwardOnNot(self, arrow):
@@ -627,6 +634,29 @@ class Eliminate(PrimitiveArrow):
     return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
+
+class IntroduceQuantifier:
+  def __init__(self, type, variable, body):
+    assert(type in quantifierTypes)
+    self._type = type
+    self._variable = variable
+    self._body = body
+
+  def type(self):
+    return self._type
+  def variable(self):
+    return self._variable
+  def body(self):
+    return self._body
+
+  def __repr__(self):
+    return "IntroduceQuantifier(%s, %s)"%(self.type(), self.variable())
+
+  def src(self):
+    return self.body()
+  def tgt(self):
+    return Quantifier(type = self.type(), variable = self.variable(),
+        body = self.body())
 
 class QuantNot(PrimitiveArrow):
   # q(t, | x ) --> | q(~t,x)

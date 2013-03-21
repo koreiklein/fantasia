@@ -34,7 +34,8 @@ quantifierArrowClasses = [ basic.QuantNot
                          , basic.NotQuant
                          , basic.ConjQuantifier
                          , basic.Eliminate
-                         , basic.UnusedQuantifier ]
+                         , basic.UnusedQuantifier
+                         , basic.IntroduceQuantifier ]
 
 # A kind of implementation of the functor rep on arrows.
 # Take each arrow A --> B to some python object in the set
