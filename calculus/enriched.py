@@ -1044,6 +1044,7 @@ class Identity(PrimitiveArrow):
   def backwardFollow(self, f):
     return f(self.tgt())
 
+# TODO Consider putting constraints on when these can be created.
 class IntroduceQuantifier(PrimitiveArrow):
   def __init__(self, type, variables, body):
     assert(type in basic.quantifierTypes)
@@ -1434,6 +1435,7 @@ class Singleton(PrimitiveArrow):
     else:
       raise Exception("Unrecognized self.type()")
 
+# TODO Consider putting constraints on when these can be created.
 class UnusedQuantifier(PrimitiveArrow):
   def __init__(self, quantifier, index):
     assert(quantifier.__class__ == Quantifier)
