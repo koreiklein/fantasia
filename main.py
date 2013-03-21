@@ -3,6 +3,7 @@
 from examples.easy_induction import transition #, ending_claim as claim
 from extraction.python.examples import easy_induction, silly
 from ui.run.glimmediate import slideshow, static
+from lib import natural
 
 import profile
 
@@ -15,8 +16,10 @@ setrecursionlimit(500000)
 #silly.test()
 #static.run(transition.tgt())
 
-easy_induction.test()
+#easy_induction.test()
+#
+#x = [transition.values()[0].src()]
+#x.extend([t.tgt() for t in transition.compress().values()])
+#slideshow.run(x)
 
-x = [transition.values()[0].src()]
-x.extend([t.tgt() for t in transition.compress().values()])
-slideshow.run(x)
+static.run(natural.preludeFormula)

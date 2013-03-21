@@ -9,7 +9,7 @@ from calculus import enriched
 trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 falseDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 concreteDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
-demorganedDividerColor = Color(r = 1.0, g = 1.0, b = 0.0)
+demorganedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
 quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.5)
 alwaysBackgroundColor = Color(r = 0.0, g = 0.5, b = 1.0, a = 0.8)
 maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.8)
