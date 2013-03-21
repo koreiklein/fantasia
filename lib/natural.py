@@ -28,7 +28,7 @@ class Natural(enriched.Logic):
 
   def substituteVar(self, a, b):
     if self.n() == a:
-      return IsNatural(b)
+      return Natural(b)
     else:
       return self
 
@@ -68,13 +68,13 @@ class Equal(enriched.Logic):
       a = y
     if b == x:
       b = y
-    return Successor(a = a, b = b)
+    return Equal(a = a, b = b)
 
   def transposeIsNot(self):
     return True
 
   def translate(self):
-    return basic.Holds(naturalEqualLeft = self.a().translate,
+    return basic.Holds(naturalEqualLeft = self.a().translate(),
         naturalEqualRight = self.b().translate())
 
 class Successor(enriched.Logic):
@@ -243,8 +243,7 @@ startingFormula = enriched.And([ zeroIsNatural
                                , enriched.And(successorClaims)
                                , allInduction])
 
-
-# This library wishes to provide as simple as possible a formula for extractions
+# This library wishes to provide as simple as possible a formula for extraction
 # engines to implement and as useful a formula for users to start with.
 # Therefore, it defines the following preludeArrow for converting the startingFormula
 # into a formula more useful for clients of the library.  Proofs using this library should

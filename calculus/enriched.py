@@ -1362,6 +1362,7 @@ class Eliminate(PrimitiveArrow):
     assert(quantifier.type() == forallType)
     assert(0 <= index)
     assert(index < len(quantifier.variables()))
+    assert(replacementVar.__class__ == Var)
     self._quantifier = quantifier
     self._index = index
     self._replacementVar = replacementVar
@@ -1880,7 +1881,8 @@ class Definition(PrimitiveArrow):
     def f(notToTranspose, notAandNotB):
       return notAandNotB.forwardOnNotFollow(lambda aAndNotB:
           aAndNotB.backwardOnLeft(notToTranspose).backwardFollow(lambda x:
-            x.backwardForgetFirst(basic.true)))
+            x.backwardOnLeftFollow(lambda x:
+              x.backwardForgetFirst(basic.true))))
 
     return basic.Definition(relation = self.relation().translate(),
         definition = self.definition().translate()).forwardFollow(lambda x:
