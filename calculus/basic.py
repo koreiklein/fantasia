@@ -1082,7 +1082,11 @@ class OnBody(FunctorialArrow):
     return functorToString("onBody", self.arrow(), variance)
 
   def compress(self):
-    return OnBody( arrow = self._arrow.compress(), variable = self.variable(), type = self.type())
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnBody(arrow = arrow, variable = self.variable(), type = self.type())
 
   def arrow(self):
     return self._arrow
@@ -1106,7 +1110,11 @@ class OnLeft(FunctorialArrow):
     return functorToString("onLeft(%s)"%(self.type(),), self.arrow(), variance)
 
   def compress(self):
-    return OnLeft(right = self.right(), arrow = self.arrow().compress(), type = self.type())
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnLeft(right = self.right(), arrow = arrow, type = self.type())
 
   def right(self):
     return self._right
@@ -1130,7 +1138,11 @@ class OnRight(FunctorialArrow):
     return functorToString("onRight(%s)"%(self.type(),), self.arrow(), variance)
 
   def compress(self):
-    return OnRight(left = self.left(), arrow = self.arrow().compress(), type = self.type())
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnRight(left = self.left(), arrow = arrow, type = self.type())
 
   def left(self):
     return self._left
@@ -1156,6 +1168,9 @@ class OnConj(FunctorialArrow):
     return self._leftArrow
   def rightArrow(self):
     return self._rightArrow
+
+  def asString(self, variance):
+    return self.asLeftRightComposite().asString(variance)
 
   def asLeftRightComposite(self):
     return self.src().forwardOnLeft(self.leftArrow()).forwardFollow(lambda x:
@@ -1195,7 +1210,11 @@ class OnAlways(FunctorialArrow):
     return self._arrow
 
   def compress(self):
-    return OnAlways(self.arrow().compress())
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnAlways(arrow)
 
   def src(self):
     return Always(self.arrow().src())
@@ -1210,7 +1229,11 @@ class OnNot(FunctorialArrow):
     return functorToString("onNot", self.arrow(), not variance)
 
   def compress(self):
-    return OnNot(self.arrow().compress())
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnNot(arrow)
 
   def arrow(self):
     return self._arrow

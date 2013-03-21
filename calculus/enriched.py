@@ -2152,13 +2152,23 @@ class OnValues:
     return Conj(type = self.type(), values = values)
 
   def translate(self):
-    # TODO: Define a translation that returns a more "compressed" basic arrow.
-    # Note: even with below implementation, this class is still useful for compression because
-    #       it allows for compressing arrows on the same index that are separated
-    #       e.g. Composite([OnIth(index = i, ...),  OnIth(index = j, ...), OnIth(i, ...)])
-    t = self.src().identity()
-    for (index, arrow) in self._arrows:
-      t = t.forwardFollow(lambda x:
-          x.forwardOnIth(index, arrow))
-    return t.translate()
+    n = len(self.src().values())
+    arrowsDict = dict(self.arrows())
+    for i in range(n):
+      if not arrowsDict.has_key(i):
+        arrowsDict[i] = self.src().values()[i].identity()
+    # arrowsDict now maps every valid index to some arrow.
+    basicType = correspondingConcreteBasicType(self.type())
+    if not self.src().demorganed():
+      t = basic.unit(basicType).identity()
+      for i in range(n):
+        t = basic.OnConj(type = basicType, leftArrow = t,
+            rightArrow = arrowsDict[i].translate())
+      return t
+    else:
+      t = basic.unit(basicType).identity()
+      for i in range(n):
+        t = basic.OnConj(type = basicType, leftArrow = t,
+            rightArrow = basic.OnNot(arrowsDict[i].translate()))
+      return basic.OnNot(t)
 
