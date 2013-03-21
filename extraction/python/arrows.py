@@ -236,7 +236,7 @@ def repOnRight(arrow):
 
 def repOnConj(arrow):
   # A % B ---> A' % B'
-  return arrowToProgram(arrow.leftArrow().forwardCompose(arrow.rightArrow()))
+  return arrowToProgram(arrow.asLeftRightComposite())
 
 def repOnAlways(arrow):
   # Since the objectReps are the same, the arrowReps can be as well.
