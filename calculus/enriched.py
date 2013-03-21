@@ -324,6 +324,8 @@ class Conj(Logic):
   def forwardForget(self, index):
     assert(self.type() in [andType, withType])
     return Forget(self, index)
+  def forwardAdmit(self, index, value):
+    return Admit(self, index, value)
   def backwardForget(self, index, value):
     values = list(self.values())
     values.insert(index, value)
@@ -1694,6 +1696,40 @@ class Apply(PrimitiveArrow):
             claim.forwardOnNotFollow(lambda claim:
               claim.backwardForgetFirst(basic.true))))).forwardFollow(lambda claim:
         claim.forwardApply())
+
+class Admit(PrimitiveArrow):
+  def __init__(self, conj, index, value):
+    assert(conj.type() in [orType, parType])
+    assert(0 <= index)
+    assert(index <= len(self.conj().values()))
+    self._conj = conj
+    self._index = index
+    self._value = value
+
+  def conj(self):
+    return self._conj
+  def index(self):
+    return self._index
+  def value(self):
+    return self._value
+
+  def src(self):
+    return self.conj()
+  def tgt(self):
+    values = list(self.conj().values())
+    values.insert(self.index(), self.value())
+    return Conj(type = self.conj().type(), values = values)
+
+  def translate(self):
+    if self.conj().type() == orType:
+      return _forwardWithin(self.src().translate(),
+          len(self.conj().values()) - self.index(), lambda claim:
+            claim.forwardAdmit(self.value().translate()))
+    else:
+      assert(self.conj().type() == parType)
+      return self.src().translate().forwardOnNotFollow(lambda conj:
+          _backwardWithin(conj, len(self.conj().values()) - self.index(), lambda claim:
+            claim.backwardForget(basic.Not(self.value().translate()))))
 
 class Forget(PrimitiveArrow):
   def __init__(self, conj, index):
