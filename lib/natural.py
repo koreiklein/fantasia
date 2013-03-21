@@ -215,22 +215,24 @@ n = common_vars.n()
 m = common_vars.m()
 t = common_vars.t()
 lessVar = common_vars.less()
-x = enriched.true.forwardFollow(lambda x:
 
-defLessStart = enriched.Forall([n, m],
-    enriched.Implies(
-      predicate = enriched.And([Natural(n), Natural(m)]),
-      consequent = enriched.true))
-defLessArrow = defLessStart.forwardOnBodyFollow(lambda x:
-    x.forwardOnIthFollow(2, lambda one:
-      one.forwardAppendDefinition(
-        relation = enriched.Holds(holding = lessVar, less = n, more = m),
-        definition = enriched.Or([ Successor(n, m)
-                                 , enriched.Exists([t],
-                                     enriched.And(
-                                       [ Successor(n, t)
-                                       , enriched.Holds(holding = lessVar,
-                                         less = t, more = m)]))]))))
+defLessArrow = enriched.true.forwardIntroduceQuantifier(type = basic.forallType,
+        variables = [n, m]).forwardFollow(lambda x:
+            x.forwardOnBodyFollow(lambda x:
+              x.forwardSingleton(enriched.parType).forwardFollow(lambda x:
+                x.forwardAdmit(0, Natural(m)).forwardFollow(lambda x:
+                  x.forwardAdmit(0, Natural(n))))))
+defLessArrow = defLessArrow.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardOnIthFollow(2, lambda one:
+        one.forwardAppendDefinition(
+          relation = enriched.Holds(holding = lessVar, less = n, more = m),
+          definition = enriched.Or([ Successor(n, m)
+                                   , enriched.Exists([t],
+                                       enriched.And(
+                                         [ Successor(n, t)
+                                         , enriched.Holds(holding = lessVar,
+                                           less = t, more = m)]))])))))
 
 defLessArrow.translate()
 defLess = defLessArrow.tgt()

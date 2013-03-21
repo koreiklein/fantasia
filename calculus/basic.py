@@ -18,7 +18,10 @@ class Var:
     return self._name
 
   def assertEqual(self, other):
-    assert(self == other)
+    if other.__class__ != Var:
+      raise Exception("basic Var unequal to some other object %s of class %s"%(other, other.__class__))
+    if self != other:
+      raise Exception("Unequal var %s != %s"%(self, other))
 
   def __repr__(self):
     return self.name()
@@ -147,9 +150,7 @@ class Quantifier(PrimitiveObject):
 
   def assertEqual(self, other):
     assert(other.__class__ == Quantifier)
-    if self.variable() != other.variable():
-      raise Exception(("Unequal vars %s != %s,"
-        + " in\n%s\n\tCOMPARED TO\n%s")%(self.variable(), other.variable(), self, other))
+    self.variable().assertEqual(other.variable())
     self.body().assertEqual(other.body())
 
   def updateVars(self):

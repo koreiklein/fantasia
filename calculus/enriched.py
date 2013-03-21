@@ -1064,10 +1064,10 @@ class IntroduceQuantifier(PrimitiveArrow):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.body())
 
   def translate(self):
-    t = self.src().identity()
+    t = self.src().translate().identity()
     for variable in self.variables()[::-1]:
       t = t.forwardFollow(lambda x:
-          x.forwardIntroduceQuantifier(self.type(), variable))
+          x.forwardIntroduceQuantifier(self.type(), variable.translate()))
     return t
 
 class Distribute(PrimitiveArrow):
@@ -1701,7 +1701,7 @@ class Admit(PrimitiveArrow):
   def __init__(self, conj, index, value):
     assert(conj.type() in [orType, parType])
     assert(0 <= index)
-    assert(index <= len(self.conj().values()))
+    assert(index <= len(conj.values()))
     self._conj = conj
     self._index = index
     self._value = value
