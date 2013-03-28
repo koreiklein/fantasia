@@ -52,6 +52,8 @@ def arrowToProgram(arrow):
     return repRemoveDoubleDual(arrow)
   elif arrow.__class__ == basic.Diagonal:
     return repDiagonal(arrow)
+  elif arrow.__class__ == basic.Unalways:
+    return repIdentity(arrow)
   elif arrow.__class__ == basic.IntroduceTrue:
     return repIntroduceTrue(arrow)
   elif arrow.__class__ == basic.RemoveFalse:

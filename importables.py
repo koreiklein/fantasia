@@ -20,21 +20,96 @@ class NullFeeder:
       x.forwardAssociateOut(1, 1))
            , {})
 
-class Feeder:
+def newFeeder(formula):
+  if formula.__class__ == Always:
+    return AlwaysFeeder(formula)
+  elif formula.__class__ == Conj and formula.type() == andType:
+    return ConjFeeder(formula)
+  else:
+    return SingletonFeeder(formula)
+
+# Note: There are three conceivable ways you might want to import
+# from an always, you may want to import
+#    0) Each claim available in always.value()
+#    1) Each claim available in always.value() but wrapped in an Always
+#    2) Each claim available in always.value() but wrapped in an Always if it isn't already.
+# The current implementation choses option 0.  Perhaps the others will be better suited
+# later on.  If you have some examples to justify using a different option, go ahead and change
+# the implementation.
+class AlwaysFeeder:
+  def __init__(self, always):
+    assert(always.__class__ == Always)
+    self._always = always
+    self._childFeeder = newFeeder(always.value())
+    self._claims = {}
+    for (key, value) in self._childFeeder.claims().items():
+      self._claims[('always', key)] = value
+
+  def claims(self):
+    return self._claims
+  def formula(self):
+    return self._always
+
+  # keys: a set of keys into the dict self.claims()
+  # return a pair (t, d),
+  #   where t is an "importing" arrow on self
+  #   that "replaces" self with And([ self', claimsOfKeys])
+  #   where claimsOfKeys is an And whose length is the cardinality of keys.
+  #   and where d is a dict mapping each key k in keys to an index i such that
+  #              claimsOfKeys[i] == self.claims(k)
+  def importKeySet_feeder(self, keys):
+    childKeys = Set()
+    for key in keys:
+      assert(key.__class__ == tuple)
+      assert(key[0] == 'always')
+      childKey = key[1]
+      childKeys.add(childKey)
+    (t, d) = self._childFeeder.importKeySet_feeder(childKeys)
+    T = self.formula().forwardDiagonal().forwardFollow(lambda x:
+        x.forwardOnIthFollow(1, lambda x:
+          x.forwardUnalways().forwardCompose(t.forwardFollow(lambda x:
+            x.forwardForgetAllBut(1)))))
+    D = {}
+    for (key, index) in d.items():
+      D[('always', key)] = index
+    return (T, D)
+
+class SingletonFeeder:
+  def __init__(self, formula):
+    self._formula = formula
+    self._claims = {'here' : formula}
+
+  def claims(self):
+    return self._claims
+  def formula(self):
+    return self._formula
+
+  def importKeySet_feeder(self, keys):
+    if 'here' in keys:
+      assert(len(keys) == 1)
+      d = {'here' : 0}
+      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
+          x.forwardSingleton(andType).forwardFollow(lambda x:
+            x.forwardAssociateOut(0, 0)))
+      return (t, d)
+    else:
+      assert(len(keys) == 0)
+      d = {}
+      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
+          x.forwardAssociateOut(1, 1))
+      return (t, d)
+
+class ConjFeeder:
   def __init__(self, formula):
     self._formula = formula
     self._feeders = []
     self._claims = {}
-    if formula.__class__ == Conj and formula.type() == andType:
-      self._composite_feeder = True
-      for i in range(len(formula.values())):
-        feeder = Feeder(formula.values()[i])
-        self._feeders.append(feeder)
-        for (key, value) in feeder.claims().items():
-          self._claims[(i, key)] = value
-    else:
-      self._composite_feeder = False
-      self._claims['here'] = self._formula
+    assert(formula.__class__ == Conj and formula.type() == andType)
+    for i in range(len(formula.values())):
+      feeder = newFeeder(formula.values()[i])
+      self._feeders.append(feeder)
+      for (key, value) in feeder.claims().items():
+        self._claims[(i, key)] = value
 
   def claims(self):
     return self._claims
@@ -50,25 +125,7 @@ class Feeder:
   #   and where d is a dict mapping each key k in keys to an index i such that
   #              claimsOfKeys[i] == self.claims(k)
   def importKeySet_feeder(self, keys):
-    if self._composite_feeder:
-      return _importKeySet_conj(self.formula(), self._feeders, keys)
-    else:
-      return self._importKeySet_feeder_single(keys)
-
-  def _importKeySet_feeder_single(self, keys):
-    if 'here' in keys:
-      assert(len(keys) == 1)
-      d = {'here' : 0}
-      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
-          x.forwardSingleton(andType).forwardFollow(lambda x:
-            x.forwardAssociateOut(0, 0)))
-      return (t, d)
-    else:
-      assert(len(keys) == 0)
-      d = {}
-      t = self.formula().forwardSingleton(andType).forwardFollow(lambda x:
-          x.forwardAssociateOut(1, 1))
-      return (t, d)
+    return _importKeySet_conj(self.formula(), self._feeders, keys)
 
 # conj: an enriched Conj
 # feeders: one feeder for each clause of conj
@@ -185,7 +242,7 @@ class Importable:
       if i == importingIndex:
         self._feeders.append(NullFeeder(formula.values()[i]))
       else:
-        self._feeders.append(Feeder(formula.values()[i]))
+        self._feeders.append(newFeeder(formula.values()[i]))
         for (key, value) in self._feeders[i].claims().items():
           self._claims[(i, key)] = value
     if parent is not None:

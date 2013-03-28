@@ -301,7 +301,6 @@ class Conj(Logic):
     return self.forwardAssociateOut(i, i)
 
   def forwardForgetAllBut(self, i):
-    assert(isEnrichedFalse(self.values()[i]))
     assert(0 <= i)
     assert(i < len(self.values()))
     t = self.identity()
@@ -887,6 +886,18 @@ class Always(Logic):
   def value(self):
     return self._value
 
+  def forwardOnAlways(self, arrow):
+    assert(arrow.src().translate() == self.translate())
+    return OnAlways(arrow)
+  def forwardOnAlwaysFollow(self, f):
+    return OnAlways(f(self.src()))
+
+  def forwardUnalways(self):
+    return Unalways(self.value())
+
+  def forwardDiagonal(self):
+    return Diagonal(self.value())
+
   def translate(self):
     return basic.Always(self.value().translate())
 
@@ -1173,6 +1184,24 @@ def _distribute(conj):
     return conj.forwardDistribute().forwardFollow(lambda x:
           x.onLeft(_distribute(x.left())))
 
+class Diagonal(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return And([ self.src(), self.src() ])
+
+  def translate(self):
+    return self.src().translate().forwardDiagonal().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardIntroduceTrue().forwardFollow(lambda x:
+            x.forwardCommute())))
+
 class ImportToClause(PrimitiveArrow):
   # Import claim i of the list into the kth clause of the PAR or AND at spot j.
   # e.g.  [A, B, C, D0 - D1 - D2, E], 1, 3, 0
@@ -1385,6 +1414,21 @@ class Eliminate(PrimitiveArrow):
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:
         basicBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
+
+class Unalways(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
+
+  def translate(self):
+    return self.src().translate().forwardUnalways()
 
 class Unsingleton(PrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
@@ -1919,6 +1963,21 @@ class Begin(FunctorialArrow):
                   self.claim().transpose().notToTranspose())))))
 
 # Functorial Arrows
+
+class OnAlways(FunctorialArrow):
+  def __init__(self, arrow):
+    self._arrow = arrow
+
+  def arrow(self):
+    return self._arrow
+
+  def src(self):
+    return Always(self.arrow().src())
+  def tgt(self):
+    return Always(self.arrow().tgt())
+
+  def translate(self):
+    return self.src().translate().forwardOnAlways(self.arrow().translate())
 
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):

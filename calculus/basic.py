@@ -68,6 +68,8 @@ class PrimitiveObject:
     return Forget(self, b)
   def backwardForgetFirst(self, b):
     return self.backwardForget(b).backwardFollow(lambda x: x.backwardCommute())
+  def backwardUnalways(self):
+    return Unalways(self)
   def backwardEliminateVar(self, quantifiedVar, replacementVar):
     return Eliminate(value = self.substituteVar(replacementVar, quantifiedVar),
         quantifiedVar = quantifiedVar, replacementVar = replacementVar)
@@ -159,7 +161,9 @@ class Quantifier(PrimitiveObject):
   def updateVars(self):
     a = self.variable()
     b = Var(a.name())
-    return Quantifier(variable = b, body = body.substituteVar(a, b).updateVars())
+    return Quantifier(type = self.type(),
+        variable = b,
+        body = self.body().substituteVar(a, b).updateVars())
 
   def variable(self):
     return self._variable
@@ -567,6 +571,9 @@ class Always(PrimitiveObject):
   def forwardDiagonal(self):
     return Diagonal(self.value())
 
+  def forwardUnalways(self):
+    return Unalways(self.value())
+
   def forwardOnAlways(self, arrow):
     assert(arrow.src() == self.value())
     return OnAlways(arrow)
@@ -763,6 +770,22 @@ class Diagonal(PrimitiveArrow):
     return Always(self.value())
   def tgt(self):
     return And(Always(self.value()), Always(self.value().updateVars()))
+
+class Unalways(PrimitiveArrow):
+  # !A --> A
+  def __init__(self, value):
+    self._value = value
+
+  def __repr__(self):
+    return 'unalways'
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
 
 class IntroduceTrue(PrimitiveArrow):
   # A ---> A | |
@@ -1325,8 +1348,9 @@ class Composite(PrimitiveArrow):
   # left and right are arrows such that left.src() == right.tgt()
   # construct their composite arrow.
   def __init__(self, left, right):
-    # Comment this line for a huge speedup.
-    left.tgt().assertEqual(right.src())
+    # Comment thse lines for a huge speedup.
+    if left.tgt() != right.src():
+      left.tgt().assertEqual(right.src())
 
     self._left = left
     self._right = right

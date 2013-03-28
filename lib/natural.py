@@ -251,7 +251,8 @@ startingFormula = enriched.And([ zeroIsNatural
 preludeArrow = startingFormula.forwardAssociateOut(0, 0).forwardFollow(lambda x:
     x.forwardOnIth(0, defLessArrow))
 
+# For debugging purposes.
 preludeArrow.translate()
 
 # This is the formula which users of this library should start with.
-preludeFormula = preludeArrow.tgt()
+preludeFormula = enriched.Always(preludeArrow.tgt())
