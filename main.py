@@ -2,7 +2,7 @@
 
 from examples import natural as natural_example
 from examples.easy_induction import transition #, ending_claim as claim
-from examples.natural_examples import transition as natural_transition
+from examples.two import transition as natural_transition
 from extraction.python.examples import easy_induction, silly
 from ui.run.glimmediate import slideshow, static
 from lib import natural
