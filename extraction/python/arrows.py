@@ -222,6 +222,14 @@ def repOnRight(arrow):
   # A % B ---> A % B'
   notBAndNotBprime = arrowToProgram(arrow.arrow())
   if arrow.type() == basic.andType:
+    def _t((x, notAAndBprime)):
+      if not(x.__class__ == tuple):
+        raise Exception("Not a tuple %s"%(x,))
+      (A, B) = x
+      return notBAndNotBprime( (B, lambda Bprime:
+      notAAndBprime( (A, Bprime) )))
+
+    return _t
     return (lambda ((A,B), notAAndBprime): notBAndNotBprime( (B, lambda Bprime:
       notAAndBprime( (A, Bprime) ))))
   else:

@@ -220,8 +220,8 @@ defLessArrow = enriched.true.forwardIntroduceQuantifier(type = basic.forallType,
         variables = [n, m]).forwardFollow(lambda x:
             x.forwardOnBodyFollow(lambda x:
               x.forwardSingleton(enriched.parType).forwardFollow(lambda x:
-                x.forwardAdmit(0, Natural(m)).forwardFollow(lambda x:
-                  x.forwardAdmit(0, Natural(n))))))
+                x.forwardAdmit(0, enriched.Not(Natural(m))).forwardFollow(lambda x:
+                  x.forwardAdmit(0, enriched.Not(Natural(n)))))))
 defLessArrow = defLessArrow.forwardFollow(lambda x:
     x.forwardOnBodyFollow(lambda x:
       x.forwardOnIthFollow(2, lambda one:
@@ -254,5 +254,6 @@ preludeArrow = startingFormula.forwardAssociateOut(0, 0).forwardFollow(lambda x:
 # For debugging purposes.
 preludeArrow.translate()
 
+alwaysPreludeArrow = enriched.Always(preludeArrow.src()).forwardOnAlways(preludeArrow)
 # This is the formula which users of this library should start with.
 preludeFormula = enriched.Always(preludeArrow.tgt())

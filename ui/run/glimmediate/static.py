@@ -36,7 +36,7 @@ def run(claim):
   glColor3f(0.0,0.0, 0.0)
   glMatrixMode(GL_PROJECTION)
   glLoadIdentity()
-  glOrtho(0.0, w + 0.0, 0.0, h + 0.0, -1.0, 1.0)
+  glOrtho(0.0, w + 2000.0, 0.0, h + 0.0, -1.0, 1.0)
   glScale(scale, scale, scale)
   startingStack = render(claim)
   glutMainLoop()

@@ -6,7 +6,7 @@ from lib import natural
 import importables
 import about
 
-transition = natural.preludeFormula.identity().forwardFollow(lambda x:
+transition = natural.alwaysPreludeArrow.forwardFollow(lambda x:
     x.forwardSingleton(enriched.andType).forwardFollow(lambda x:
       x.forwardAssociateOut(0, 0)))
 transition = transition.forwardFollow(lambda x:
@@ -23,3 +23,4 @@ transition = transition.forwardFollow(lambda x:
             x.forwardHeavyClean())
 
 transition.translate()
+

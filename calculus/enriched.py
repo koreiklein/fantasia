@@ -887,7 +887,7 @@ class Always(Logic):
     return self._value
 
   def forwardOnAlways(self, arrow):
-    assert(arrow.src().translate() == self.translate())
+    assert(arrow.src().translate() == self.value().translate())
     return OnAlways(arrow)
   def forwardOnAlwaysFollow(self, f):
     return OnAlways(f(self.src()))

@@ -645,7 +645,7 @@ class Eliminate(PrimitiveArrow):
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
 
-class IntroduceQuantifier:
+class IntroduceQuantifier(PrimitiveArrow):
   def __init__(self, type, variable, body):
     assert(type in quantifierTypes)
     self._type = type
