@@ -45,10 +45,10 @@ class AlwaysFeeder:
     for (key, value) in self._childFeeder.claims().items():
       self._claims[('always', key)] = value
 
-    def claims(self):
-      return self._claims
-    def formula(self):
-      return self._always
+  def claims(self):
+    return self._claims
+  def formula(self):
+    return self._always
 
   # keys: a set of keys into the dict self.claims()
   # return a pair (t, d),
