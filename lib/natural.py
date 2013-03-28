@@ -238,7 +238,7 @@ defLessArrow.translate()
 defLess = defLessArrow.tgt()
 
 # This is the formula for which extraction engines must give an implementation.
-startingFormula = enriched.And([ zeroIsNatural
+startingFormula = enriched.And([ enriched.Always(zeroIsNatural)
                                , enriched.And(eqClaims)
                                , enriched.And(successorClaims)
                                , allInduction])
@@ -255,4 +255,4 @@ preludeArrow = startingFormula.forwardAssociateOut(0, 0).forwardFollow(lambda x:
 preludeArrow.translate()
 
 # This is the formula which users of this library should start with.
-preludeFormula = preludeArrow.tgt()
+preludeFormula = enriched.Always(preludeArrow.tgt())

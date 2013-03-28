@@ -80,9 +80,10 @@ def renderMaybe(maybe):
 
 def renderExponential(isAlways, exponential):
   value = render(exponential.value())
-  widths = [x + 2 * distances.exponential_border_width for x in value.widths()[:2]]
+  widths = [x + 2 * distances.exponential_border_width for x in value.widths()]
+  widths[2] = 0.0
   return primitives.exponentialBox(isAlways, widths).stackCentered(2, value,
-      spacing = distances.epsilon)
+      spacing = distances.epsilon )
 
 def renderNot(notObject):
   value = render(notObject.value())

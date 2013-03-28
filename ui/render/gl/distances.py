@@ -10,7 +10,7 @@ conj_clause_spacing = 30.0
 quantifier_variables_spacing = 80.0
 quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
-exponential_border_width = 4.0
+exponential_border_width = 40.0
 
 notThickness = 12.0
 notShiftThickness = notThickness + 11.0
