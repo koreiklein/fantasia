@@ -1173,6 +1173,24 @@ def _distribute(conj):
     return conj.forwardDistribute().forwardFollow(lambda x:
           x.onLeft(_distribute(x.left())))
 
+class Diagonal(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return And([ self.src(), self.src() ])
+
+  def translate(self):
+    return self.src().translate().forwardDiagonal().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardIntroduceTrue().forwardFollow(lambda x:
+            x.forwardCommute())))
+
 class ImportToClause(PrimitiveArrow):
   # Import claim i of the list into the kth clause of the PAR or AND at spot j.
   # e.g.  [A, B, C, D0 - D1 - D2, E], 1, 3, 0
