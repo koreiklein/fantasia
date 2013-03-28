@@ -762,6 +762,22 @@ class Diagonal(PrimitiveArrow):
   def tgt(self):
     return And(Always(self.value()), Always(self.value().updateVars()))
 
+class Unalways:
+  # !A --> A
+  def __init__(self, value):
+    self._value = value
+
+  def __repr__(self):
+    return 'unalways'
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
+
 class IntroduceTrue(PrimitiveArrow):
   # A ---> A | |
   def __init__(self, value):
