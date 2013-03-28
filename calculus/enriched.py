@@ -891,7 +891,10 @@ class Always(Logic):
     assert(arrow.src().translate() == self.translate())
     return OnAlways(arrow)
   def forwardOnAlwaysFollow(self, f):
-    return OnAlways(f(self.src())
+    return OnAlways(f(self.src()))
+
+  def forwardUnalways(self):
+    return Unalways(self.value())
 
   def translate(self):
     return basic.Always(self.value().translate())
@@ -1408,6 +1411,21 @@ class Eliminate(PrimitiveArrow):
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:
         basicBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
+
+class Unalways(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
+
+  def translate(self):
+    return self.src().translate().forwardUnalways()
 
 class Unsingleton(PrimitiveArrow):
   # clever: we cheat by reversing the translated Singleton transition.
