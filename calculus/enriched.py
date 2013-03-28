@@ -887,6 +887,12 @@ class Always(Logic):
   def value(self):
     return self._value
 
+  def forwardOnAlways(self, arrow):
+    assert(arrow.src().translate() == self.translate())
+    return OnAlways(arrow)
+  def forwardOnAlwaysFollow(self, f):
+    return OnAlways(f(self.src())
+
   def translate(self):
     return basic.Always(self.value().translate())
 
@@ -1935,6 +1941,21 @@ class Begin(FunctorialArrow):
                   self.claim().transpose().notToTranspose())))))
 
 # Functorial Arrows
+
+class OnAlways(FunctorialArrow):
+  def __init__(self, arrow):
+    self._arrow = arrow
+
+  def arrow(self):
+    return self._arrow
+
+  def src(self):
+    return Always(self.arrow().src())
+  def tgt(self):
+    return Always(self.arrow().tgt())
+
+  def translate(self):
+    return self.src().translate().forwardOnAlways(self.arrow().translate())
 
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):
