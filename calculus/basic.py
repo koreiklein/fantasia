@@ -68,6 +68,8 @@ class PrimitiveObject:
     return Forget(self, b)
   def backwardForgetFirst(self, b):
     return self.backwardForget(b).backwardFollow(lambda x: x.backwardCommute())
+  def backwardUnalways(self):
+    return Unalways(self)
   def backwardEliminateVar(self, quantifiedVar, replacementVar):
     return Eliminate(value = self.substituteVar(replacementVar, quantifiedVar),
         quantifiedVar = quantifiedVar, replacementVar = replacementVar)
@@ -563,6 +565,9 @@ class Always(PrimitiveObject):
 
   def forwardDiagonal(self):
     return Diagonal(self.value())
+
+  def forwardUnalways(self):
+    return Unalways(self.value())
 
   def forwardOnAlways(self, arrow):
     assert(arrow.src() == self.value())
