@@ -896,6 +896,9 @@ class Always(Logic):
   def forwardUnalways(self):
     return Unalways(self.value())
 
+  def forwardDiagonal(self):
+    return Diagonal(self.value())
+
   def translate(self):
     return basic.Always(self.value().translate())
 
