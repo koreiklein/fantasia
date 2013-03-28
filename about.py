@@ -7,6 +7,8 @@ from importables import ClaimsUse
 # returns a function suitable for use as the second argument to a call to
 # finishImporting (in importables).
 def about(variables, desiredIndex = None):
+  for variable in variables:
+    assert(variable.__class__ == Var)
   def importableToUse(m):
     (known, potential) = _knownAndFunctionClaims(variables, m.claims())
     res = [] # A list of pairs, (a ClaimsUse object, the claim it concludes)

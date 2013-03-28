@@ -89,6 +89,9 @@ class Holds(PrimitiveObject):
   def __getitem__(self, x):
     return self._d[x]
 
+  def __repr__(self):
+    return "Holds : %s"%(self._d)
+
   def __eq__(self, other):
     if other.__class__ != Holds:
       return False
@@ -597,7 +600,6 @@ class PrimitiveArrow:
 
   def asString(self, variance):
     return repr(self)
-
 
   # other is another arrow.
   def forwardCompose(self, other):
