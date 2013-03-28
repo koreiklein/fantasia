@@ -58,16 +58,16 @@ class AlwaysFeeder:
   #   and where d is a dict mapping each key k in keys to an index i such that
   #              claimsOfKeys[i] == self.claims(k)
   def importKeySet_feeder(self, keys):
-    childKeys = {}
-    for (key, value) in keys.items():
+    childKeys = Set()
+    for key in keys:
       assert(key.__class__ == tuple)
       assert(key[0] == 'always')
       childKey = key[1]
-      childKeys[childKey] = value
+      childKeys.add(childKey)
     (t, d) = self._childFeeder.importKeySet_feeder(childKeys)
     T = self.formula().forwardDiagonal().forwardFollow(lambda x:
         x.forwardOnIthFollow(1, lambda x:
-          x.forwardUnalways().forwardFollow(t.forwardFollow(lambda x:
+          x.forwardUnalways().forwardCompose(t.forwardFollow(lambda x:
             x.forwardForgetAllBut(1)))))
     D = {}
     for (key, index) in d.items():

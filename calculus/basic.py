@@ -161,7 +161,9 @@ class Quantifier(PrimitiveObject):
   def updateVars(self):
     a = self.variable()
     b = Var(a.name())
-    return Quantifier(variable = b, body = body.substituteVar(a, b).updateVars())
+    return Quantifier(type = self.type(),
+        variable = b,
+        body = self.body().substituteVar(a, b).updateVars())
 
   def variable(self):
     return self._variable
@@ -1346,8 +1348,9 @@ class Composite(PrimitiveArrow):
   # left and right are arrows such that left.src() == right.tgt()
   # construct their composite arrow.
   def __init__(self, left, right):
-    # Comment this line for a huge speedup.
-    left.tgt().assertEqual(right.src())
+    # Comment thse lines for a huge speedup.
+    if left.tgt() != right.src():
+      left.tgt().assertEqual(right.src())
 
     self._left = left
     self._right = right

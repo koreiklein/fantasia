@@ -23,5 +23,9 @@ setrecursionlimit(500000)
 #x.extend([t.tgt() for t in transition.compress().values()])
 #slideshow.run(x)
 
+
+
 #static.run(natural.preludeFormula)
-static.run(natural_example.arrow.tgt())
+x = [t.src() for t in natural_transition.values()]
+x.append(natural_transition.values()[-1].tgt())
+static.run(x[-1])
