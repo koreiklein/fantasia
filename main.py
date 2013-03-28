@@ -16,7 +16,7 @@ setrecursionlimit(500000)
 #silly.test()
 #static.run(transition.tgt())
 
-easy_induction.test()
+#easy_induction.test()
 #
 #x = [transition.values()[0].src()]
 #x.extend([t.tgt() for t in transition.compress().values()])
