@@ -301,7 +301,6 @@ class Conj(Logic):
     return self.forwardAssociateOut(i, i)
 
   def forwardForgetAllBut(self, i):
-    assert(isEnrichedFalse(self.values()[i]))
     assert(0 <= i)
     assert(i < len(self.values()))
     t = self.identity()
