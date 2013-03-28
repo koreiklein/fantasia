@@ -210,6 +210,11 @@ startingFormula = enriched.And([ zeroIsNatural
                                , enriched.And(successorClaims)
                                , allInduction])
 
+# This is the formula for which extraction engines must give an implementation.
+startingFormula = enriched.And([ zeroIsNatural
+                               , enriched.And(eqClaims)
+                               , enriched.And(successorClaims)
+                               , allInduction])
 
 n = common_vars.n()
 m = common_vars.m()
@@ -236,12 +241,6 @@ defLessArrow = defLessArrow.forwardFollow(lambda x:
 
 defLessArrow.translate()
 defLess = defLessArrow.tgt()
-
-# This is the formula for which extraction engines must give an implementation.
-startingFormula = enriched.And([ zeroIsNatural
-                               , enriched.And(eqClaims)
-                               , enriched.And(successorClaims)
-                               , allInduction])
 
 # This library wishes to provide as simple as possible a formula for extraction
 # engines to implement and as useful a formula for users to start with.

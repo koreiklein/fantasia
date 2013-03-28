@@ -28,17 +28,17 @@ starting_claim = enriched.And([ natural.increasing
                               , natural.reflexivity
                               , natural.zero_natural ])
 
-transition = starting_claim.forwardImportToClause(2, 1, 1)
+arrow = starting_claim.forwardImportToClause(2, 1, 1)
 
-transition = transition.forwardFollow(lambda claim:
+arrow = arrow.forwardFollow(lambda claim:
     claim.forwardOnIthFollow(1, lambda x:
       x.forwardOnIthFollow(1, lambda x:
         x.forwardConjQuantifier(0))))
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     x.forwardHeavyClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 1, lambda x:
       importables.continueImportingOnOnIthFollow(x, 1, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
@@ -46,7 +46,7 @@ transition = transition.forwardFollow(lambda x:
             about.about(q.variables(), 1)))))).forwardFollow(lambda x:
               x.forwardHeavyClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 1, lambda x:
       importables.continueImportingOnOnIthFollow(x, 1, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
@@ -58,7 +58,7 @@ def zero_and(rest):
   res.extend(rest)
   return res
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 0, lambda x:
       importables.continueImportingOnOnIthFollow(x, 1, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
@@ -66,18 +66,18 @@ transition = transition.forwardFollow(lambda x:
             about.about(zero_and(q.variables()), 0)))))).forwardFollow(lambda x:
               x.forwardClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     x.forwardOnIthFollow(0, lambda x:
       x.forwardOnIthFollow(0, lambda x:
         x.forwardSingleton(enriched.andType))))
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 0, lambda x:
       importables.continueImportingOnOnIthFollow(x, 0, lambda x:
         importables.finishImporting(x, about.about([natural.zero], 0))))).forwardFollow(lambda x:
             x.forwardClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 0, lambda x:
       importables.continueImportingOnOnIthFollow(x, 0, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
@@ -85,21 +85,21 @@ transition = transition.forwardFollow(lambda x:
             about.about(zero_and(q.variables()[1:]), 0)))))).forwardFollow(lambda x:
               x.forwardClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     importables.beginImportingOnIthFollow(x, 0, lambda x:
       importables.continueImportingOnOnIthFollow(x, 0, lambda q:
         importables.continueImportingOnBodyFollow(q, lambda x:
           importables.finishImporting(x, about.about(q.variables()[1:], 0)))))).forwardFollow(lambda x:
               x.forwardHeavyClean())
 
-transition = transition.forwardFollow(lambda x:
+arrow = arrow.forwardFollow(lambda x:
     x.forwardUnsingleton())
 
-# Now wrap the preceeding transition into a transition that concludes that 5 is at least 0.
+# Now wrap the preceeding arrow into a arrow that concludes that 5 is at least 0.
 
 s = enriched.And([starting_claim, natural.exists_five])
 
-t = s.forwardOnIthFollow(0, lambda x: transition)
+t = s.forwardOnIthFollow(0, lambda x: arrow)
 t = t.forwardFollow(lambda x:
     x.forwardConjQuantifier(1))
 t = t.forwardFollow(lambda x:

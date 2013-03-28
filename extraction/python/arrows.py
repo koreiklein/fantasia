@@ -5,7 +5,7 @@ from calculus import basic
 # A backend for the basic calculus.
 # This backend runs on a single machine.
 # This backend performs no optimizations.
-# This backend translates each primitive transition individually.
+# This backend translates each primitive arrow individually.
 # This is an interpreter backend.
 
 

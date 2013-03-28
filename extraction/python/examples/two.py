@@ -2,10 +2,10 @@
 
 from extraction.python.arrows import curry_howard
 from extraction.python.lib.natural import startingFormulaRep
-from examples.two import transition
+from examples.two import arrow
 
 def test():
-  compressedT = transition.compress().translate().compress()
+  compressedT = arrow.compress().translate().compress()
   #print >>open('arrow.txt', 'w'), compressedT
   program_transformation = curry_howard(compressedT)
   finalRep = program_transformation(startingFormulaRep)

@@ -1,8 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from examples import natural as natural_example
-from examples.easy_induction import transition #, ending_claim as claim
-from examples.two import transition as natural_transition
+from examples.easy_induction import arrow #, ending_claim as claim
+from examples.two import arrow as natural_arrow
 from extraction.python.examples import easy_induction, silly, two
 from ui.run.glimmediate import slideshow, static
 from lib import natural
@@ -11,24 +11,24 @@ import profile
 
 from sys import setrecursionlimit
 
-from examples.easy_induction import transition as transition
+from examples.easy_induction import arrow as arrow
 
 setrecursionlimit(500000)
 
 #silly.test()
-#static.run(transition.tgt())
+#static.run(arrow.tgt())
 
 #easy_induction.test()
-#x = [transition.values()[0].src()]
-#x.extend([t.tgt() for t in transition.compress().values()])
+#x = [arrow.values()[0].src()]
+#x.extend([t.tgt() for t in arrow.compress().values()])
 #slideshow.run(x)
 
 
 
 #static.run(natural.preludeFormula)
-#x = [t.src() for t in natural_transition.values()]
-#x.append(natural_transition.values()[-1].tgt())
+#x = [t.src() for t in natural_arrow.values()]
+#x.append(natural_arrow.values()[-1].tgt())
 #static.run(x[-1])
 
-#static.run(two.transition.tgt())
-two.test()
+static.run(natural_example.arrow.tgt())
+#two.test()

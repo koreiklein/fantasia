@@ -409,10 +409,10 @@ class Conj(Logic):
   # forwardImportToPathFollow may be called with a covariant or contravariant path.
   #   It's code is largely the same in both cases, yet the only known way to define its
   #   behavior breaks this situation down into cases:
-  #   A) If path is covariant, return a transition that brings clause i to the end of
+  #   A) If path is covariant, return an arrow that brings clause i to the end of
   #      path, constructing an AND of length 2, and follow by calling f on the result.
-  #   B) If path is contravariant, f must produce a transition to self from x when applied
-  #      to x where x is the clause at i paired with the end of path.  Return a transition
+  #   B) If path is contravariant, f must produce an arrow to self from x when applied
+  #      to x where x is the clause at i paired with the end of path.  Return an arrow
   #      to self from whatever f produces, but with that residual claim i exported.
   # TODO(koreiklein) The only reason I'm writing this function without any idea how to describe
   #                  it succinctly is because of a HUGE intuitivie sense that I'm right anyway.
@@ -1135,8 +1135,8 @@ class Distribute(PrimitiveArrow):
                     jAndi.right())))).forwardFollow(lambda x: x.forwardApply()))
 
 # basicObject: a basic object of the form ((unit % A) % B) % C for % in {|,-}
-# f: a function basic objects -> transitions leaving said objects
-# return: a basic transition to ((unit % f(A)) % f(B)) % f(C)
+# f: a function basic objects -> arrows leaving said objects
+# return: a basic arrow to ((unit % f(A)) % f(B)) % f(C)
 def _forwardOnAll(basicObject, f):
   if basicObject.__class__ == basic.Conj:
     return basicObject.forwardOnLeftFollow(lambda x:
@@ -1147,8 +1147,8 @@ def _forwardOnAll(basicObject, f):
     return basicObject.identity()
 
 # basicObject: a basic object of the form ((unit % A) % B) % C for % in {|,-}
-# f: a function basic objects -> transitions to said objects
-# return: a basic transition from ((unit % f(A)) % f(B)) % f(C)
+# f: a function basic objects -> arrows to said objects
+# return: a basic arrow from ((unit % f(A)) % f(B)) % f(C)
 def _backwardOnAll(basicObject, f):
   if basicObject.__class__ == basic.Conj:
     return basicObject.backwardOnLeftFollow(lambda x:
@@ -1264,7 +1264,7 @@ class ImportToClause(PrimitiveArrow):
 # conjOrUnit: a basic conj of the form (((1 | A) | B) | C) | D
 # outer: an integer
 # f: a function from a basic conj to a basic conj
-# return: a basic transition from a  conj like conjOrUnit,
+# return: a basic arrow from a  conj like conjOrUnit,
 #         but in which f was applied to the outerth claim,
 #         and the right side of the result was commuted and associated all the way to the right.
 # e.g.
@@ -1284,12 +1284,12 @@ def _backwardBringToRight(conjOrUnit, outer, f):
 
 # conj: an enriched.Conj
 # i, j: i != j, are indices into the values of conj
-# basicTransitionF: a function generating a basic transition from:
+# basicArrowF: a function generating a basic arrow from:
 #     (conj.values()[j].translate() | conj.values()[i].translate())
 #   to any basic object L.
-# return: a transition with src conj.translate() which removes the ith and jth elements and leaves
+# return: an arrow with src conj.translate() which removes the ith and jth elements and leaves
 #         L at the front.
-def _onJandI(conj, j, i, basicTransitionF):
+def _onJandI(conj, j, i, basicArrowF):
   assert(conj.__class__ == Conj)
   assert(i != j)
   assert(0 <= i and i < len(conj.values()))
@@ -1304,7 +1304,7 @@ def _onJandI(conj, j, i, basicTransitionF):
         # x = (% % values[j]) % values[i]
         x.forwardAssociateA().forwardFollow(lambda x:
         # x = % % (values[j] % values[i])
-        x.forwardOnRightFollow(basicTransitionF))))
+        x.forwardOnRightFollow(basicArrowF))))
 
 class RemoveQuantifier(PrimitiveArrow):
   def __init__(self, value, quantifierType):
@@ -1349,8 +1349,8 @@ class ConjQuantifier(PrimitiveArrow):
     return Quantifier(type = self.quantifier().type(), variables = self.quantifier().variables(),
         body = Conj(type = self.conj().type(), values = values))
 
-  # Note: Though this method generates a basic transition of quadratic size,
-  #       extraction can safely convert the entire basic transition into the identity
+  # Note: Though this method generates a basic arrow of quadratic size,
+  #       extraction can safely convert the entire basic arrow into the identity
   #       program transformation.  Therefore, there is no performance penalty.
   def translate(self):
     return _conjQuantifierWithin(basicConj = self.src().translate(),
@@ -1431,7 +1431,7 @@ class Unalways(PrimitiveArrow):
     return self.src().translate().forwardUnalways()
 
 class Unsingleton(PrimitiveArrow):
-  # clever: we cheat by reversing the translated Singleton transition.
+  # clever: we cheat by reversing the translated Singleton arrow.
   def __init__(self, a, type):
     self._singleton = Singleton(a, type)
 
@@ -1529,7 +1529,7 @@ class QuantifierJoin(PrimitiveArrow):
 class AssociateOut(PrimitiveArrow):
   # e.g. index = 1
   # [A, B, C, D] --> [A, [B, C], D]
-  # We are clever, we cheat by reversing the translated associateIn transition.
+  # We are clever, we cheat by reversing the translated associateIn arrow.
   # conj: the tgt conj
   # index: the index of the first thing associated out
   def __init__(self, conj, index):
@@ -2072,7 +2072,7 @@ class OnBody(FunctorialArrow):
 #                   type applied in sequence
 #         e.g. (n == 3)  forall a. forall b. forall c. forall d. <body>
 # f: a function between basic objects
-# return: the transition that applies f within the body of the first n quantifiers
+# return: the arrow that applies f within the body of the first n quantifiers
 #         e.g. (n == 3)  forall a. forall b. forall c. f(forall d. <body>)
 def _quantifierWithin(basicQuantifier, n, f):
   if n == 0:
