@@ -11,8 +11,11 @@ trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 falseDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
 # Prefer choosing the colors of dividers based on the underlying basic type.
-#concreteDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
-#demorganedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
+chooseColorsByConcreteness = False
+
+concreteDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
+demorganedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
+
 andBasedDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
 orBasedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
 
@@ -25,12 +28,19 @@ textColor = Color(r = 0.2, g = 0.2, b = 0.2, a= 1.0)
 variableColor = Color(r = 0.2, g = 0.5, b = 0.2, a= 1.0)
 
 def colorOfConjType(type):
-  basicType = enriched.correspondingConcreteBasicType(type)
-  if basicType == andType:
-    return andBasedDividerColor
+  if chooseColorsByConcreteness:
+    if type in enriched.concreteConjTypes:
+      return concreteDividerColor
+    else:
+      assert(type in enriched.demorganedConjTypes)
+      return demorganedDividerColor
   else:
-    assert(basicType == orType)
-    return orBasedDividerColor
+    basicType = enriched.correspondingConcreteBasicType(type)
+    if basicType == andType:
+      return andBasedDividerColor
+    else:
+      assert(basicType == orType)
+      return orBasedDividerColor
 
 def colorOfUnitType(type):
   if type in [enriched.andType, enriched.withType]:
