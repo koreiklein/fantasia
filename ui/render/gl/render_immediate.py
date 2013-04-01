@@ -35,6 +35,8 @@ def render(logic):
     return renderNatural(logic)
   elif logic.__class__ == natural.Successor:
     return renderSuccessor(logic)
+  elif logic.__class__ == natural.Less:
+    return renderLess(logic)
   elif logic.__class__ == natural.Equal:
     return renderNaturalEqual(logic)
   else:
@@ -118,4 +120,7 @@ def renderSuccessor(logic):
   return gl.newTextualGLStack(colors.textColor, repr(logic))
 
 def renderNaturalEqual(logic):
+  return gl.newTextualGLStack(colors.textColor, repr(logic))
+
+def renderLess(logic):
   return gl.newTextualGLStack(colors.textColor, repr(logic))

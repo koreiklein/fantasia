@@ -116,6 +116,45 @@ class Successor(enriched.Logic):
   def transposeIsNot(self):
     return True
 
+class Less(enriched.Logic):
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+    self.initMarkable([])
+
+  def __repr__(self):
+    return "%s < %s"%(self.a(), self.b())
+
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
+
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
+
+  def __eq__(self, other):
+    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, a, b):
+    smaller = self.a()
+    larger = self.b()
+    if smaller == a:
+      smaller = b
+    if larger == a:
+      larger = b
+    return Less(a = smaller, b = larger)
+
+  def translate(self):
+    return basic.Holds(succeeded = self.a().translate(),
+        succeeding = self.b().translate())
+
+  def transposeIsNot(self):
+    return True
+
 n = common_vars.n()
 eqIdentitiy = enriched.Forall([n],
     enriched.Implies(
@@ -231,13 +270,12 @@ defLessArrow = defLessArrow.forwardFollow(lambda x:
     x.forwardOnBodyFollow(lambda x:
       x.forwardOnIthFollow(2, lambda one:
         one.forwardAppendDefinition(
-          relation = enriched.Holds(holding = lessVar, less = n, more = m),
+          relation = Less(n, m),
           definition = enriched.Or([ Successor(n, m)
                                    , enriched.Exists([t],
                                        enriched.And(
                                          [ Successor(n, t)
-                                         , enriched.Holds(holding = lessVar,
-                                           less = t, more = m)]))])))))
+                                         , Less(t, m) ]))])))))
 
 defLessArrow.translate()
 defLess = defLessArrow.tgt()
