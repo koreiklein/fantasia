@@ -271,6 +271,9 @@ class TrueClass(PrimitiveObject):
   def __ne__(self, other):
     return not (self == other)
 
+  def forwardTrueAlways(self):
+    return TrueAlways()
+
 class Not(PrimitiveObject):
   def __init__(self, value):
     self._value = value
@@ -585,6 +588,10 @@ class Always(PrimitiveObject):
   def backwardOnAlwaysFollow(self, f):
     return self.backwardOnAlways(f(self.value()))
 
+  def backwardTrueAlways(self):
+    assert(self.value() == true)
+    return TrueAlways()
+
 # Arrows
 
 # Abstract superclass of all primitive arrows between primitive objects.
@@ -644,6 +651,15 @@ class Eliminate(PrimitiveArrow):
     return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
+
+class TrueAlways(PrimitiveArrow):
+  def src(self):
+    return true
+  def tgt(self):
+    return Always(true)
+
+  def __repr__(self):
+    return "TrueAlways"
 
 class IntroduceQuantifier(PrimitiveArrow):
   def __init__(self, type, variable, body):
