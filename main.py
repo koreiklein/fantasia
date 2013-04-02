@@ -18,10 +18,10 @@ setrecursionlimit(500000)
 #silly.test()
 #static.run(arrow.tgt())
 
-#easy_induction.test()
-#x = [arrow.values()[0].src()]
-#x.extend([t.tgt() for t in arrow.compress().values()])
-#slideshow.run(x)
+easy_induction.test()
+x = [arrow.values()[0].src()]
+x.extend([t.tgt() for t in arrow.compress().values()])
+slideshow.run(x)
 
 
 
@@ -30,5 +30,5 @@ setrecursionlimit(500000)
 #x.append(natural_arrow.values()[-1].tgt())
 #static.run(x[-1])
 
-static.run(natural_example.arrow.tgt())
+#static.run(natural_example.arrow.tgt())
 #two.test()
