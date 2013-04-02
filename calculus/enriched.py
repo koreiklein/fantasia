@@ -542,6 +542,11 @@ class Conj(Logic):
             x.forwardApply(1, 0)).forwardFollow(lambda par:
           par.forwardRemoveUnit(k))))
 
+  def forwardTrueAlways(self):
+    assert(self.type() == andType)
+    assert(len(self.values()) == 0)
+    return TrueAlways()
+
   def substituteVar(self, a, b):
     return Conj(type = self.type(),
         values = [value.substituteVar(a, b) for value in self.values()])
@@ -1054,6 +1059,14 @@ class Identity(PrimitiveArrow):
     return f(self.src())
   def backwardFollow(self, f):
     return f(self.tgt())
+
+class TrueAlways(PrimitiveArrow):
+  def src(self):
+    return true
+  def tgt(self):
+    return Always(true)
+  def translate(self):
+    return basic.TrueAlways()
 
 # TODO Consider putting constraints on when these can be created.
 class IntroduceQuantifier(PrimitiveArrow):
