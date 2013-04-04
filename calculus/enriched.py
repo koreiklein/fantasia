@@ -1982,31 +1982,6 @@ class Definition(PrimitiveArrow):
             x.forwardOnRightFollow(lambda x:
               f(self.relation().transpose().notToTranspose(), x))))
 
-# This Arrow is used to introduce a new claim
-class Begin(FunctorialArrow):
-  def __init__(self, claim):
-    self._claim = claim
-
-  def claim(self):
-    return self._claim
-
-  def src(self):
-    return true
-  def tgt(self):
-    return Conj(type = parType, values = [claim.transpose(), claim])
-
-  # FIXME(koreiklein) Something here is broken.  Write tests and fix.
-  def translate(self):
-    return basic.IntroduceDoubleDual(true).forwardFollow(lambda notNotTrue:
-          notNotTrue.forwardOnNotFollow(lambda value:
-            value.backwardApply(self.claim().translate()).backwardFollow(lambda x:
-              x.backwardCommute().backwardFollow(lambda x:
-                x.backwardOnRightFollow(lambda notOneAndClaim:
-                  notOneAndClaim.backwardOnNotFollow(lambda oneAndClaim:
-                    oneAndClaim.forwardForgetFirst()))).backwardFollow(lambda x:
-                x.backwardOnLeftFollow(lambda claim:
-                  self.claim().transpose().notToTranspose())))))
-
 # Functorial Arrows
 
 class OnAlways(FunctorialArrow):
