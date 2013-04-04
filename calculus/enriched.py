@@ -292,6 +292,13 @@ class Conj(Logic):
     return t.forwardFollow(_maybeUnsingleton).forwardFollow(lambda x:
         x.forwardClean())
 
+  def forwardParDiagonal(self, i, j):
+    if i < j:
+      return ParDiagonal(self, i, j)
+    else:
+      assert(j < i)
+      return ParDiagonal(self, j, i)
+
   # self must be of type parType.
   # Assume b at clause i, appending b.transpose() to the list of clauses.
   def forwardAssumeMore(self, i, b):
@@ -1238,6 +1245,50 @@ def _distribute(conj):
     assert(conj.left().type() == basic.orType)
     return conj.forwardDistribute().forwardFollow(lambda x:
           x.onLeft(_distribute(x.left())))
+
+class ParDiagonal(PrimitiveArrow):
+  # i < j
+  # PAR([Not(Always(A)), B, Not(Always(A)), C]), 0, 2 --> PAR([Not(Always(A)), B, C])
+  def __init__(self, par, i, j):
+    assert(par.__class__ == Conj)
+    assert(par.type() == parType)
+    assert(i < j)
+    assert(par.values()[i].translate() == par.values()[j].translate())
+    self._par = par
+    self._i = i
+    self._j = j
+    self._claim = par.values()[i]
+    assert(self._claim.__class__ == Not)
+    assert(self._claim.value().__class__ == Always)
+
+  def i(self):
+    return self._i
+  def j(self):
+    return self._j
+
+  def src(self):
+    return self._par
+  def tgt(self):
+    values = list(self.src().values())
+    values.pop(self.j())
+    return Par(values)
+
+  def translate(self):
+    return self.forwardShift(self.j(), self.i() - self.j()).forwardFollow(lambda x:
+        x.forwardAssociateIn(self.i(), self.i() + 2)).translate().forwardFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              _backwardWithin(x, len(self.src().values()) - (self.i() + 1), lambda x:
+                x.backwardOnRightFollow(lambda x:
+                  x.backwardOnNotFollow(lambda x:
+                    # x == Par([self._claim, self._clami]).translate()
+                    x.forwardOnNotFollow(lambda x:
+                      x.backwardOnLeftFollow(lambda x:
+                        x.backwardCommute().backwardFollow(lambda x:
+                          x.backwardIntroduceTrue().backwardFollow(lambda x:
+                            x.backwardIntroduceDoubleDual()))).backwardFollow(lambda x:
+                      x.backwardOnRightFollow(lambda x:
+                        x.backwardIntroduceDoubleDual())).backwardFollow(lambda x:
+                      x.backwardDiagonal())))))))
 
 class Diagonal(PrimitiveArrow):
   def __init__(self, value):
