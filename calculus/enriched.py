@@ -112,6 +112,9 @@ class Logic(markable.Markable):
         x.forwardUnsingleton())
     return res
 
+  def forwardAssume(self, b):
+    return Assume(self, b)
+
 forallType = basic.forallType
 existsType = basic.existsType
 
@@ -289,6 +292,13 @@ class Conj(Logic):
     return t.forwardFollow(_maybeUnsingleton).forwardFollow(lambda x:
         x.forwardClean())
 
+  # self must be of type parType.
+  # Assume b at clause i, appending b.transpose() to the list of clauses.
+  def forwardAssumeMore(self, i, b):
+    assert(self.type() == parType)
+    return self.forwardOnIthFollow(i, lambda x:
+        x.forwardAssume(b)).forwardFollow(lambda x:
+            x.forwardAssociateIn(i))
 
   def forwardAppendDefinition(self, relation, definition):
     assert(self.type() == andType)
@@ -1067,6 +1077,38 @@ class TrueAlways(PrimitiveArrow):
     return Always(true)
   def translate(self):
     return basic.TrueAlways()
+
+class Assume(PrimitiveArrow):
+  # a --> PAR([B.transpose(), AND([A, B])])
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
+
+  def src(self):
+    return self.a()
+  def tgt(self):
+    return Par([Not(self.b().transpose()), And([self.a(), self.b()])])
+
+  def translate(self):
+    return self.src().forwardIntroduceTrue().forwardFollow(lambda x:
+        x.forwardCommute().forwardFollow(lambda x:
+          x.forwardIntroduceDoubleDual().forwardFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              x.backwardApply(self.b().translate()).backwardFollow(lambda x:
+                x.backwardCommute().backwardFollow(lambda x:
+                  x.backwardOnLeftFollow(lambda x:
+                    x.backwardIntroduceTrue().backwardFollow(lambda x:
+                      x.backwardCommute().backwardFollow(lambda x:
+                        x.backwardOnRightFollow(lambda x:
+                          x.backwardRemoveDoubleDual().backwardFollow(lambda x:
+                            x.backwardOnNotFollow(lambda x:
+                              self.b().notToTranspose()))))))))))))
+
 
 # TODO Consider putting constraints on when these can be created.
 class IntroduceQuantifier(PrimitiveArrow):
@@ -1949,31 +1991,6 @@ class Definition(PrimitiveArrow):
                   x.forwardCommute()))).forwardFollow(lambda x:
             x.forwardOnRightFollow(lambda x:
               f(self.relation().transpose().notToTranspose(), x))))
-
-# This Arrow is used to introduce a new claim
-class Begin(FunctorialArrow):
-  def __init__(self, claim):
-    self._claim = claim
-
-  def claim(self):
-    return self._claim
-
-  def src(self):
-    return true
-  def tgt(self):
-    return Conj(type = parType, values = [claim.transpose(), claim])
-
-  # FIXME(koreiklein) Something here is broken.  Write tests and fix.
-  def translate(self):
-    return basic.IntroduceDoubleDual(true).forwardFollow(lambda notNotTrue:
-          notNotTrue.forwardOnNotFollow(lambda value:
-            value.backwardApply(self.claim().translate()).backwardFollow(lambda x:
-              x.backwardCommute().backwardFollow(lambda x:
-                x.backwardOnRightFollow(lambda notOneAndClaim:
-                  notOneAndClaim.backwardOnNotFollow(lambda oneAndClaim:
-                    oneAndClaim.forwardForgetFirst()))).backwardFollow(lambda x:
-                x.backwardOnLeftFollow(lambda claim:
-                  self.claim().transpose().notToTranspose())))))
 
 # Functorial Arrows
 
