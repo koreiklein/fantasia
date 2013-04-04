@@ -1068,6 +1068,38 @@ class TrueAlways(PrimitiveArrow):
   def translate(self):
     return basic.TrueAlways()
 
+class Assume(PrimitiveArrow):
+  # a --> PAR([B.transpose(), AND([A, B])])
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
+
+  def src(self):
+    return self.a()
+  def tgt(self):
+    return Par([Not(self.b().transpose()), And([self.a(), self.b()])])
+
+  def translate(self):
+    return self.src().forwardIntroduceTrue().forwardFollow(lambda x:
+        x.forwardCommute().forwardFollow(lambda x:
+          x.forwardIntroduceDoubleDual().forwardFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              x.backwardApply(self.b().translate()).backwardFollow(lambda x:
+                x.backwardCommute().backwardFollow(lambda x:
+                  x.backwardOnLeftFollow(lambda x:
+                    x.backwardIntroduceTrue().backwardFollow(lambda x:
+                      x.backwardCommute().backwardFollow(lambda x:
+                        x.backwardOnRightFollow(lambda x:
+                          x.backwardRemoveDoubleDual().backwardFollow(lambda x:
+                            x.backwardOnNotFollow(lambda x:
+                              self.b().notToTranspose()))))))))))))
+
+
 # TODO Consider putting constraints on when these can be created.
 class IntroduceQuantifier(PrimitiveArrow):
   def __init__(self, type, variables, body):
