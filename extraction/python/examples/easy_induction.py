@@ -28,9 +28,9 @@ def test():
   sRep = utils.repAnd([starting_claimRep, natural.exists_fiveRep])
   # With the 03/21/13 implementation, this compression reduces the amount of data associated
   # with t by about a factor of 2.
-  compressedT = proof.compress().translate().compress()
+  compressedT = proof.translate().compress()
   #print >>open('arrow.txt', 'w'), proof.translate().compress()
-  tRep = curry_howard(proof.translate())
+  tRep = curry_howard(compressedT)
   eRep = tRep(sRep)
 
   print "ending claim is represented by:"
