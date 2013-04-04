@@ -112,6 +112,9 @@ class Logic(markable.Markable):
         x.forwardUnsingleton())
     return res
 
+  def forwardAssume(self, b):
+    return Assume(self, b)
+
 forallType = basic.forallType
 existsType = basic.existsType
 
@@ -289,6 +292,13 @@ class Conj(Logic):
     return t.forwardFollow(_maybeUnsingleton).forwardFollow(lambda x:
         x.forwardClean())
 
+  # self must be of type parType.
+  # Assume b at clause i, appending b.transpose() to the list of clauses.
+  def forwardAssumeMore(self, i, b):
+    assert(self.type() == parType)
+    return self.forwardOnIthFollow(i, lambda x:
+        x.forwardAssume(b)).forwardFollow(lambda x:
+            x.forwardAssociateIn(i))
 
   def forwardAppendDefinition(self, relation, definition):
     assert(self.type() == andType)
