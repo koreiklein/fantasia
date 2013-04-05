@@ -5,7 +5,7 @@ from ui.render.gl import primitives, distances, colors
 
 from lib import oldNatural, natural
 from ui.stack import gl
-from ui.stack import stackAll
+from ui.stack.stack import stackAll
 
 
 # object: a enriched.Logic object
@@ -22,10 +22,10 @@ def render(logic):
     return renderMaybe(logic)
   elif logic.__class__ == enriched.Not:
     return renderNot(logic)
-  elif logic.__class__ == enriched.Var:
+  elif isinstance(logic, variable.Variable):
     return renderVariable(logic)
   elif logic.__class__ == relation.Holds:
-    return renderRelationHolds(logic):
+    return renderHolds(logic)
   else:
     raise Exception("Unrecognized logic object %s"%(logic,))
 
@@ -89,10 +89,10 @@ def renderHolds(holds):
   return stackAll(d, [holding, between, held])
 
 def renderLimitOrVariable(x):
-  if isinstance(x.__class__, variable.Variable):
+  if isinstance(x, variable.Variable):
     return renderVariable(x)
   else:
-    assert(holds.held().__class__ == limit.Limit)
+    assert(x.__class__ == limit.Limit)
     return renderLimit(x)
 
 def renderLimit(limit):
@@ -102,10 +102,10 @@ def renderLimit(limit):
   for (symbolStack, valueStack) in renderedPairs:
     limitLineLength = max(symbolStack.widths()[d], valueStack.widths()[d])
     nextClause = stackAll(primitives.transposeDimension(d),
-          [ symbolStack,
+          [ symbolStack
           , primitives.limitLine(d, limitLineLength, limit.usedAsAType())
           , valueStack])
-    result = result.stack(d, nextClause)
+    result = result.stack(d, nextClause, spacing = distances.betweenLimitClausesSpacing)
   return result
 
 def renderSymbol(symbol):

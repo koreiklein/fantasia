@@ -10,7 +10,7 @@ class Symbol:
     self._generate_id()
 
   def _generate_id(self):
-    global symbol_id
+    global n_symbols
     self._id = n_symbols
     n_symbols += 1
 

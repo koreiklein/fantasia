@@ -3,6 +3,8 @@
 from calculus import symbol
 from calculus import variable
 
+from sets import Set
+
 limitType = 'limitType'
 colimitType = 'colimitType'
 
@@ -33,6 +35,10 @@ class Limit:
   def usedAsAType(self):
     return self._asAType
 
+  def updateVars(self):
+    return Limit(type = self.type(), asAType = self.usedAsAType(),
+        pairs = [(symbol, value.updateVars()) for (symbol, value) in self.pairs()])
+
   def __eq__(self, other):
     if self.__class__ != other.__class__:
       return False
@@ -49,6 +55,13 @@ class Limit:
   def __ne__(self, other):
     return not(self == other)
 
+  def freeVariables(self):
+    result = Set()
+    for (symbol, value) in self.pairs():
+      result.union_update(value.freeVariables())
+    return result
+
   def substituteVariable(self, a, b):
-    # FIXME(koreiklein) Implement this if it's necessary.
-    raise Exception("Not Yet Implemented.")
+    return Limit(type = self.type(), asAType = self.usedAsAType(),
+        pairs = [ (symbol, value.substituteVariable(a, b)) for (symbol, value) in self.pairs()])
+

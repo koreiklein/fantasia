@@ -18,6 +18,7 @@ holdsStackHeight = 22.0
 
 limitLineThickness = 20.0
 limitClausesOffset = 65.0
+betweenLimitClausesSpacing = 25.0
 
 notThickness = 12.0
 notShiftThickness = notThickness + 11.0

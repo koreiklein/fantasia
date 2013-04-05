@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from mark import markable
-from calculus import basic
+from calculus import basic, variable
 from sets import Set
 
 # This module contains objects and arrows in much the same was as basic.
@@ -61,7 +61,7 @@ class Logic(markable.Markable):
   # Return a Logic object like this one, but with the variable b substituted in
   # place of a.
   # a must not be quantified in self.
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     raise Exception("Abstract Superclass")
 
   # return a set of the free variables in self.
@@ -152,8 +152,8 @@ class Not(Logic):
   def value(self):
     return self._value
 
-  def substituteVar(self, a, b):
-    return Not(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Not(self.value().substituteVariable(a, b))
 
   def translate(self):
     return basic.Not(self.value().translate())
@@ -541,9 +541,9 @@ class Conj(Logic):
     assert(len(self.values()) == 0)
     return TrueAlways()
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     return Conj(type = self.type(),
-        values = [value.substituteVar(a, b) for value in self.values()])
+        values = [value.substituteVariable(a, b) for value in self.values()])
 
   def notToTranspose(self):
     if not self.demorganed():
@@ -797,7 +797,7 @@ class Quantifier(Logic):
     variables = list(self.variables())
     variables.insert(index, quantifiedVar)
     return Eliminate(quantifier = Quantifier(type = forallType, variables = variables,
-      body = self.body().substituteVar(replacementVar, quantifiedVar)),
+      body = self.body().substituteVariable(replacementVar, quantifiedVar)),
       index = index,
       replacementVar = replacementVar)
 
@@ -813,11 +813,11 @@ class Quantifier(Logic):
   def backwardOnBody(self, t):
     return OnBody(self.type(), self.variables(), t)
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     assert(a not in self.variables())
     return Quantifier(type = self.type(),
         variables = self.variables(),
-        body = self.body().substituteVar(a, b))
+        body = self.body().substituteVariable(a, b))
 
   def type(self):
     return self._type
@@ -879,8 +879,8 @@ class Always(Logic):
   def transpose(self):
     return Maybe(self.value().transpose())
 
-  def substituteVar(self, a, b):
-    return Always(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Always(self.value().substituteVariable(a, b))
 
   def value(self):
     return self._value
@@ -916,8 +916,8 @@ class Maybe(Logic):
     return self.transpose().translate().forwardOnAlways(
         self.value().transposeToNot()).forwardFollow(lambda x: x.forwardIntroduceDoubleDual())
 
-  def substituteVar(self, a, b):
-    return Maybe(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Maybe(self.value().substituteVariable(a, b))
 
   def transpose(self):
     return Always(self.value().transpose())
@@ -1420,7 +1420,7 @@ class Eliminate(PrimitiveArrow):
     assert(quantifier.type() == forallType)
     assert(0 <= index)
     assert(index < len(quantifier.variables()))
-    assert(replacementVar.__class__ == Var)
+    assert(isinstance(replacementVar, variable.Variable))
     self._quantifier = quantifier
     self._index = index
     self._replacementVar = replacementVar
@@ -1438,7 +1438,7 @@ class Eliminate(PrimitiveArrow):
     variables = list(self.quantifier().variables())
     quantifiedVar = variables.pop(self.index())
     return Quantifier(type = forallType, variables = variables,
-        body = self.quantifier().body().substituteVar(quantifiedVar, self.replacementVar()))
+        body = self.quantifier().body().substituteVariable(quantifiedVar, self.replacementVar()))
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:

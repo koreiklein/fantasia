@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus.enriched import *
+from calculus.variable import Variable
 
 from importables import ClaimsUse
 
@@ -8,7 +9,7 @@ from importables import ClaimsUse
 # finishImporting (in importables).
 def about(variables, desiredIndex = None):
   for variable in variables:
-    assert(variable.__class__ == Var)
+    assert(isinstance(variable, Variable))
   def importableToUse(m):
     (known, potential) = _knownAndFunctionClaims(variables, m.claims())
     res = [] # A list of pairs, (a ClaimsUse object, the claim it concludes)
@@ -20,7 +21,10 @@ def about(variables, desiredIndex = None):
     if desiredIndex is None:
       raise Exception("Available claims: %s"%([claim for (claimsUse, claim) in res]))
     else:
-      return res[desiredIndex][0]
+      if not (0 <= desiredIndex and desiredIndex < len(res)):
+        raise Exception("There is no claim to import with desired index %s"%(desiredIndex,))
+      else:
+        return res[desiredIndex][0]
   return importableToUse
 
 def _tryAllPerms(variables, key, claim, known):

@@ -1,137 +1,40 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched
+from calculus import basic, enriched, variable, symbol, relation, limit
 from lib import common_vars
 
+five = variable.StringVariable('5')
 from sets import Set
 
+natural = variable.StringVariable('N')
+
+natural_less = variable.StringVariable('<')
+natural_less_or_equal = variable.StringVariable('<')
+smallerSymbol = variable.StringVariable('smaller')
+greaterSymbol = variable.StringVariable('greater')
+
+natural_successor = variable.StringVariable('S')
+before = variable.StringVariable('before')
+after = variable.StringVariable('after')
 
 # Stating that a variable is a natural number.
-class IsNatural(enriched.Logic):
-  def __init__(self, n):
-    self._n = n
-    self.initMarkable([])
+def IsNatural(n):
+  return relation.Holds(natural, n)
 
-  def n(self):
-    return self._n
+def Compare(lesser, greater, strict):
+  if strict:
+    return relation.Holds(natural_less,
+        limit.newLimit([(smallerSymbol, lesser), (greaterSymbol, greater)]))
+  else:
+    return relation.Holds(natural_less_or_equal,
+        limit.newLimit([(smallerSymbol, lesser), (greaterSymbol, greater)]))
 
-  def freeVariables(self):
-    return Set([self.n()])
+def Successor(a, b):
+  return relation.Holds(natural_successor, limit.newLimit([(before, a), (after, b)]))
 
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.n() == other.n()
+zero = variable.StringVariable('zero')
 
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    if self.n() == a:
-      return IsNatural(b)
-    else:
-      return self
-
-  def translate(self):
-    return basic.Holds(natural = self.n().translate())
-
-  def transposeIsNot(self):
-    return True
-
-# Stating some inequality (=, >=, <=) between two variables.
-class Compare(enriched.Logic):
-  # strict: a boolean indicating whether the inequality is strict.
-  def __init__(self, lesser, greater, strict):
-    self._lesser = lesser
-    self._greater = greater
-    self._strict = strict
-    self.initMarkable([])
-
-  def __repr__(self):
-    if self._strict:
-      s = '%s < %s'
-    else:
-      s = '%s <= %s'
-    return s%(self._lesser, self._greater)
-
-  def freeVariables(self):
-    return Set([self.lesser(), self.greater()])
-
-  def lesser(self):
-    return self._lesser
-  def greater(self):
-    return self._greater
-  def strict(self):
-    return self._strict
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and (
-        self.lesser() == other.lesser() and
-        self.greater() == other.greater() and
-        self.strict() == other.strict())
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    lesser = self.lesser()
-    greater = self.greater()
-    if lesser == a:
-      lesser = b
-    if greater == a:
-      greater = b
-    return Compare(lesser = lesser, greater = greater, strict = self.strict())
-
-  def translate(self):
-    return basic.Holds(lesser = self.lesser().translate(), greater = self.greater().translate(),
-        strict = self.strict())
-
-  def transposeIsNot(self):
-    return True
-
-# Stating that the successor of the natural number a is b.
-class Successor(enriched.Logic):
-  def __init__(self, a, b):
-    self._a = a
-    self._b = b
-    self.initMarkable([])
-
-  def __repr__(self):
-    return "%s + 1 == %s"%(self.a(), self.b())
-
-  def a(self):
-    return self._a
-  def b(self):
-    return self._b
-
-  def freeVariables(self):
-    return Set([self.a(), self.b()])
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and (
-        self.a() == other.a() and
-        self.b() == other.b())
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    smaller = self.a()
-    larger = self.b()
-    if smaller == a:
-      smaller = b
-    if larger == a:
-      larger = b
-    return Successor(a = smaller, b = larger)
-
-  def translate(self):
-    return basic.Holds(succeeded = self.a().translate(),
-        succeeding = self.b().translate())
-
-  def transposeIsNot(self):
-    return True
-
-zero = enriched.Var('zero')
-
-five = enriched.Var('5')
+five = variable.StringVariable('5')
 
 zero_natural = IsNatural(zero)
 

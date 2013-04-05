@@ -22,11 +22,11 @@ def stackingDimensionOfQuanifierType(type):
     assert(type == enriched.existsType)
     return 0
 
-def stackingDimensionForLimit(limit):
-  if limit.type() == limit.limitType:
+def stackingDimensionForLimit(x):
+  if x.type() == limit.limitType:
     return 0
   else:
-    assert(limit.type() == limit.colimitType)
+    assert(x.type() == limit.colimitType)
     return 1
 
 def transposeDimension(dimension):

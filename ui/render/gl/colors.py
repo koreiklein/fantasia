@@ -28,7 +28,7 @@ notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.8)
 # that it holds of
 holdsColor = Color(r = 0.8, g = 0.8, b = 0.8, a = 1.0)
 
-limitLineColor = Color(r = 1.0, g = 1.0, b = 1.0, a = 1.0)
+limitLineColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 limitLineColorForType = Color(r = 0.1, g = 1.0, b = 0.2, a = 1.0)
 
 textColor = Color(r = 0.2, g = 0.2, b = 0.2, a= 1.0)
