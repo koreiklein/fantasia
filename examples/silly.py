@@ -13,7 +13,7 @@ class StringPrimitive(basic.PrimitiveObject):
     return self._s
   def substituteVar(self, a, b):
     return self
-  def updateVars(self):
+  def updateVariables(self):
     return self
   def assertEqual(self, other):
     assert(self._s == other._s)

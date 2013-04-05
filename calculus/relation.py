@@ -27,9 +27,9 @@ class Holds(enriched.Logic):
   def __ne__(self, other):
     return not(self == other)
 
-  def updateVars(self):
-    return Holds(holding = self.holding().updateVars(),
-        held = self.held().updateVars())
+  def updateVariables(self):
+    return Holds(holding = self.holding().updateVariables(),
+        held = self.held().updateVariables())
 
   def holding(self):
     return self._holding
@@ -71,7 +71,7 @@ class BasicHolds(basic.PrimitiveObject, Holds):
     return BasicHolds(holding = self.holding().substituteVariable(a, b),
         held = self.held().substituteVariable(a, b))
 
-  def updateVars(self):
-    return Holds(holding = self.holding().updateVars(),
-        held = self.held().updateVars())
+  def updateVariables(self):
+    return Holds(holding = self.holding().updateVariables(),
+        held = self.held().updateVariables())
 

@@ -35,9 +35,9 @@ class Limit:
   def usedAsAType(self):
     return self._asAType
 
-  def updateVars(self):
+  def updateVariables(self):
     return Limit(type = self.type(), asAType = self.usedAsAType(),
-        pairs = [(symbol, value.updateVars()) for (symbol, value) in self.pairs()])
+        pairs = [(symbol, value.updateVariables()) for (symbol, value) in self.pairs()])
 
   def __eq__(self, other):
     if self.__class__ != other.__class__:

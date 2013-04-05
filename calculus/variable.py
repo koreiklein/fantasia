@@ -19,7 +19,7 @@ class Variable(markable.Markable):
     if not(self == other):
       raise Exception("Unequal variables %s != %s"%(self, other))
 
-  def updateVars(self):
+  def updateVariables(self):
     return Variable()
 
   # enriched variables and basic variables share the same representation.
@@ -57,5 +57,5 @@ class StringVariable(Variable):
   def __repr__(self):
     return self.name()
 
-  def updateVars(self):
+  def updateVariables(self):
     return StringVariable(self.name())

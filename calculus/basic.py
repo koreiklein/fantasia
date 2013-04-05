@@ -18,7 +18,7 @@ class PrimitiveObject:
     raise Exception("Abstract superclass.")
   # Return a copy of self, but with all it's quantified variables
   # replaced with new ones.
-  def updateVars(self):
+  def updateVariables(self):
     raise Exception("Abstract superclass.")
   # For debugging.  If you call this method with an unequal object, it should produce
   # a usefull stracktrace that explain HOW the objects are unequal.
@@ -85,12 +85,12 @@ class Quantifier(PrimitiveObject):
     self.variable().assertEqual(other.variable())
     self.body().assertEqual(other.body())
 
-  def updateVars(self):
+  def updateVariables(self):
     a = self.variable()
-    b = a.updateVars()
+    b = a.updateVariables()
     return Quantifier(type = self.type(),
         variable = b,
-        body = self.body().substituteVariable(a, b).updateVars())
+        body = self.body().substituteVariable(a, b).updateVariables())
 
   def variable(self):
     return self._variable
@@ -187,7 +187,7 @@ class TrueClass(PrimitiveObject):
   def assertEqual(self, other):
     assert(self.__class__ == other.__class__)
 
-  def updateVars(self):
+  def updateVariables(self):
     return self
 
   def __repr__(self):
@@ -211,8 +211,8 @@ class Not(PrimitiveObject):
   def substituteVariable(self, a, b):
     return Not(self.value().substituteVariable(a, b))
 
-  def updateVars(self):
-    return Not(self.value().updateVars())
+  def updateVariables(self):
+    return Not(self.value().updateVariables())
 
   def value(self):
     return self._value
@@ -305,10 +305,10 @@ class Conj(PrimitiveObject):
     self.left().assertEqual(other.left())
     self.right().assertEqual(other.right())
 
-  def updateVars(self):
+  def updateVariables(self):
     return Conj(type = self.type(),
-        left = self.left().updateVars(),
-        right = self.right().updateVars())
+        left = self.left().updateVariables(),
+        right = self.right().updateVariables())
 
   def type(self):
     return self._type
@@ -490,8 +490,8 @@ class Always(PrimitiveObject):
     assert(other.__class__ == Always)
     self.value().assertEqual(other.value())
 
-  def updateVars(self):
-    return Always(self.value().updateVars())
+  def updateVariables(self):
+    return Always(self.value().updateVariables())
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value() == other.value()
@@ -712,7 +712,7 @@ class Diagonal(PrimitiveArrow):
   def src(self):
     return Always(self.value())
   def tgt(self):
-    return And(Always(self.value()), Always(self.value().updateVars()))
+    return And(Always(self.value()), Always(self.value().updateVariables()))
 
 class Unalways(PrimitiveArrow):
   # !A --> A
