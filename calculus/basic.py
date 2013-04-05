@@ -1,38 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import types
 # Backend objects and arrows for the basic logic category.
 # Implement only the primitive objects and arrows, derived forms go in a separate enriched
 # calculus.
 
-n_vars = 0
-
-class Var:
-  def __init__(self, name):
-    global n_vars
-    self._id = n_vars
-    n_vars += 1
-    self._name = name
-
-  def name(self):
-    return self._name
-
-  def assertEqual(self, other):
-    if other.__class__ != Var:
-      raise Exception("basic Var unequal to some other object %s of class %s"%(other, other.__class__))
-    if self != other:
-      raise Exception("Unequal var %s != %s"%(self, other))
-
-  def __repr__(self):
-    return self.name()
-
-  def __eq__(self, other):
-    return other.__class__ == Var and self._id == other._id
-  def __ne__(self, other):
-    return not (self == other)
-
-  def __hash__(self):
-    return hash(self._id)
 
 # Objects
 
@@ -80,51 +51,6 @@ class PrimitiveObject:
   def backwardIdentity(self):
     return Identity(self)
 
-class Holds(PrimitiveObject):
-  def __init__(self, **kwargs):
-    self._d = kwargs
-    for (key, value) in kwargs.items():
-      self.__dict__[key] = types.MethodType(lambda self: value, self)
-
-  def __getitem__(self, x):
-    return self._d[x]
-
-  def __repr__(self):
-    return "Holds : %s"%(self._d)
-
-  def __eq__(self, other):
-    if other.__class__ != Holds:
-      return False
-    else:
-      for (key, value) in self._d.items():
-        if (not other._d.has_key(key) ) or other[key] != value:
-          return False
-      for (key, value) in other._d.items():
-        if (not self._d.has_key(key) ) or self[key] != value:
-          return False
-      return True
-
-  def assertEqual(self, other):
-    assert(other.__class__ == Holds)
-    for (key, value) in self._d.items():
-      assert(other[key] == value)
-    for (key, value) in other._d.items():
-      assert(self[key] == value)
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def updateVars(self):
-    return self
-
-  def substituteVar(self, a, b):
-    _d = {}
-    for (key, value) in self._d.items():
-      if value == a:
-        _d[key] = b
-      else:
-        _d[key] = value
-    return Holds(**_d)
 
 forallType = "FORALL"
 existsType = "EXISTS"

@@ -3,7 +3,6 @@
 from mark import markable
 from calculus import basic
 from sets import Set
-import types
 
 # This module contains objects and arrows in much the same was as basic.
 # This module defines a functor F.
@@ -12,28 +11,6 @@ import types
 # F satifies all the appropriate properties for a functor
 #     (it respects src, tgt, identity, and composition)
 # We use x.translate() to implement F.
-
-class Var(markable.Markable):
-  def __init__(self, name):
-    self._base = basic.Var(name)
-    self.initMarkable([])
-
-  def translate(self):
-    return self._base
-
-  def name(self):
-    return self.translate().name()
-
-  def __repr__(self):
-    return self.name()
-
-  def __eq__(self, other):
-    return other.__class__ == Var and self._base == other._base
-  def __ne__(self, other):
-    return not (self == other)
-
-  def __hash__(self):
-    return hash(self._base)
 
 #Objects
 
@@ -973,60 +950,6 @@ def Implies(predicate, consequent):
     values = [predicate.transpose()]
   values.append(consequent)
   return Par(values)
-
-# A formula stating that some arbitrary relation holds of some variables.
-class Holds(Logic):
-  def __init__(self, **kwargs):
-    self._d = kwargs
-    for (key, value) in kwargs.items():
-      self.__dict__[key] = types.MethodType(lambda self: value, self)
-    self.initMarkable([])
-
-  def __getitem__(self, x):
-    return self._d[x]
-
-  def __repr__(self):
-    s = ''
-    for (key, value) in self._d.items():
-      s += "%s : %s, "%(key, value)
-    return s
-
-  def __eq__(self, other):
-    if other.__class__ != Holds:
-      return False
-    else:
-      for (key, value) in self._d.items():
-        if (not other._d.has_key(key) ) or other[key] != value:
-          return False
-      for (key, value) in other._d.items():
-        if (not self._d.has_key(key) ) or self[key] != value:
-          return False
-      return True
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    _d = {}
-    for (key, value) in self._d.items():
-      if value == a:
-        _d[key] = b
-      else:
-        _d[key] = value
-    return Holds(**_d)
-
-  def translate(self):
-    d = {}
-    for (key, value) in self._d.items():
-      d[key] = value.translate()
-    return basic.Holds(**d)
-
-  def transposeIsNot(self):
-    return True
-
-  # return a set of the free variables in self.
-  def freeVariables(self):
-    return self._d.values()
 
 # Arrows
 
