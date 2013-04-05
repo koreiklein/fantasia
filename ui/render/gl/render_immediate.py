@@ -1,10 +1,11 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import enriched, relation, variable, limit
 from ui.render.gl import primitives, distances, colors
 
 from lib import oldNatural, natural
 from ui.stack import gl
+from ui.stack import stackAll
 
 
 # object: a enriched.Logic object
@@ -23,22 +24,8 @@ def render(logic):
     return renderNot(logic)
   elif logic.__class__ == enriched.Var:
     return renderVariable(logic)
-  elif logic.__class__ == enriched.Holds:
-    return renderHolds(logic)
-  elif logic.__class__ == oldNatural.IsNatural:
-    return renderIsNatural(logic)
-  elif logic.__class__ == oldNatural.Compare:
-    return renderCompare(logic)
-  elif logic.__class__ == oldNatural.Successor:
-    return renderOldSuccessor(logic)
-  elif logic.__class__ == natural.Natural:
-    return renderNatural(logic)
-  elif logic.__class__ == natural.Successor:
-    return renderSuccessor(logic)
-  elif logic.__class__ == natural.Less:
-    return renderLess(logic)
-  elif logic.__class__ == natural.Equal:
-    return renderNaturalEqual(logic)
+  elif logic.__class__ == relation.Holds:
+    return renderRelationHolds(logic):
   else:
     raise Exception("Unrecognized logic object %s"%(logic,))
 
@@ -92,35 +79,35 @@ def renderNot(notObject):
   return primitives.notSymbol(value.widths()[:2]).below(value.shift(distances.notShiftOffset))
 
 def renderVariable(variable):
-  return gl.newTextualGLStack(colors.variableColor, variable.name())
+  return gl.newTextualGLStack(colors.variableColor, repr(variable))
 
 def renderHolds(holds):
-  return gl.newTextualGLStack(colors.textColor, repr(holds))
+  holding = renderVariable(holds.holding())
+  held = renderLimitOrVariable(holds.held())
+  d = 1
+  between = primitives.holdsStack(max(holding.widths()[d], held.widths()[d]))
+  return stackAll(d, [holding, between, held])
 
-def renderIsNatural(isNatural):
-  return gl.newTextualGLStack(colors.textColor, isNatural.n().name()  + " : N")
-
-def renderCompare(compare):
-  if compare.strict():
-    c = " < "
+def renderLimitOrVariable(x):
+  if isinstance(x.__class__, variable.Variable):
+    return renderVariable(x)
   else:
-    c = " <= "
-  return gl.newTextualGLStack(colors.textColor,
-      compare.lesser().name() + c + compare.greater().name())
+    assert(holds.held().__class__ == limit.Limit)
+    return renderLimit(x)
 
-def renderOldSuccessor(successor):
-  return gl.newTextualGLStack(colors.textColor,
-      "S( %s ) = %s"%(successor.a().name(), successor.b().name()))
+def renderLimit(limit):
+  d = primitives.stackingDimensionForLimit(limit)
+  result = primitives.limitClauseStart(d)
+  renderedPairs = [(renderSymbol(s), renderLimitOrVariable(v)) for (s,v) in limit.pairs()]
+  for (symbolStack, valueStack) in renderedPairs:
+    limitLineLength = max(symbolStack.widths()[d], valueStack.widths()[d])
+    nextClause = stackAll(primitives.transposeDimension(d),
+          [ symbolStack,
+          , primitives.limitLine(d, limitLineLength, limit.usedAsAType())
+          , valueStack])
+    result = result.stack(d, nextClause)
+  return result
 
+def renderSymbol(symbol):
+  return gl.newTextualGLStack(colors.symbolColor, repr(symbol))
 
-def renderNatural(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
-
-def renderSuccessor(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
-
-def renderNaturalEqual(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
-
-def renderLess(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))

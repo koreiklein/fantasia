@@ -2,7 +2,7 @@
 
 from OpenGL.GL import *
 
-from calculus import enriched
+from calculus import enriched, limit
 from ui.render.gl import colors, distances
 
 from ui.stack.gl import newGLStack
@@ -21,6 +21,13 @@ def stackingDimensionOfQuanifierType(type):
   else:
     assert(type == enriched.existsType)
     return 0
+
+def stackingDimensionForLimit(limit):
+  if limit.type() == limit.limitType:
+    return 0
+  else:
+    assert(limit.type() == limit.colimitType)
+    return 1
 
 def transposeDimension(dimension):
   if dimension == 0:
@@ -98,6 +105,22 @@ def quantifierDivider(type, length):
       width = distances.widthOfQuantifierDividerByLength(length),
       capLength = distances.capLengthOfDividerByLength(length))
 
+def colorForLimitLine(usedAsType):
+  if usedAsType:
+    return colors.limitLineColorForType
+  else:
+    return colors.limitLineColor
+
+def limitLine(longDimension, length, usedAsType):
+  widths = [distances.limitLineThickness, distances.limitLineThickness, 0.0]
+  widths[longDimension] = length
+  return solidSquare(colorForLimitLine(usedAsType), widths)
+
+def limitClauseStart(stackingDimension):
+  widths = [0.0, 0.0, 0.0]
+  widths[stackingDimension] = distances.limitClausesOffset
+  return solidSquare(colors.limitLineColor, widths)
+
 # always: a boolean, True for always, false for Maybe.
 # widths: a list of the widths of the box.
 # return: a gl stack representing the background for an exponential.
@@ -126,3 +149,7 @@ def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]
   return solidSquare(colors.notColor, upper).below(solidSquare(colors.notColor, lower))
+
+def holdsStack(distance):
+  widths = [distance, distances.holdsStackHeight, 0.0]
+  return solidSquare(colors.holdsColor, widths)

@@ -12,6 +12,13 @@ quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
 exponential_border_width = 40.0
 
+# The height of the stack object drawn between a holding variable and the variable or limit
+# that it holds of
+holdsStackHeight = 22.0
+
+limitLineThickness = 20.0
+limitClausesOffset = 65.0
+
 notThickness = 12.0
 notShiftThickness = notThickness + 11.0
 # Amount by which to shift the value contained inside a enriched.Not.
