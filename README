@@ -58,7 +58,7 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
 
     PROOFS IN THE CALCULUS MODULE:
       A proof is a formal expression of a reason why one mathematical fact (the "source" or src of
-      the proof), follows logically from another mathematical fact (the "target" or tgt of the
+      the proof), logically implies another mathematical fact (the "target" or tgt of the
       proof).
         Examples of proofs:
 
@@ -191,7 +191,7 @@ DESCRIPTIONS OF FANTASIA'S MODULES:
     the extraction engine can contain code to perform an extraction of a proof defined in the top
     level examples module.  If you're looking for an illustrative example of a program extraction,
     you should start by trying to understand one of these example extractions.  For example, start
-    by trying taking a brief look at main.py, and then trying to understand what is happening in
+    by taking a brief look at main.py, and then trying to understand what is happening in
     extraction/python/examples/easy_induction.py
 
 RUNNING THE CODE:

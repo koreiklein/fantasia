@@ -3,15 +3,22 @@
 from calculus import basic, enriched
 from lib import common_vars
 
+from sets import Set
 
-# Stating that a variable is a natural number.
-class IsNatural(enriched.Logic):
+class Natural(enriched.Logic):
+  # n: a python natural number
   def __init__(self, n):
     self._n = n
     self.initMarkable([])
 
+  def __repr__(self):
+    return "%s : N"%(self.n(),)
+
   def n(self):
     return self._n
+
+  def freeVariables(self):
+    return Set([self.n()])
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.n() == other.n()
@@ -21,59 +28,17 @@ class IsNatural(enriched.Logic):
 
   def substituteVar(self, a, b):
     if self.n() == a:
-      return IsNatural(b)
+      return Natural(b)
     else:
       return self
+
+  def transposeIsNot(self):
+    return True
 
   def translate(self):
     return basic.Holds(natural = self.n().translate())
 
-  def transpose(self):
-    return enriched.Not(self)
-
-# Stating some inequality (=, >=, <=) between two variables.
-class Compare(enriched.Logic):
-  # strict: a boolean indicating whether the inequality is strict.
-  def __init__(self, lesser, greater, strict):
-    self._lesser = lesser
-    self._greater = greater
-    self._strict = strict
-    self.initMarkable([])
-
-  def lesser(self):
-    return self._lesser
-  def greater(self):
-    return self._greater
-  def strict(self):
-    return self._strict
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and (
-        self.lesser() == other.lesser() and
-        self.greater() == other.greater() and
-        self.strict() == other.strict())
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    lesser = self.lesser()
-    greater = self.greater()
-    if lesser == a:
-      lesser = b
-    if greater == a:
-      greater = b
-    return Compare(lesser = lesser, greater = greater, strict = self.strict())
-
-  def translate(self):
-    return basic.Holds(lesser = self.lesser().translate(), greater = self.greater().translate(),
-        strict = self.strict())
-
-  def transpose(self):
-    return enriched.Not(self)
-
-# Stating that the successor of the natural number a is b.
-class Successor(enriched.Logic):
+class Equal(enriched.Logic):
   def __init__(self, a, b):
     self._a = a
     self._b = b
@@ -84,10 +49,53 @@ class Successor(enriched.Logic):
   def b(self):
     return self._b
 
+  def __repr__(self):
+    return "%s == %s"%(self.a(), self.b())
+
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
+
   def __eq__(self, other):
-    return self.__class__ == other.__class__ and (
-        self.a() == other.a() and
-        self.b() == other.b())
+    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, x, y):
+    a = self.a()
+    b = self.b()
+    if a == x:
+      a = y
+    if b == x:
+      b = y
+    return Equal(a = a, b = b)
+
+  def transposeIsNot(self):
+    return True
+
+  def translate(self):
+    return basic.Holds(naturalEqualLeft = self.a().translate(),
+        naturalEqualRight = self.b().translate())
+
+class Successor(enriched.Logic):
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+    self.initMarkable([])
+
+  def __repr__(self):
+    return "%s + 1 == %s"%(self.a(), self.b())
+
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
+
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
+
+  def __eq__(self, other):
+    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
 
   def __ne__(self, other):
     return not (self == other)
@@ -105,75 +113,184 @@ class Successor(enriched.Logic):
     return basic.Holds(succeeded = self.a().translate(),
         succeeding = self.b().translate())
 
-  def transpose(self):
-    return enriched.Not(self)
+  def transposeIsNot(self):
+    return True
 
-zero = enriched.Var('zero')
+class Less(enriched.Logic):
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+    self.initMarkable([])
 
-five = enriched.Var('5')
+  def __repr__(self):
+    return "%s < %s"%(self.a(), self.b())
 
-zero_natural = IsNatural(zero)
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
 
-exists_five = enriched.Exists([five], IsNatural(five))
+  def freeVariables(self):
+    return Set([self.a(), self.b()])
 
-t = common_vars.t()
-r = common_vars.r()
-increasing = enriched.Forall([t, r],
-    enriched.Implies(predicate = Successor(t, r),
-      consequent = Compare(lesser = t, greater = r, strict = True)))
+  def __eq__(self, other):
+    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, a, b):
+    smaller = self.a()
+    larger = self.b()
+    if smaller == a:
+      smaller = b
+    if larger == a:
+      larger = b
+    return Less(a = smaller, b = larger)
+
+  def translate(self):
+    return basic.Holds(succeeded = self.a().translate(),
+        succeeding = self.b().translate())
+
+  def transposeIsNot(self):
+    return True
 
 n = common_vars.n()
-reflexivity = enriched.Forall([n],
-    enriched.Implies(predicate = IsNatural(n),
-      consequent = Compare(lesser = n, greater = n, strict = False)))
+eqIdentitiy = enriched.Forall([n],
+    enriched.Implies(
+      predicate = Natural(n),
+      consequent = Equal(n, n)))
 
-s = common_vars.s()
-l = common_vars.l()
-weakening = enriched.Forall([s, l],
-    enriched.Implies(predicate = Compare(s, l, strict = True),
-      consequent = Compare(s, l, strict = False)))
 
 n = common_vars.n()
 m = common_vars.m()
-successorExists = enriched.Forall([n],
-    enriched.Implies(predicate = IsNatural(n),
-      consequent = enriched.Exists([m],
-        enriched.And([IsNatural(m), Successor(n, m), Successor(n, m)]))))
+eqSymmetric = enriched.Forall([n, m],
+    enriched.Implies(
+      predicate = Equal(n, m),
+      consequent = Equal(m, n)))
 
 a = common_vars.a()
 b = common_vars.b()
 c = common_vars.c()
-transitivity = enriched.Forall([a, b, c],
-    enriched.Implies(predicate = enriched.And([ Compare(a, b, False)
-                                              , Compare(b, c, True)]),
-                     consequent = Compare(a, c, True)))
-
-
-# This definition of induction should by no means be considered final.
-# As the combinators in calculus.enriched become more sophisticated, we may
-# wish to give more elaborate definitions of induction.
-# For example, all claims about numbers being natural might be hidden.
-# For another example, we may use m = n + 1 instead of natural.Successor(n, m).
+eqTransitive = enriched.Forall([a, b, c],
+    enriched.Implies(
+      predicate = enriched.And([Equal(a, b), Equal(b, c)]),
+      consequent = Equal(a, c)))
 
 n = common_vars.n()
 m = common_vars.m()
-k = common_vars.k()
-# claim: a function from a variable to a formula saying the claim holds of
-# that variable.
+eqDiscrete = enriched.Forall([n, m],
+    enriched.Implies(
+      predicate = enriched.And([Natural(n), Natural(m)]),
+      consequent = enriched.Or([Equal(n,m), Equal(n, m).transpose()])))
+
+eqClaims = [eqIdentitiy, eqSymmetric, eqTransitive, eqDiscrete]
+
+zero = enriched.Var('zero')
+
+zeroIsNatural = Natural(zero)
+
+n = common_vars.n()
+m = common_vars.m()
+successorExists = enriched.Forall([n],
+    enriched.Implies(
+      predicate = Natural(n),
+      consequent = enriched.Exists([m],
+        enriched.And([Natural(m), Successor(n, m)]))))
+
+a = common_vars.a()
+n = common_vars.n()
+m = common_vars.m()
+successorUnique = enriched.Forall([a, n, m],
+    enriched.Implies(
+      predicate = enriched.And([ Successor(a, n), Successor(a, m) ]),
+      consequent = Equal(n, m)))
+
+b = common_vars.b()
+n = common_vars.n()
+m = common_vars.m()
+successorInjective = enriched.Forall([b, n, m],
+    enriched.Implies(
+      predicate = enriched.And([ Successor(n, b), Successor(m, b) ]),
+      consequent = Equal(n, m)))
+
+n = common_vars.n()
+successorNotZero = enriched.Forall([n],
+    enriched.Not(Successor(n, zero)))
+
 def byInduction(claim):
+  n = common_vars.n()
+  m = common_vars.m()
+  k = common_vars.k()
   return enriched.Implies(
       predicate = enriched.And([ claim(zero)
                                , enriched.Forall([n]
                                , enriched.Implies(
-                                  predicate = enriched.And([ IsNatural(n)
+                                  predicate = enriched.And([ Natural(n)
                                                            , claim(n)]),
                                   consequent =
                                     enriched.Exists([m],
-                                      enriched.And([ IsNatural(m)
+                                      enriched.And([ Natural(m)
                                                    , Successor(n, m)
                                                    , claim(m)]))))]),
       consequent = enriched.Forall([k],
         enriched.Implies(
-          predicate = IsNatural(k),
+          predicate = Natural(k),
           consequent = claim(k))))
 
+successorClaims = [successorExists, successorUnique, successorInjective, successorNotZero]
+
+R = common_vars.R()
+allInduction = enriched.Forall([R],
+    byInduction(lambda v: enriched.Holds(holding = R, held = v)))
+
+startingFormula = enriched.And([ zeroIsNatural
+                               , enriched.And(eqClaims)
+                               , enriched.And(successorClaims)
+                               , allInduction])
+
+# This is the formula for which extraction engines must give an implementation.
+startingFormula = enriched.And([ zeroIsNatural
+                               , enriched.And(eqClaims)
+                               , enriched.And(successorClaims)
+                               , allInduction])
+
+n = common_vars.n()
+m = common_vars.m()
+t = common_vars.t()
+lessVar = common_vars.less()
+
+defLessArrow = enriched.true.forwardIntroduceQuantifier(type = basic.forallType,
+        variables = [n, m]).forwardFollow(lambda x:
+            x.forwardOnBodyFollow(lambda x:
+              x.forwardSingleton(enriched.parType).forwardFollow(lambda x:
+                x.forwardAdmit(0, enriched.Not(Natural(m))).forwardFollow(lambda x:
+                  x.forwardAdmit(0, enriched.Not(Natural(n)))))))
+defLessArrow = defLessArrow.forwardFollow(lambda x:
+    x.forwardOnBodyFollow(lambda x:
+      x.forwardOnIthFollow(2, lambda one:
+        one.forwardAppendDefinition(
+          relation = Less(n, m),
+          definition = enriched.Or([ Successor(n, m)
+                                   , enriched.Exists([t],
+                                       enriched.And(
+                                         [ Successor(n, t)
+                                         , Less(t, m) ]))])))))
+
+defLessArrow.translate()
+defLess = defLessArrow.tgt()
+
+# This library wishes to provide as simple as possible a formula for extraction
+# engines to implement and as useful a formula for users to start with.
+# Therefore, it defines the following preludeArrow for converting the startingFormula
+# into a formula more useful for clients of the library.  Proofs using this library should
+# simply append their proofs to this preludeArrow.
+preludeArrow = startingFormula.forwardAssociateOut(0, 0).forwardFollow(lambda x:
+    x.forwardOnIth(0, defLessArrow))
+
+# For debugging purposes.
+preludeArrow.translate()
+
+alwaysPreludeArrow = enriched.Always(preludeArrow.src()).forwardOnAlways(preludeArrow)
+# This is the formula which users of this library should start with.
+preludeFormula = enriched.Always(preludeArrow.tgt())

@@ -2,9 +2,9 @@
 
 from extraction.python.arrows import curry_howard
 from extraction.python import utils
-from extraction.python.lib import natural
+from extraction.python.lib import oldNatural as natural
 
-from examples.easy_induction import t
+from examples.easy_induction import t as proof
 
 starting_claimRep = utils.repAnd(
     [ natural.increasingRep
@@ -26,7 +26,11 @@ def test():
   #       v                         v                                  v
   #     sRep ---------------------tRep----------------------------->> eRep
   sRep = utils.repAnd([starting_claimRep, natural.exists_fiveRep])
-  tRep = curry_howard(t.translate())
+  # With the 03/21/13 implementation, this compression reduces the amount of data associated
+  # with t by about a factor of 2.
+  compressedT = proof.translate().compress()
+  #print >>open('arrow.txt', 'w'), proof.translate().compress()
+  tRep = curry_howard(compressedT)
   eRep = tRep(sRep)
 
   print "ending claim is represented by:"

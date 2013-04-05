@@ -14,3 +14,7 @@ l = lambda: enriched.Var('l')
 a = lambda: enriched.Var('a')
 b = lambda: enriched.Var('b')
 c = lambda: enriched.Var('c')
+
+R = lambda: enriched.Var('R')
+
+less = lambda: enriched.Var('<')

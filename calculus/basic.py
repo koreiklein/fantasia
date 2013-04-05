@@ -18,7 +18,10 @@ class Var:
     return self._name
 
   def assertEqual(self, other):
-    assert(self == other)
+    if other.__class__ != Var:
+      raise Exception("basic Var unequal to some other object %s of class %s"%(other, other.__class__))
+    if self != other:
+      raise Exception("Unequal var %s != %s"%(self, other))
 
   def __repr__(self):
     return self.name()
@@ -59,10 +62,14 @@ class PrimitiveObject:
     return RemoveFalse(value = self)
   def forwardAdmit(self, b):
     return Admit(self, b)
+  def forwardIntroduceQuantifier(self, type, variable):
+    return IntroduceQuantifier(type = type, variable = variable, body = self)
   def backwardForget(self, b):
     return Forget(self, b)
   def backwardForgetFirst(self, b):
     return self.backwardForget(b).backwardFollow(lambda x: x.backwardCommute())
+  def backwardUnalways(self):
+    return Unalways(self)
   def backwardEliminateVar(self, quantifiedVar, replacementVar):
     return Eliminate(value = self.substituteVar(replacementVar, quantifiedVar),
         quantifiedVar = quantifiedVar, replacementVar = replacementVar)
@@ -82,15 +89,18 @@ class Holds(PrimitiveObject):
   def __getitem__(self, x):
     return self._d[x]
 
+  def __repr__(self):
+    return "Holds : %s"%(self._d)
+
   def __eq__(self, other):
     if other.__class__ != Holds:
       return False
     else:
       for (key, value) in self._d.items():
-        if other[key] != value:
+        if (not other._d.has_key(key) ) or other[key] != value:
           return False
       for (key, value) in other._d.items():
-        if self[key] != value:
+        if (not self._d.has_key(key) ) or self[key] != value:
           return False
       return True
 
@@ -129,34 +139,34 @@ def dualQuantifierType(type):
 quantifierTypes = [forallType, existsType]
 
 class Quantifier(PrimitiveObject):
-  def __init__(self, var, body, type):
+  def __init__(self, variable, body, type):
     assert(type in quantifierTypes)
-    self._var = var
+    self._variable = variable
     self._body = body
     self._type = type
 
   def __repr__(self):
-    return "< %s %s . %s >"%(self.type(), self.var(), self.body())
+    return "< %s %s . %s >"%(self.type(), self.variable(), self.body())
 
   def substituteVar(self, a, b):
-    assert(a != self.var())
-    return Quantifier(var = self.var(), type = self.type(),
+    assert(a != self.variable())
+    return Quantifier(variable = self.variable(), type = self.type(),
         body = self.body().substituteVar(a, b))
 
   def assertEqual(self, other):
     assert(other.__class__ == Quantifier)
-    if self.var() != other.var():
-      raise Exception(("Unequal vars %s != %s,"
-        + " in\n%s\n\tCOMPARED TO\n%s")%(self.var(), other.var(), self, other))
+    self.variable().assertEqual(other.variable())
     self.body().assertEqual(other.body())
 
   def updateVars(self):
-    a = self.var()
+    a = self.variable()
     b = Var(a.name())
-    return Quantifier(var = b, body = body.substituteVar(a, b).updateVars())
+    return Quantifier(type = self.type(),
+        variable = b,
+        body = self.body().substituteVar(a, b).updateVars())
 
-  def var(self):
-    return self._var
+  def variable(self):
+    return self._variable
   def body(self):
     return self._body
   def type(self):
@@ -169,17 +179,21 @@ class Quantifier(PrimitiveObject):
     if other.__class__ != Quantifier or self.type() != other.type():
       return False
     else:
-      if self.var() == other.var():
+      if self.variable() == other.variable():
         return self.body() == other.body()
       else:
-        return self.body() == other.body().substituteVar(other.var(), self.var())
+        return self.body() == other.body().substituteVar(other.variable(), self.variable())
   def __ne__(self, other):
     return not (self == other)
 
-  def forwardUnusedExistential(self):
-    assert(self.type() == existsType)
-    # TODO Check that self.var() is not free in self.body()
-    return UnusedExistential(variable = self.var(), body = self.body())
+  def backwardIntroduceQuantifier(self):
+    assert(self.variable() not in self.body().freeVariables())
+    return IntroduceQuantifier(type = self.type(), variable = self.variable(),
+        body = self.body())
+
+  def forwardUnusedQuantifier(self):
+    # TODO Check that self.variable() is not free in self.body()
+    return UnusedQuantifier(variable = self.variable(), type = self.type(), body = self.body())
 
   def backwardConjQuantifier(self):
     # (Q x . A) % B --> Q x . (A % B)
@@ -191,13 +205,13 @@ class Quantifier(PrimitiveObject):
       assert(self.body().type() == andType)
 
     return ConjQuantifier(quantifierType = self.type(), conjType = self.body().type(),
-        var = self.var(), left = self.body().left(), right = self.body().right())
+        variable = self.variable(), left = self.body().left(), right = self.body().right())
 
   def forwardQuantifierConj(self):
     # Q x . (A % B) --> (Q x . A) % (Q x . B)
     assert(self.left().__class__ == Quantifier)
     assert(self.right().__class__ == Quantifier)
-    assert(self.left().var() == self.right().var())
+    assert(self.left().variable() == self.right().variable())
     if self.type() == andType:
       assert(self.left().type() == existsType)
       assert(self.right().type() == existsType)
@@ -207,25 +221,27 @@ class Quantifier(PrimitiveObject):
       assert(self.right().type() == forallType)
 
     return QuantifierConj(quantifierType = self.type(), conjType = self.left().type(),
-        var = self.left().var(), left = self.left().body(), right = self.right().body())
+        variable = self.left().variable(), left = self.left().body(), right = self.right().body())
 
   def backwardNotQuant(self):
+    # | q(t,x)    --> q(~t, | x )
+    # *-------              *--
     assert(self.body().__class__ == Not)
-    return NotQuant(variable = self.var(), type = dualQuantifierType(self.type()),
+    return NotQuant(variable = self.variable(), type = dualQuantifierType(self.type()),
         value = self.body().value())
 
   def forwardEliminateVar(self, replacementVar):
     assert(self.type() == forallType)
     return Eliminate(value = self.body(),
-        quantifiedVar = self.var(),
+        quantifiedVar = self.variable(),
         replacementVar = replacementVar)
 
   def forwardOnBody(self, arrow):
     assert(self.body() == arrow.src())
-    return OnBody(arrow = arrow, var = self.var(), type = self.type())
+    return OnBody(arrow = arrow, variable = self.variable(), type = self.type())
   def backwardOnBody(self, arrow):
     assert(self.body() == arrow.tgt())
-    return OnBody(arrow = arrow, var = self.var(), type = self.type())
+    return OnBody(arrow = arrow, variable = self.variable(), type = self.type())
 
   # f is a function taking self.body() to an arrow other such that self.forwardOnBody(other) exists.
   def forwardOnBodyFollow(self, f):
@@ -254,6 +270,9 @@ class TrueClass(PrimitiveObject):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not (self == other)
+
+  def forwardTrueAlways(self):
+    return TrueAlways()
 
 class Not(PrimitiveObject):
   def __init__(self, value):
@@ -293,12 +312,23 @@ class Not(PrimitiveObject):
     return Apply(a = self.value(), b = b)
 
   def forwardNotQuant(self):
+    # | q(t,x)    --> q(~t, | x )
+    # *-------              *--
     assert(self.value().__class__ == Quantifier)
-    return NotQuant(variable = self.value().var(), type = self.value().type(),
-        value = self.value().value())
+    return NotQuant(variable = self.value().variable(), type = self.value().type(),
+        value = self.value().body())
+
+  def backwardQuantNot(self):
+    # q(t, | x ) --> | q(~t,x)
+    #       *--       *-------
+    assert(self.value().__class__ == Quantifier)
+    return QuantNot(variable = self.value().variable(),
+        type = dualQuantifierType(self.value().type()),
+        value = self.value().body())
 
   # src and tgt go the opposite direction since Not is contravariant.
   def forwardOnNot(self, arrow):
+    assert(arrow.tgt() == self.value())
     assert(arrow.tgt() == self.value())
     return OnNot(arrow)
   def backwardOnNot(self, arrow):
@@ -370,7 +400,7 @@ class Conj(PrimitiveObject):
     # Q x . (A % B) --> (Q x . A) % (Q x . B)
     assert(self.left().__class__ == Quantifier)
     assert(self.right().__class__ == Quantifier)
-    assert(self.left().var() == self.right().var())
+    assert(self.left().variable() == self.right().variable())
     if self.type() == andType:
       assert(self.left().type() == existsType)
       assert(self.right().type() == existsType)
@@ -381,7 +411,7 @@ class Conj(PrimitiveObject):
 
     return QuantifierConj(quantifierType = self.left().type(),
         conjType = self.type(),
-        var = self.left().var(),
+        variable = self.left().variable(),
         left = self.left().body(), right = self.right().body())
 
   def forwardConjQuantifier(self):
@@ -394,7 +424,7 @@ class Conj(PrimitiveObject):
       assert(self.left().type() == forallType)
 
     return ConjQuantifier(conjType = self.type(), quantifierType = self.left().type(),
-        var = self.left().var(), left = self.left().body(), right = self.right())
+        variable = self.left().variable(), left = self.left().body(), right = self.right())
 
   def backwardDiagonal(self):
     assert(self.type() == andType)
@@ -544,6 +574,9 @@ class Always(PrimitiveObject):
   def forwardDiagonal(self):
     return Diagonal(self.value())
 
+  def forwardUnalways(self):
+    return Unalways(self.value())
+
   def forwardOnAlways(self, arrow):
     assert(arrow.src() == self.value())
     return OnAlways(arrow)
@@ -554,6 +587,10 @@ class Always(PrimitiveObject):
     return self.forwardOnAlways(f(self.value()))
   def backwardOnAlwaysFollow(self, f):
     return self.backwardOnAlways(f(self.value()))
+
+  def backwardTrueAlways(self):
+    assert(self.value() == true)
+    return TrueAlways()
 
 # Arrows
 
@@ -566,9 +603,12 @@ class PrimitiveArrow:
   def __repr__(self):
     raise Exception("Abstract superclass.")
 
+  # Return a more compact arrow than self, with the same src and tgt, but of a simpler nature.
+  def compress(self):
+    return self
+
   def asString(self, variance):
     return repr(self)
-
 
   # other is another arrow.
   def forwardCompose(self, other):
@@ -608,9 +648,67 @@ class Eliminate(PrimitiveArrow):
     return "eliminate(%s --> %s)"%(self.quantifiedVar(), self.replacementVar())
 
   def src(self):
-    return Quantifier(type = forallType, var = self.quantifiedVar(), body = self.value())
+    return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
   def tgt(self):
     return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
+
+class TrueAlways(PrimitiveArrow):
+  def src(self):
+    return true
+  def tgt(self):
+    return Always(true)
+
+  def __repr__(self):
+    return "TrueAlways"
+
+class IntroduceQuantifier(PrimitiveArrow):
+  def __init__(self, type, variable, body):
+    assert(type in quantifierTypes)
+    self._type = type
+    self._variable = variable
+    self._body = body
+
+  def type(self):
+    return self._type
+  def variable(self):
+    return self._variable
+  def body(self):
+    return self._body
+
+  def __repr__(self):
+    return "IntroduceQuantifier(%s, %s)"%(self.type(), self.variable())
+
+  def src(self):
+    return self.body()
+  def tgt(self):
+    return Quantifier(type = self.type(), variable = self.variable(),
+        body = self.body())
+
+class QuantNot(PrimitiveArrow):
+  # q(t, | x ) --> | q(~t,x)
+  #       *--       *-------
+  def __init__(self, variable, type, value):
+    assert(type in quantifierTypes)
+    self._type = type
+    self._variable = variable
+    self._value = value
+
+  def src(self):
+    return Quantifier(type = self.type(), variable = self.variable(),
+        body = Not(self.value()))
+  def tgt(self):
+    return Not(Quantifier(type = dualQuantifierType(self.type()), variable = self.variable(),
+      body = self.value()))
+
+  def type(self):
+    return self._type
+  def variable(self):
+    return self._variable
+  def value(self):
+    return self._value
+
+  def __repr__(self):
+    return "QuantNot"
 
 class NotQuant(PrimitiveArrow):
   # | q(t,x)    --> q(~t, | x )
@@ -635,7 +733,7 @@ class NotQuant(PrimitiveArrow):
     return Not(Quantifier(type = self.type(), variable = self.variable(), body = self.value()))
   def tgt(self):
     return Quantifier(type = dualQuantifierType(self.type()), variable = self.variable(),
-        body = Not(self.body()))
+        body = Not(self.value()))
 
 class IntroduceDoubleDual(PrimitiveArrow):
   #              ||A
@@ -688,6 +786,22 @@ class Diagonal(PrimitiveArrow):
     return Always(self.value())
   def tgt(self):
     return And(Always(self.value()), Always(self.value().updateVars()))
+
+class Unalways(PrimitiveArrow):
+  # !A --> A
+  def __init__(self, value):
+    self._value = value
+
+  def __repr__(self):
+    return 'unalways'
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
 
 class IntroduceTrue(PrimitiveArrow):
   # A ---> A | |
@@ -845,7 +959,7 @@ class Admit(PrimitiveArrow):
 
 class QuantifierConj(PrimitiveArrow):
   # Q x . (A % B) --> (Q x . A) % (Q x . B)
-  def __init__(self, quantifierType, conjType, var, left, right):
+  def __init__(self, quantifierType, conjType, variable, left, right):
     if quantifierType == forallType:
       assert(conjType == orType)
     else:
@@ -854,7 +968,7 @@ class QuantifierConj(PrimitiveArrow):
 
     self._quantifierType = quantifierType
     self._conjType = conjType
-    self._var = var
+    self._variable = variable
     self._left = left
     self._right = right
 
@@ -862,16 +976,16 @@ class QuantifierConj(PrimitiveArrow):
     return "quantConj"
 
   def src(self):
-    return Quantifier(var = self._var, type = self._quantifierType,
+    return Quantifier(variable = self._variable, type = self._quantifierType,
         body = Conj(type = self._conjType, left = self._left, right = self._right))
   def tgt(self):
     return Conj(type = self._conjType,
-        left = Quantifier(var = self._var, type = self._quantifierType, body = self._left),
-        right = Quantifier(var = self._var, type = self._quantifierType, body = self._right))
+        left = Quantifier(variable = self._variable, type = self._quantifierType, body = self._left),
+        right = Quantifier(variable = self._variable, type = self._quantifierType, body = self._right))
 
 class ConjQuantifier(PrimitiveArrow):
   # (Q x . A) % B --> Q x . (A % B)
-  def __init__(self, quantifierType, conjType, var, left, right):
+  def __init__(self, quantifierType, conjType, variable, left, right):
     if quantifierType == forallType:
       assert(conjType == orType)
     else:
@@ -880,7 +994,7 @@ class ConjQuantifier(PrimitiveArrow):
 
     self._quantifierType = quantifierType
     self._conjType = conjType
-    self._var = var
+    self._variable = variable
     self._left = left
     self._right = right
 
@@ -889,9 +1003,9 @@ class ConjQuantifier(PrimitiveArrow):
 
   def src(self):
     return Conj(type = self._conjType, right = self._right,
-        left = Quantifier(var = self._var, type = self._quantifierType, body = self._left))
+        left = Quantifier(variable = self._variable, type = self._quantifierType, body = self._left))
   def tgt(self):
-    return Quantifier(var = self._var, type = self._quantifierType,
+    return Quantifier(variable = self._variable, type = self._quantifierType,
         body = Conj(type = self._conjType, left = self._left, right = self._right))
 
 class Distribute(PrimitiveArrow):
@@ -938,9 +1052,10 @@ class Apply(PrimitiveArrow):
   def tgt(self):
     return Not(self.a())
 
-class UnusedExistential(PrimitiveArrow):
-  def __init__(self, variable, body):
+class UnusedQuantifier(PrimitiveArrow):
+  def __init__(self, type, variable, body):
     self._variable = variable
+    self._type = type
     self._body = body
 
   def variable(self):
@@ -952,9 +1067,30 @@ class UnusedExistential(PrimitiveArrow):
     return "unused_existial(%s)"%(self.variable(),)
 
   def src(self):
-    return Quantifier(var = self.variable(), type = existsType, body = self.body())
+    return Quantifier(variable = self.variable(), type = self._type, body = self.body())
   def tgt(self):
     return self.body()
+
+# For defining a new relation.
+class Definition(PrimitiveArrow):
+  def __init__(self, relation, definition):
+    self._relation = relation
+    self._definition = definition
+
+  def relation(self):
+    return self._relation
+  def definition(self):
+    return self._definition
+
+  def __repr__(self):
+    return "%s :| %s"%(self.relation(), self.definition())
+
+  def src(self):
+    return true
+  def tgt(self):
+    return And( Not(And(self.definition(), Not(self.relation())))
+              , Not(And(self.relation(), Not(self.definition()))))
+
 
 # Functorial Arrows
 
@@ -978,25 +1114,32 @@ def functorToString(title, innerArrow, variance):
   return "%s{\n%s\n}%s"%(title, shiftRight(innerArrow.asString(variance), variance), title)
 
 class OnBody(FunctorialArrow):
-  def __init__(self, arrow, var, type):
+  def __init__(self, arrow, variable, type):
     self._arrow = arrow
-    self._var = var
+    self._variable = variable
     self._type = type
 
   def asString(self, variance):
     return functorToString("onBody", self.arrow(), variance)
 
+  def compress(self):
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnBody(arrow = arrow, variable = self.variable(), type = self.type())
+
   def arrow(self):
     return self._arrow
-  def var(self):
-    return self._var
+  def variable(self):
+    return self._variable
   def type(self):
     return self._type
 
   def src(self):
-    return Quantifier(var = self.var(), type = self.type(), body = self.arrow().src())
+    return Quantifier(variable = self.variable(), type = self.type(), body = self.arrow().src())
   def tgt(self):
-    return Quantifier(var = self.var(), type = self.type(), body = self.arrow().tgt())
+    return Quantifier(variable = self.variable(), type = self.type(), body = self.arrow().tgt())
 
 class OnLeft(FunctorialArrow):
   def __init__(self, right, arrow, type):
@@ -1006,6 +1149,13 @@ class OnLeft(FunctorialArrow):
 
   def asString(self, variance):
     return functorToString("onLeft(%s)"%(self.type(),), self.arrow(), variance)
+
+  def compress(self):
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnLeft(right = self.right(), arrow = arrow, type = self.type())
 
   def right(self):
     return self._right
@@ -1028,6 +1178,13 @@ class OnRight(FunctorialArrow):
   def asString(self, variance):
     return functorToString("onRight(%s)"%(self.type(),), self.arrow(), variance)
 
+  def compress(self):
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnRight(left = self.left(), arrow = arrow, type = self.type())
+
   def left(self):
     return self._left
   def arrow(self):
@@ -1040,6 +1197,49 @@ class OnRight(FunctorialArrow):
   def tgt(self):
     return Conj(type = self.type(), right = self.arrow().tgt(), left = self.left())
 
+class OnConj(FunctorialArrow):
+  def __init__(self, type, leftArrow, rightArrow):
+    self._type = type
+    self._leftArrow = leftArrow
+    self._rightArrow = rightArrow
+
+  def type(self):
+    return self._type
+  def leftArrow(self):
+    return self._leftArrow
+  def rightArrow(self):
+    return self._rightArrow
+
+  def asString(self, variance):
+    return self.asLeftRightComposite().asString(variance)
+
+  def asLeftRightComposite(self):
+    return self.src().forwardOnLeft(self.leftArrow()).forwardFollow(lambda x:
+        x.forwardOnRight(self.rightArrow()))
+
+  def compress(self):
+    compressedLeft = self.leftArrow().compress()
+    compressedRight = self.rightArrow().compress()
+    if compressedLeft.__class__ == Identity and compressedRight.__class__ == Identity:
+      return self.src().identity()
+    elif compressedLeft.__class__ == Identity:
+      return OnRight(type = self.type(),
+          left = compressedLeft.src(),
+          arrow = compressedRight)
+    elif compressedRight.__class__ == Identity:
+      return OnLeft(type = self.type(),
+          right = compressedRight.src(),
+          arrow = compressedLeft)
+    else:
+      return OnConj(type = self.type(),
+          leftArrow = compressedLeft,
+          rightArrow = compressedRight)
+
+  def src(self):
+    return Conj(type = self.type(), left = self.leftArrow().src(), right = self.rightArrow().src())
+  def tgt(self):
+    return Conj(type = self.type(), left = self.leftArrow().tgt(), right = self.rightArrow().tgt())
+
 class OnAlways(FunctorialArrow):
   def __init__(self, arrow):
     self._arrow = arrow
@@ -1049,6 +1249,13 @@ class OnAlways(FunctorialArrow):
 
   def arrow(self):
     return self._arrow
+
+  def compress(self):
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnAlways(arrow)
 
   def src(self):
     return Always(self.arrow().src())
@@ -1061,6 +1268,13 @@ class OnNot(FunctorialArrow):
 
   def asString(self, variance):
     return functorToString("onNot", self.arrow(), not variance)
+
+  def compress(self):
+    arrow = self.arrow().compress()
+    if arrow.__class__ == Identity:
+      return self.src().identity()
+    else:
+      return OnNot(arrow)
 
   def arrow(self):
     return self._arrow
@@ -1091,15 +1305,69 @@ class Identity(PrimitiveArrow):
   def tgt(self):
     return self.value()
 
+def _getValuesList(arrow):
+  res = []
+  if arrow.__class__ == Composite:
+    res.extend(_getValuesList(arrow.left()))
+    res.extend(_getValuesList(arrow.right()))
+  else:
+    res.append(arrow)
+  return res
+
+# arrow: either an OnConj or an OnLeft or an OnRight arrow.
+# return: an equivalent OnConj arrow.
+def _promoteToOnConj(arrow):
+  if arrow.__class__ == OnConj:
+    return arrow
+  elif arrow.__class__ == OnLeft:
+    return OnConj(type = arrow.type(),
+        leftArrow = arrow.arrow(),
+        rightArrow = arrow.right().identity())
+  elif arrow.__class__ == OnRight:
+    return OnConj(type = arrow.type(),
+        leftArrow = arrow.left().identity(),
+        rightArrow = arrow.arrow())
+  else:
+    raise Exception("Can only promote to OnConj arrows that are either OnConj, OnLeft or OnRight")
+
+# left, right: non composite arrows with left.tgt().translate() == right.src().translate()
+# return: either:
+#           A list [combined] where combined is a single compressed arrow (not a Composite)
+#             which is equivalent to compose(left, right) if such an arrow exists.
+#           The list [left.compress(), right.compress()] otherwise
+def _tryMergePair(left, right):
+  if left.__class__ == Identity:
+    return [right.compress()]
+  elif right.__class__ == Identity:
+    return [left.compress()]
+  else:
+    conjClasses = [OnLeft, OnRight, OnConj]
+    if left.__class__ in conjClasses and right.__class__ in conjClasses:
+      left = _promoteToOnConj(left)
+      right = _promoteToOnConj(right)
+      return [OnConj(left.type()
+                   , left.leftArrow().forwardCompose(right.leftArrow())
+                   , left.rightArrow().forwardCompose(right.rightArrow())).compress()]
+    elif left.__class__ == OnBody and right.__class__ == OnBody:
+      assert(left.type() == right.type())
+      assert(left.variable() == right.variable())
+      return [OnBody(type = left.type(), variable = left.variable(),
+          arrow = left.arrow().forwardCompose(right.arrow()).compress())]
+    elif left.__class__ == OnNot and right.__class__ == OnNot:
+      return [OnNot(left.arrow().backwardCompose(right.arrow()).compress())]
+    elif left.__class__ == OnAlways and right.__class__ == OnAlways:
+      return [OnAlways(left.arrow().forwardCompose(right.arrow()).compress())]
+    else:
+      return [left.compress(), right.compress()]
+
 class Composite(PrimitiveArrow):
   # left and right are arrows such that left.src() == right.tgt()
   # construct their composite arrow.
   def __init__(self, left, right):
-    left.tgt().assertEqual(right.src())
-    assert(left.tgt() == right.src())
+    # Comment thse lines for a huge speedup.
     if left.tgt() != right.src():
-      raise Exception(("Failed to compose arrows since src and tgt are"
-        + " unequal\n\n\nsrc = %s\n\ntgt= %s\n")%(left.tgt(), right.src()))
+      left.tgt().assertEqual(right.src())
+
     self._left = left
     self._right = right
 
@@ -1109,6 +1377,25 @@ class Composite(PrimitiveArrow):
       return "%s\n%s"%(leftString, rightString)
     else:
       return "%s\n%s"%(rightString, leftString)
+
+  def compress(self):
+    kidArrows = _getValuesList(self)
+    i = 0
+    while i + 1 < len(kidArrows):
+      # Invariant: no pair of adjacent arrows at indices <= i
+      #            can be merged.
+      left = kidArrows.pop(i)
+      right = kidArrows.pop(i)
+      # This loop runs 1 or 2 times
+      for arrow in _tryMergePair(left, right):
+        kidArrows.insert(i, arrow)
+        i += 1
+      i -= 1
+    assert(len(kidArrows) > 0)
+    t = kidArrows[-1]
+    for arrow in kidArrows[:-1][::-1]:
+      t = t.backwardCompose(arrow)
+    return t
 
   def __repr__(self):
     return self.asString(True)
@@ -1164,7 +1451,7 @@ def reverse(arrow):
     if a is None:
       return None
     else:
-      return OnBody(type = arrow.type(), var = arrow.var(), arrow = a)
+      return OnBody(type = arrow.type(), variable = arrow.variable(), arrow = a)
   elif arrow.__class__ == Apply:
     return None
   elif arrow.__class__ == Distribute:

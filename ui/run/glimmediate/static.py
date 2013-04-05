@@ -15,12 +15,12 @@ startingStack = None
 w = 1340
 h = 680
 
-scale = 0.18
+scale = 0.10
 
 def display():
   global startingStack
   glClear(GL_COLOR_BUFFER_BIT)
-  startingStack._backend.render()
+  startingStack.shift([0, 0, -10])._backend.render()
   glFlush()
 
 def run(claim):
@@ -30,11 +30,13 @@ def run(claim):
   glutCreateWindow("Demo")
   glutDisplayFunc(display)
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA)
+  glEnable(GL_BLEND)
+  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA)
   glClearColor(1.0,1.0,1.0,0.0)
   glColor3f(0.0,0.0, 0.0)
   glMatrixMode(GL_PROJECTION)
   glLoadIdentity()
-  gluOrtho2D(0.0, w + 0.0, 0.0, h + 0.0)
+  glOrtho(0.0, w + 0.0, 0.0, h + 0.0, -1.0, 1.0)
   glScale(scale, scale, scale)
   startingStack = render(claim)
   glutMainLoop()

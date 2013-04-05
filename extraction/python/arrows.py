@@ -5,7 +5,7 @@ from calculus import basic
 # A backend for the basic calculus.
 # This backend runs on a single machine.
 # This backend performs no optimizations.
-# This backend translates each primitive transition individually.
+# This backend translates each primitive arrow individually.
 # This is an interpreter backend.
 
 
@@ -30,6 +30,13 @@ from calculus import basic
 
 # objectRep(x . A) ---> objectRep(A) (Variables and quantifiers have to computational content.)
 
+quantifierArrowClasses = [ basic.QuantNot
+                         , basic.NotQuant
+                         , basic.ConjQuantifier
+                         , basic.Eliminate
+                         , basic.UnusedQuantifier
+                         , basic.IntroduceQuantifier ]
+
 # A kind of implementation of the functor rep on arrows.
 # Take each arrow A --> B to some python object in the set
 # Note that the only way to conclude that we've returned an element of the empty set
@@ -45,6 +52,8 @@ def arrowToProgram(arrow):
     return repRemoveDoubleDual(arrow)
   elif arrow.__class__ == basic.Diagonal:
     return repDiagonal(arrow)
+  elif arrow.__class__ == basic.Unalways:
+    return repIdentity(arrow)
   elif arrow.__class__ == basic.IntroduceTrue:
     return repIntroduceTrue(arrow)
   elif arrow.__class__ == basic.RemoveFalse:
@@ -63,12 +72,16 @@ def arrowToProgram(arrow):
     return repDistribute(arrow)
   elif arrow.__class__ == basic.Apply:
     return repApply(arrow)
+  elif arrow.__class__ == basic.Definition:
+    return repDefinition(arrow)
   elif arrow.__class__ == basic.OnBody:
     return repOnBody(arrow)
   elif arrow.__class__ == basic.OnLeft:
     return repOnLeft(arrow)
   elif arrow.__class__ == basic.OnRight:
     return repOnRight(arrow)
+  elif arrow.__class__ == basic.OnConj:
+    return repOnConj(arrow)
   elif arrow.__class__ == basic.OnAlways:
     return repOnAlways(arrow)
   elif arrow.__class__ == basic.OnNot:
@@ -77,11 +90,12 @@ def arrowToProgram(arrow):
     return repIdentity(arrow)
   elif arrow.__class__ == basic.Composite:
     return repComposite(arrow)
-  elif arrow.__class__ in [basic.ConjQuantifier, basic.Eliminate, basic.UnusedExistential]:
+  elif arrow.__class__ in quantifierArrowClasses:
+    return repIdentity(arrow)
+  elif arrow.__class__ == basic.TrueAlways:
     return repIdentity(arrow)
   else:
     raise Exception("Unrecognized Arrow %s."%(arrow.__class__))
-
 
 def repIntroduceDoubleDual(arrow):
   return (lambda (A, notnotnotA): notnotnotA(lambda notA: notA(A)))
@@ -168,6 +182,22 @@ def repApply(arrow):
   # How adroit, we use python closure convesion to implement closure conversion in the target language.
   # (The apply arrow is the essence of closure conversion.)
   return (lambda ((notAAndB, B), notnotA): notnotA(lambda A: notAAndB( (A, B) )))
+
+def repDefinition(arrow):
+  # 1  --->   |  d |  | r | |  r |  | d
+  #           |    |  *-- | |    |  *--
+  #           *---------- | *----------
+
+  # For simplicity, defined relations will be represented exactly the same as their definitions.
+  def construct(d, notR):
+    r = d
+    return notR(r)
+  def destruct(r, notD):
+    d = r
+    return notD(d)
+  return (lambda (one, notConstructDestruct):
+      notConstructDestruct( (construct, destruct) ))
+
 def repOnBody(arrow):
   return arrowToProgram(arrow.arrow())
 
@@ -194,6 +224,14 @@ def repOnRight(arrow):
   # A % B ---> A % B'
   notBAndNotBprime = arrowToProgram(arrow.arrow())
   if arrow.type() == basic.andType:
+    def _t((x, notAAndBprime)):
+      if not(x.__class__ == tuple):
+        raise Exception("Not a tuple %s"%(x,))
+      (A, B) = x
+      return notBAndNotBprime( (B, lambda Bprime:
+      notAAndBprime( (A, Bprime) )))
+
+    return _t
     return (lambda ((A,B), notAAndBprime): notBAndNotBprime( (B, lambda Bprime:
       notAAndBprime( (A, Bprime) ))))
   else:
@@ -207,6 +245,10 @@ def repOnRight(arrow):
         B = AOrB[1]
         return notBAndNotBprime( (B, lambda Bprime: notAOrBprime( (1, Bprime) )))
     return f
+
+def repOnConj(arrow):
+  # A % B ---> A' % B'
+  return arrowToProgram(arrow.asLeftRightComposite())
 
 def repOnAlways(arrow):
   # Since the objectReps are the same, the arrowReps can be as well.

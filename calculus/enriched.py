@@ -3,6 +3,7 @@
 from mark import markable
 from calculus import basic
 from sets import Set
+import types
 
 # This module contains objects and arrows in much the same was as basic.
 # This module defines a functor F.
@@ -23,6 +24,9 @@ class Var(markable.Markable):
   def name(self):
     return self.translate().name()
 
+  def __repr__(self):
+    return self.name()
+
   def __eq__(self, other):
     return other.__class__ == Var and self._base == other._base
   def __ne__(self, other):
@@ -38,19 +42,45 @@ class Logic(markable.Markable):
   def translate(self):
     raise Exception("Abstract Superclass")
 
+  # The treatment of this function is complex:
+  # When subclasses of Logic override this method to return true,
+  # they get their transpose, transposeToNot, and notToTranspose methods generated
+  # for them.  See those methods to understand how.
+  def transposeIsNot(self):
+    return False
+
   # Note: There is an isomorphism:
   #   basic.Not(self.translate()) <--> self.transpose().translate()
   # notToTranspose implements the forward direction of this isomorphism.
   # transposeToNot implements the reverse direction of this isomorphism.
   def notToTranspose(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return Not(self).identity()
+    else:
+      raise Exception("Abstract Superclass")
   def transposeToNot(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return self.transpose().identity()
+    else:
+      raise Exception("Abstract Superclass")
+
+  # return an arrow that does no real work but makes the formula a bit "cleaner".
+  # subclasses are welcome to override this method in reasonable ways.
+  def forwardClean(self):
+    return self.identity()
+
+  # return an arrow may aggresively try to make the formula "cleaner".
+  # subclasses are welcome to override this method in reasonable ways.
+  def forwardHeavyClean(self):
+    return self.identity()
 
   # return a claim dual to self.
   # note: self.transpose().transpose() must be equal to self.
   def transpose(self):
-    raise Exception("Abstract Superclass")
+    if self.transposeIsNot():
+      return Not(self)
+    else:
+      raise Exception("Abstract Superclass")
   # Return a Logic object like this one, but with the variable b substituted in
   # place of a.
   # a must not be quantified in self.
@@ -66,11 +96,24 @@ class Logic(markable.Markable):
 
   def forwardSingleton(self, conjType):
     return Singleton(self, conjType)
-  def backardUnsingleton(self, conjType):
+  def backwardUnsingleton(self, conjType):
     return Unsingleton(self, conjType)
+
+  def forwardIntroduceQuantifier(self, type, variables):
+    return IntroduceQuantifier(type = type, variables = variables, body = self)
 
   def identity(self):
     return Identity(self)
+
+  def backwardPushPairExport(self):
+    def res(claim):
+      assert(claim.translate() == self.translate())
+      return And([true, self]).forwardForget(0).forwardFollow(lambda x:
+        x.forwardUnsingleton())
+    return res
+
+  def forwardAssume(self, b):
+    return Assume(self, b)
 
 forallType = basic.forallType
 existsType = basic.existsType
@@ -126,6 +169,9 @@ class Not(Logic):
     self._value = value
     self.initMarkable(['value'])
 
+  def __repr__(self):
+    return "~( " + repr(self.value()) + " )"
+
   def value(self):
     return self._value
 
@@ -136,15 +182,46 @@ class Not(Logic):
     return basic.Not(self.value().translate())
 
   def notToTranspose(self):
-    return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
-        self.value().transpose().transposeToNot())
+    if self.value().transposeIsNot():
+      return basic.Not(self.translate()).forwardRemoveDoubleDual()
+    else:
+      return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardCompose(
+          self.value().transpose().transposeToNot())
   def transposeToNot(self):
-    return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
+    if self.value().transposeIsNot:
+      return self.value().translate().forwardIntroduceDoubleDual()
+    else:
+      return self.transpose().translate().forwardOnNot(self.value().notToTranspose())
   def transpose(self):
-    return self.value()
+    if self.value().transposeIsNot():
+      return self.value()
+    else:
+      return Not(self.value().transpose())
 
   def freeVariables(self):
     return self.value().freeVariables()
+
+  def forwardOnNot(self, t):
+    return OnNot(t)
+
+  def forwardOnNotFollow(self, f):
+    return self.forwardOnNot(f(self.value()))
+
+  def backwardOnNot(self, t):
+    return OnNot(t)
+
+  def backwardOnNotFollow(self, f):
+    return self.backwardOnNot(f(self.value()))
+
+  def backwardPushPairNot(self, f = lambda x: x.identity()):
+    def res(claim):
+      t = f(And([self.value(), claim]))
+      return And([Not(t.tgt()), claim]).forwardOnIthFollow(0, lambda x:
+          x.forwardOnNot(t)).forwardApplyPartial(1, 0, 1).forwardFollow(lambda x:
+              x.forwardUnsingleton().forwardFollow(lambda x:
+                x.forwardOnNotFollow(lambda x:
+                  x.backwardSingleton())))
+    return res
 
 # This one class will is used to represent
 # n-ary AND, OR, WITH and PAR
@@ -162,6 +239,97 @@ class Conj(Logic):
     self._values = values
     self.initMarkable(self.generateMethodNamesForList('value', values))
 
+  def __repr__(self):
+    return "( %s %s )"%(self.type(), self.values())
+
+  def forwardClean(self):
+    t = self.identity()
+    def g(x):
+      if self.type() == parType:
+        if x.__class__ == Conj and x.type() == andType:
+          values = x.values()
+          n = len(values)
+          for j in range(n):
+            notClaim = values[j]
+            if notClaim.__class__ == Not:
+              for i in range(n):
+                if i != j:
+                  claim = values[i]
+                  if claim.translate() == notClaim.value().translate():
+                    return x.forwardApply(i, j)
+      return x.identity()
+    for i in range(len(self.values()))[::-1]:
+      t = t.forwardFollow(lambda x:
+          x.forwardOnIthFollow(i, lambda x:
+            x.forwardClean().forwardFollow(g)).forwardFollow(lambda x:
+              _maybeRemoveUnit(x, i)))
+    def _tryFalse(x):
+      assert(x.__class__ == Conj)
+      if x.type() in [andType, withType]:
+        for i in range(len(x.values())):
+          if isEnrichedFalse(x.values()[i]):
+            return x.forwardForgetAllBut(i)
+      return x.identity()
+    return t.forwardFollow(_tryFalse)
+
+  def forwardHeavyClean(self):
+    t = self.identity()
+    for i in range(len(self.values()))[::-1]:
+      def _maybeAssociateIn(i, x):
+        if x.values()[i].__class__ == Conj and x.values()[i].type() == self.type():
+          return x.forwardAssociateIn(i)
+        else:
+          return x.identity()
+      t = t.forwardFollow(lambda x:
+          x.forwardOnIthFollow(i, lambda x:
+            x.forwardHeavyClean())).forwardFollow(lambda x:
+                _maybeAssociateIn(i, x))
+    def _maybeUnsingleton(x):
+      if len(x.values()) == 1:
+        return x.forwardUnsingleton()
+      else:
+        return x.identity()
+    return t.forwardFollow(_maybeUnsingleton).forwardFollow(lambda x:
+        x.forwardClean())
+
+  def forwardParDiagonal(self, i, j):
+    if i < j:
+      return ParDiagonal(self, i, j)
+    else:
+      assert(j < i)
+      return ParDiagonal(self, j, i)
+
+  # self must be of type parType.
+  # Assume b at clause i, appending b.transpose() to the list of clauses.
+  def forwardAssumeMore(self, i, b):
+    assert(self.type() == parType)
+    return self.forwardOnIthFollow(i, lambda x:
+        x.forwardAssume(b)).forwardFollow(lambda x:
+            x.forwardAssociateIn(i))
+
+  def forwardAppendDefinition(self, relation, definition):
+    assert(self.type() == andType)
+    n = len(self.values())
+    return self.forwardIntroduceUnit(n).forwardFollow(lambda x:
+        x.forwardOnIthFollow(n, lambda one:
+          Definition(relation, definition)))
+
+  def forwardIntroduceUnit(self, i):
+    return self.forwardAssociateOut(i, i)
+
+  def forwardForgetAllBut(self, i):
+    assert(0 <= i)
+    assert(i < len(self.values()))
+    t = self.identity()
+    for j in range(i + 1, len(self.values())):
+      t = t.forwardFollow(lambda x:
+          x.forwardForget(j))
+    for j in range(0, i):
+      t = t.forwardFollow(lambda x:
+          x.forwardForget(j))
+    return t.forwardFollow(lambda x:
+        x.forwardUnsingleton())
+
   def forwardUnsingleton(self):
     assert(len(self.values()) == 1)
     return Unsingleton(self.values()[0], type = self.type())
@@ -172,6 +340,8 @@ class Conj(Logic):
   def forwardForget(self, index):
     assert(self.type() in [andType, withType])
     return Forget(self, index)
+  def forwardAdmit(self, index, value):
+    return Admit(self, index, value)
   def backwardForget(self, index, value):
     values = list(self.values())
     values.insert(index, value)
@@ -184,6 +354,130 @@ class Conj(Logic):
     assert(self.type() == andType)
     return Apply(values = self.values(), i = i, j = j)
 
+  def forwardApplyPartial(self, i, j, k):
+    assert(self.type() == andType)
+    return ApplyPartial(values = self.values(), i = i, j = j, k = k)
+
+  def forwardImportToContainedConj(self, i, j, k):
+    assert(self.type() == andType)
+    assert(self.values()[j].__class__ == Conj)
+    t = self.values()[j].type()
+    if t in [andType, parType]:
+      return self.forwardImportToClause(i, j, k)
+    else:
+      assert(t in [orType, withType])
+      return self.forwardDistributeToOne(i, j, k)
+
+  def forwardStartPushingPair(self, i, j, f):
+    assert(self.type() == andType)
+    if i < j:
+      c = 0
+    else:
+      c = 1
+    values = list(self.values())
+    values[j] = And([values[j], values[i]])
+    values.pop(i)
+    return self.forwardShift(i, j - i + c).forwardFollow(lambda x:
+        AssociateOut(Conj(type = andType, values = values), j + (c - 1))).forwardFollow(lambda x:
+            x.forwardOnIthFollow(j + (c - 1), f))
+
+  def backwardPushPairConj(self, i, f):
+    def res(claim):
+      t = f(self.values()[i])(claim)
+      def g(x):
+        values = list(x.values())
+        values[i] = x.values()[i].values()[0]
+        return And([ Conj(type = x.type(), values = values)
+                   , x.values()[i].values()[1] ]).forwardImportToContainedConj(1, 0, i)
+      return self.backwardOnIth(i, t).backwardFollow(g)
+    return res
+
+  def forwardPushPairQuantifier(self, f = lambda x: x.identity()):
+    assert(self.type() == andType)
+    assert(len(self.values()) == 2)
+    return self.forwardConjQuantifier(0).forwardFollow(lambda x:
+        x.forwardOnBodyFollow(f))
+  def forwardPushPairConj(self, i, f = lambda x: x.identity()):
+    assert(self.type() == andType)
+    assert(len(self.values()) == 2)
+    return self.forwardImportToContainedConj(1, 0, i).forwardFollow(lambda x:
+        x.forwardUnsingleton().forwardFollow(lambda x:
+          x.forwardOnIthFollow(i, f)))
+  def forwardPushPairNot(self, f):
+    assert(self.type() == andType)
+    assert(len(self.values()) == 2)
+    return self.forwardOnIthFollow(0, lambda x:
+        x.forwardOnNotFollow(lambda x:
+          f(x)(self.values()[1]))).forwardFollow(lambda x:
+              x.forwardApplyPartial(1, 0, 1).forwardFollow(lambda x:
+                x.forwardUnsingleton().forwardFollow(lambda x:
+                  x.forwardOnNotFollow(lambda x:
+                    x.backwardSingleton()))))
+
+  def forwardImportToPath(self, i, j, path):
+    return self.forwardImportToPathFollow(i, j, path, lambda x: x.identity())
+
+  # Note: This definition of the behavior of this function is sophisticated.
+  # self.type() must be andType
+  # i: an index into self.values()
+  # path: a path from self to some child.  It must not go through index i.
+  # f: a function.
+  #
+  # forwardImportToPathFollow may be called with a covariant or contravariant path.
+  #   It's code is largely the same in both cases, yet the only known way to define its
+  #   behavior breaks this situation down into cases:
+  #   A) If path is covariant, return an arrow that brings clause i to the end of
+  #      path, constructing an AND of length 2, and follow by calling f on the result.
+  #   B) If path is contravariant, f must produce an arrow to self from x when applied
+  #      to x where x is the clause at i paired with the end of path.  Return an arrow
+  #      to self from whatever f produces, but with that residual claim i exported.
+  # TODO(koreiklein) The only reason I'm writing this function without any idea how to describe
+  #                  it succinctly is because of a HUGE intuitivie sense that I'm right anyway.
+  #                  Surely there must be a simpler description of how this function works.
+  #                  Figure it out, write it down here, and spare everyone a headache.
+  # TODO(koreiklein) Wow! This function seems to work.  Test it more to make sure.
+  def forwardImportToPathFollow(self, i, j, path, f):
+    assert(self.type() == andType)
+    if path.path_singleton():
+      if i < j:
+        J = j - 1
+      else:
+        J = j
+      def e(x):
+        values = list(x.values())
+        a = values.pop(J)
+        b = values.pop(J)
+        values.insert(J, And([a, b]))
+        return AssociateOut(And(values), J).forwardFollow(lambda x:
+            x.forwardOnIthFollow(J, f))
+      return self.forwardShift(i, (J - i) + 1).forwardFollow(e)
+    else:
+      def g(pair):
+        assert(pair.__class__ == Conj)
+        assert(pair.type() == andType)
+        symbol = path.path_symbol()
+        if symbol.__class__ == tuple:
+          (name, index) = symbol
+          return pair.forwardImportToContainedConj(1, 0, index).forwardFollow(lambda x:
+              x.forwardUnsingleton()).forwardFollow(lambda x:
+                  x.forwardOnIthFollow(index, f))
+        elif symbol == "value":
+          assert(pair.values()[0].__class__ == Not)
+          t = f(And([pair.values()[0].value(), pair.values()[1]]))
+          return pair.forwardOnIthFollow(0, lambda x:
+              x.forwardOnNot(t)).forwardFollow(lambda x:
+                  x.forwardApplyPartial(1, 0, 1).forwardFollow(lambda x:
+                    x.forwardUnsingleton()).forwardFollow(lambda x:
+                      x.forwardOnNotFollow(lambda x:
+                        x.backwardSingleton())))
+        elif symbol == "body":
+          assert(pair.values()[0].__class__ == Quantifier)
+          return pair.forwardConjQuantifier(0).forwardFollow(lambda x:
+              x.forwardOnBodyFollow(f))
+        else:
+          raise Exception("Unrecognized path symbol %s"%(symbol,))
+      return self.forwardImportToPathFollow(i, j, path.path_rest(), g)
+
   def forwardShift(self, index, amount):
     return Shift(conj = self, index = index, amount = amount)
   def backwardShift(self, index, amount):
@@ -192,6 +486,17 @@ class Conj(Logic):
         index = index + amount, amount = -amount)
     res.translate()
     return res
+
+  def forwardAssociateOut(self, i, j):
+    # e.g. [A, B, C, D], 1, 3 --> [A, [B, C], D]
+    assert(i <= j)
+    values = list(self.values())
+    kidValues = []
+    while i < j:
+      j -= 1
+      kidValues.append(values.pop(i))
+    values.insert(i, Conj(type = self.type(), values = kidValues))
+    return AssociateOut(Conj(type = self.type(), values = values), i)
 
   def forwardAssociateIn(self, index):
     # [A, [B, C], D] --> [A, B, C, D]
@@ -203,25 +508,61 @@ class Conj(Logic):
   def forwardOnIth(self, index, t):
     return OnIth(self, index, t)
 
+  def backwardOnIthFollow(self, index, f):
+    return self.backwardOnIth(index, f(self.values()[index]))
+
+  def backwardOnIth(self, index, t):
+    return OnIth(self, index, t)
+
   def forwardConjQuantifier(self, index):
     return ConjQuantifier(conj = self, index = index)
 
-  def forwardImportToPar(self, i, j, k):
+  # forwardDistribute* functions should work on ORs within ANDs and on WITHs within ANDs.
+  def forwardDistributeToAll(self, i, j):
     assert(self.type() == andType)
-    return ImportToPar(self.values(), i, j, k)
+    return Distribute(values = self.values(), i = i, j = j)
+  def forwardDistributeToOne(self, i, j, k):
+    assert(self.type() == andType)
+    if i < j:
+      J = j - 1
+    else:
+      J = j
+    def f(orClause):
+      t = orClause.identity()
+      for n in range(len(orClause.values())):
+        if n != k:
+          t = t.forwardFollow(lambda y:
+              y.forwardOnIthFollow(n, lambda twoValueAndClause:
+                twoValueAndClause.forwardForget(1).forwardFollow(lambda oneValueAndClause:
+                  oneValueAndClause.forwardUnsingleton())))
+        else:
+          continue
+    return Distribute(values = self.values(), i = i, j = j).forwardFollow(lambda x:
+        x.forwardOnIthFollow(J, f))
+
+  def forwardImportToClause(self, i, j, k):
+    assert(self.type() == andType)
+    return ImportToClause(self.values(), i, j, k)
 
   # Remove a clause from a par by importing a contradicting claim.
+  # TODO(koreiklein) This function will become superfluous once the PushPair functions work well.
+  #                  Once that happens, remove this function.
   def forwardRemoveFromPar(self, i, j, k):
     assert( Not(self.values()[i]).translate() == self.values()[j].values()[k].translate() )
     if i < j:
       b = j - 1
     else:
       b = j
-    return self.forwardImportToPar(i, j, k).forwardFollow(lambda x:
+    return self.forwardImportToClause(i, j, k).forwardFollow(lambda x:
         x.forwardOnIthFollow(b, lambda par:
           par.forwardOnIthFollow(k, lambda x:
             x.forwardApply(1, 0)).forwardFollow(lambda par:
           par.forwardRemoveUnit(k))))
+
+  def forwardTrueAlways(self):
+    assert(self.type() == andType)
+    assert(len(self.values()) == 0)
+    return TrueAlways()
 
   def substituteVar(self, a, b):
     return Conj(type = self.type(),
@@ -232,7 +573,8 @@ class Conj(Logic):
       return basic.Not(self.translate()).forwardOnNotFollow(lambda values:
           _valuesToTransposeNot(self.type(), values, self.values()))
     else:
-      return basic.Not(self.translate()).forwardRemoveDoubleDual()
+      return basic.Not(self.translate()).forwardRemoveDoubleDual().forwardFollow(lambda x:
+          _forwardNotToTranspose(x, self.values()))
 
   def transposeToNot(self):
     if not self.demorganed():
@@ -278,39 +620,90 @@ class Conj(Logic):
       res = basic.Conj(type = basicType, left = res, right = value.translate())
     return res
 
+def changePathFirst(path, f):
+  if path.path_singleton():
+    return f(path.first())
+  else:
+    (topSymbol, restOfPath, topElement) = path.path_split()
+    if topSymbol == 'body':
+      assert(topElement.__class__ == Quantifier)
+      return Quantifier(variables = topElement.variables(), type = topElement.type(),
+          body = changePathFirst(restOfPath, f))
+    elif topSymbol == 'value':
+      if topElement.__class__ == Always:
+        return Always(value = changePathFirst(restOfPath, f))
+      elif topElement.__class__== Maybe:
+        return Maybe(value = changePathFirst(restOfPath, f))
+      else:
+        assert(topElement.__class__== Not)
+        return Not(value = changePathFirst(restOfPath, f))
+    else:
+      (topSymbol, index) = topSymbol
+      assert(topElement.__class__ == Conj)
+      values = list(topElement.values())
+      values[index] = changePathFirst(restOfPath, f)
+      return Conj(type = topElement.type(), values = values)
+
 # e.g.
 # (1 | B.translate()) | C.translate(), [B, C]
-#      -->
+#      <--
 # (1 | ~B.transpose().translate()) | ~C.transpose().translate()
 def _valuesToTransposeNot(type, basicConjOrUnit, basicUiValues):
   if basicConjOrUnit == basic.unit(type):
     assert(len(basicUiValues) == 0)
-    return basicConjOrUnit.identitiy()
+    return basicConjOrUnit.identity()
   else:
     conj = basicConjOrUnit
     assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
     last = basicUiValues[-1]
-    return conj.forwardOnRight(last.transpose().transposeToNot()).forwardFollow(lambda conj:
-        conj.forwardOnLeftFollow(lambda rest:
+    return conj.backwardOnRight(last.transpose().notToTranspose()).backwardFollow(lambda conj:
+        conj.backwardOnLeftFollow(lambda rest:
           _valuesToTransposeNot(type, rest, basicUiValues[:-1])))
+
 # e.g.
-# (1 | B.translate()) | C.translate() <-- (1 | ~B.transpose().translate()) | ~C.transpose().translate()
+# (1 | ~A.translate()) | ~B.translate(), [A, B]
+#   -->
+# (1 | A.transpose().translate()) | B.transpose().translate()
+def _forwardNotToTranspose(conjOrUnit, values):
+  if conjOrUnit.__class__ == basic.Conj:
+    return conjOrUnit.forwardOnRight(values[-1].notToTranspose()).forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          _forwardNotToTranspose(x, values[:-1])))
+  else:
+    return conjOrUnit.identity()
+
+# e.g.
+# (1 | ~B.transpose().translate()) | ~C.transpose().translate()
+#               <-- (1 | B.translate()) | C.translate()
 def _transposeNotToValues(type, basicConjOrUnit, basicUiValues):
   if basicConjOrUnit == basic.unit(type):
     assert(len(basicUiValues) == 0)
-    return basicConjOrUnit.identitiy()
+    return basicConjOrUnit.identity()
   else:
     conj = basicConjOrUnit
     assert(conj.__class__ == basic.Conj)
     assert(conj.type() == type)
     last = basicUiValues[-1]
-    return conj.forwardOnRight(last.transpose().notToTranspose()).forwardFollow(lambda conj:
-        conj.forwardOnLeftFollow(lambda rest:
+    return conj.backwardOnRight(last.transpose().transposeToNot()).backwardFollow(lambda conj:
+        conj.backwardOnLeftFollow(lambda rest:
           _transposeNotToValues(type, rest, basicUiValues[:-1])))
 
 true = Conj(type = andType, values = [])
 false = Conj(type = orType, values = [])
+
+# return an arrow with src conj which either:
+#    removes index i                 if it is a unit of conj
+#    leaves everything the same      otherwise
+def _maybeRemoveUnit(conj, i):
+  value = conj.values()[i]
+  if value.__class__ == Conj and len(value.values()) == 0:
+    if value.type() == conj.type():
+      return conj.forwardAssociateIn(i)
+    elif conj.type() == parType and isEnrichedFalse(value):
+      return conj.forwardRemoveUnit(i)
+  return conj.identity()
+
 
 class Quantifier(Logic):
   def __init__(self, type, variables, body):
@@ -322,6 +715,48 @@ class Quantifier(Logic):
     l.append('body')
     self.initMarkable(l)
 
+  def forwardClean(self):
+    def f(x):
+      if isEnrichedFalse(x.body()):
+        return x.forwardTotallyUnusedQuantifier()
+      else:
+        return x.identity()
+    return self.forwardOnBodyFollow(lambda x:
+        x.forwardClean()).forwardFollow(f)
+
+  def forwardHeavyClean(self):
+    t = self.forwardOnBodyFollow(lambda x:
+        x.forwardHeavyClean())
+    body = t.tgt().body()
+    joined = 0
+    if body.__class__ == Conj and body.type() == andType:
+      for i in range(len(body.values()))[::-1]:
+        if body.values()[i].__class__ == Quantifier and body.values()[i].type() == self.type():
+          joined += 1
+          t = t.forwardFollow(lambda x:
+              x.forwardOnBodyFollow(lambda x:
+                x.forwardConjQuantifier(i)).forwardFollow(lambda x:
+                  x.forwardJoin()))
+    def _maybeRemoveQuantifier(x):
+      if len(x.variables()) == 0:
+        return x.forwardRemoveQuantifier()
+      else:
+        return x.identity()
+    if joined > 0:
+      t = t.forwardFollow(lambda x:
+          x.forwardOnBodyFollow(lambda x:
+            x.forwardHeavyClean()))
+    return t.forwardFollow(_maybeRemoveQuantifier)
+
+
+  def forwardTotallyUnusedQuantifier(self):
+    t = self.identity()
+    for i in range(len(self.variables())):
+      t = t.forwardFollow(lambda x:
+          x.forwardUnusedQuantifier(0))
+    return t.forwardFollow(lambda x:
+        x.forwardRemoveQuantifier())
+
   def freeVariables(self):
     res = self.body().freeVariables()
     for variable in self.variables():
@@ -329,8 +764,10 @@ class Quantifier(Logic):
     return res
 
   def notToTranspose(self):
-    return _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
+    res = _forwardPushNotFollow(len(self.variables()), basic.Not(self.translate()), lambda notBody:
         self.body().notToTranspose())
+    return res
+
   def transposeToNot(self):
     return self.transpose().translate().forwardIntroduceDoubleDual().forwardFollow(lambda notNotQ:
         notNotQ.forwardOnNotFollow(lambda notQ:
@@ -342,8 +779,18 @@ class Quantifier(Logic):
         variables = self.variables(),
         body = self.body().transpose())
 
-  def forwardUnusedExistential(self, index):
-    return UnusedExistential(self, index)
+  def backwardPushPairQuantifier(self, f):
+    return (lambda claim: self.backwardOnBodyFollow(f)(claim).backwardFollow(lambda x:
+      x.backwardConjQuantifier(0)))
+
+  def backwardConjQuantifier(self, index):
+    values = list(self.body().values())
+    values[index] = Quantifier(type = self.type(), variables = self.variables(),
+        body = values[index])
+    return ConjQuantifier(conj = Conj(type = self.body().type(), values = values), index = index)
+
+  def forwardUnusedQuantifier(self, index):
+    return UnusedQuantifier(self, index)
 
   def forwardJoin(self):
     return QuantifierJoin(self)
@@ -364,6 +811,10 @@ class Quantifier(Logic):
           Eliminate(quantifier = x, index = 0, replacementVar = replacementVar))
     return res
 
+  def forwardEliminateAll(self, replacementVars):
+    return self.forwardEliminateMultiple(replacementVars).forwardFollow(lambda x:
+        x.forwardRemoveQuantifier())
+
   def backwardEliminate(self, index, quantifiedVar, replacementVar):
     assert(self.type() == forallType)
     variables = list(self.variables())
@@ -377,6 +828,12 @@ class Quantifier(Logic):
     return self.forwardOnBody(f(self.body()))
 
   def forwardOnBody(self, t):
+    return OnBody(self.type(), self.variables(), t)
+
+  def backwardOnBodyFollow(self, f):
+    return self.backwardOnBody(f(self.body()))
+
+  def backwardOnBody(self, t):
     return OnBody(self.type(), self.variables(), t)
 
   def substituteVar(self, a, b):
@@ -395,7 +852,7 @@ class Quantifier(Logic):
   def translate(self):
     res = self.body().translate()
     for variable in self.variables()[::-1]:
-      res = basic.Quantifier(type = self.type(), var = variable.translate(), body = res)
+      res = basic.Quantifier(type = self.type(), variable = variable.translate(), body = res)
     return res
 
 # e.g.
@@ -408,11 +865,12 @@ def _forwardPushNotFollow(n, basicObject, f):
     assert(n > 0)
     assert(basicObject.__class__ == basic.Not)
     return basicObject.forwardNotQuant().forwardFollow(lambda quant:
-        quant.onBody(_forwardPushNotFollow(n - 1, quant.body(), f)))
+        quant.forwardOnBody(_forwardPushNotFollow(n - 1, quant.body(), f)))
 
 # e.g.
 # | q(t, a, q(t, b, x))  <--  q(~t, a, q(~t, b, f(x).src()))
 # *--------------------
+# Where f(~x) is an arrow with tgt ~x
 def _backwardPullNotFollow(n, basicObject, f):
   if n == 0:
     res = f(basicObject)
@@ -420,8 +878,9 @@ def _backwardPullNotFollow(n, basicObject, f):
     return res
   else:
     assert(basicObject.__class__ == basic.Not)
-    return basicObject.backwardNotQuant().backwardFollow(lambda quant:
-      _backwardPullNotFollow(n - 1, quant, f))
+    return basicObject.backwardQuantNot().backwardFollow(lambda quant:
+        quant.backwardOnBodyFollow(lambda x:
+          _backwardPullNotFollow(n - 1, x, f)))
 
 class Always(Logic):
   def __init__(self, value):
@@ -448,6 +907,18 @@ class Always(Logic):
 
   def value(self):
     return self._value
+
+  def forwardOnAlways(self, arrow):
+    assert(arrow.src().translate() == self.value().translate())
+    return OnAlways(arrow)
+  def forwardOnAlwaysFollow(self, f):
+    return OnAlways(f(self.src()))
+
+  def forwardUnalways(self):
+    return Unalways(self.value())
+
+  def forwardDiagonal(self):
+    return Diagonal(self.value())
 
   def translate(self):
     return basic.Always(self.value().translate())
@@ -503,6 +974,60 @@ def Implies(predicate, consequent):
   values.append(consequent)
   return Par(values)
 
+# A formula stating that some arbitrary relation holds of some variables.
+class Holds(Logic):
+  def __init__(self, **kwargs):
+    self._d = kwargs
+    for (key, value) in kwargs.items():
+      self.__dict__[key] = types.MethodType(lambda self: value, self)
+    self.initMarkable([])
+
+  def __getitem__(self, x):
+    return self._d[x]
+
+  def __repr__(self):
+    s = ''
+    for (key, value) in self._d.items():
+      s += "%s : %s, "%(key, value)
+    return s
+
+  def __eq__(self, other):
+    if other.__class__ != Holds:
+      return False
+    else:
+      for (key, value) in self._d.items():
+        if (not other._d.has_key(key) ) or other[key] != value:
+          return False
+      for (key, value) in other._d.items():
+        if (not self._d.has_key(key) ) or self[key] != value:
+          return False
+      return True
+
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVar(self, a, b):
+    _d = {}
+    for (key, value) in self._d.items():
+      if value == a:
+        _d[key] = b
+      else:
+        _d[key] = value
+    return Holds(**_d)
+
+  def translate(self):
+    d = {}
+    for (key, value) in self._d.items():
+      d[key] = value.translate()
+    return basic.Holds(**d)
+
+  def transposeIsNot(self):
+    return True
+
+  # return a set of the free variables in self.
+  def freeVariables(self):
+    return self._d.values()
+
 # Arrows
 
 # Abstract superclass of all nonfunctorial arrows between enriched objects.
@@ -513,6 +1038,9 @@ class PrimitiveArrow:
     raise Exception("Abstract superclass.")
   def __repr__(self):
     raise Exception("Abstract superclass.")
+  # Return a more compact arrow than self, with the same src and tgt, but of a simpler nature.
+  def compress(self):
+    return self
 
   # other is another arrow.
   def forwardCompose(self, other):
@@ -544,6 +1072,78 @@ class Identity(PrimitiveArrow):
   def translate(self):
     return self._value.translate().identity()
 
+  def forwardFollow(self, f):
+    return f(self.src())
+  def backwardFollow(self, f):
+    return f(self.tgt())
+
+class TrueAlways(PrimitiveArrow):
+  def src(self):
+    return true
+  def tgt(self):
+    return Always(true)
+  def translate(self):
+    return basic.TrueAlways()
+
+class Assume(PrimitiveArrow):
+  # a --> PAR([B.transpose(), AND([A, B])])
+  def __init__(self, a, b):
+    self._a = a
+    self._b = b
+
+  def a(self):
+    return self._a
+  def b(self):
+    return self._b
+
+  def src(self):
+    return self.a()
+  def tgt(self):
+    return Par([Not(self.b().transpose()), And([self.a(), self.b()])])
+
+  def translate(self):
+    return self.src().forwardIntroduceTrue().forwardFollow(lambda x:
+        x.forwardCommute().forwardFollow(lambda x:
+          x.forwardIntroduceDoubleDual().forwardFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              x.backwardApply(self.b().translate()).backwardFollow(lambda x:
+                x.backwardCommute().backwardFollow(lambda x:
+                  x.backwardOnLeftFollow(lambda x:
+                    x.backwardIntroduceTrue().backwardFollow(lambda x:
+                      x.backwardCommute().backwardFollow(lambda x:
+                        x.backwardOnRightFollow(lambda x:
+                          x.backwardRemoveDoubleDual().backwardFollow(lambda x:
+                            x.backwardOnNotFollow(lambda x:
+                              self.b().notToTranspose()))))))))))))
+
+
+# TODO Consider putting constraints on when these can be created.
+class IntroduceQuantifier(PrimitiveArrow):
+  def __init__(self, type, variables, body):
+    assert(type in basic.quantifierTypes)
+    self._type = type
+    self._variables = variables
+    self._body = body
+
+  def type(self):
+    return self._type
+  def variables(self):
+    return self._variables
+  def body(self):
+    return self._body
+
+  def src(self):
+    return self.body()
+  def tgt(self):
+    return Quantifier(type = self.type(), variables = self.variables(), body = self.body())
+
+  def translate(self):
+    t = self.src().translate().identity()
+    for variable in self.variables()[::-1]:
+      t = t.forwardFollow(lambda x:
+          x.forwardIntroduceQuantifier(self.type(), variable.translate()))
+    return t
+
 class Distribute(PrimitiveArrow):
   # Import claim i of the list into each clause of the OR at spot j.
   # If the disjunction is par, values[i] must be exponential.
@@ -552,32 +1152,86 @@ class Distribute(PrimitiveArrow):
   def __init__(self, values, i, j):
     assert(i != j)
     assert(values[j].__class__ == Conj)
-    assert(values[j].type() == orType)
+    assert(values[j].type() in [orType, withType])
     assert(0 <= i and i < len(values))
     assert(0 <= j and j < len(values))
     self._values = values
     self._i = i
     self._j = j
 
+  def demorganed(self):
+    return self._values[j].type() == withType
+
   def src(self):
     return Conj(type = andType, values = self._values)
   def tgt(self):
     values = list(self._values)
-    values[j] = Or([ And([v, values[i]]) for v in values[j].values() ])
+    values[j] = Conj(type = self._values[j].type(),
+        values = [ And([v, values[i]]) for v in values[j].values() ])
     values.pop(i)
     return Conj(type = andType, values = values)
 
   def translate(self):
-    J = j
-    if i < j:
-      J -= 1
-    values = [v for v in self.tgt().values()]
-    tmp = values[J]
-    values[J] = values[0]
-    values[0] = tmp
+    if self._i < self._j:
+      J = self._j - 1
+    else:
+      J = self._j
+    if not self.demorganed():
+      return _onJandI(self.src(), self._j, self._i, lambda jAndi:
+          jAndi.forwardOnLeftFollow(lambda x:
+            _forwardOnAll(x, lambda x:
+              x.forwardIntroduceTrue().forwardFollow(lambda x:
+                x.forwardCommute()))).forwardFollow(lambda x:
+          _distribute(x))).forwardCompose(
+              self.tgt().backwardShift(index = J, amount = -J).translate())
+    else:
+      return _onJandI(self.src(), self._j, self._i, lambda jAndi:
+          jAndi.forwardOnLeftFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              _backwardOnAll(x, lambda x:
+                x.backwardOnNotFollow(lambda x:
+                  x.forwardIntroduceTrue().forwardFollow(lambda x:
+                    x.forwardCommute())).backwardFollow(lambda x:
+                x.backwardApply(self._values[self._i].translate())))).backwardCompose(
+                  _distribute(basic.And(self.tgt().values()[J].translate().value(),
+                    jAndi.right())))).forwardFollow(lambda x: x.forwardApply()))
 
-    return _onJandI(self.src(), j, i, _distribute).forwardCompose(
-        Shift(conj = And(values), index = 0, amount = J).translate())
+# basicObject: a basic object of the form ((unit % A) % B) % C for % in {|,-}
+# f: a function basic objects -> arrows leaving said objects
+# return: a basic arrow to ((unit % f(A)) % f(B)) % f(C)
+def _forwardOnAll(basicObject, f):
+  if basicObject.__class__ == basic.Conj:
+    return basicObject.forwardOnLeftFollow(lambda x:
+        _forwardOnAll(x, f)).forwardFollow(lambda y:
+            y.forwardOnRightFollow(lambda z:
+              f(z)))
+  else:
+    return basicObject.identity()
+
+# basicObject: a basic object of the form ((unit % A) % B) % C for % in {|,-}
+# f: a function basic objects -> arrows to said objects
+# return: a basic arrow from ((unit % f(A)) % f(B)) % f(C)
+def _backwardOnAll(basicObject, f):
+  if basicObject.__class__ == basic.Conj:
+    return basicObject.backwardOnLeftFollow(lambda x:
+        _backwardOnAll(x, f)).backwardFollow(lambda y:
+            y.backwardOnRightFollow(lambda z:
+              f(z)))
+  else:
+    return basicObject.identity()
+
+# conj is a basic conjunctive list and a claim of the form e.g. (((1 | a) | b) | c) | claim
+# stationary: an integer index less than the length of the list e.g. 1
+# return: ((1 | a) | (b | claim)) | c
+def _toAnd(conj, k):
+  if k == 0:
+    return conj.forwardAssociateA()
+  else:
+    return conj.forwardCommute().forwardFollow(lambda x:
+        x.forwardAssociateB().forwardFollow(lambda x:
+          x.forwardOnLeftFollow(lambda x:
+            x.forwardCommute().forwardFollow(lambda x:
+              _toAnd(x, k - 1)))))
 
 # conj is a basic disjunctive list and a claim of the form (((- - a) - b) - c) | claim
 # return a basic arrow: (((- - a) - b) - c) | claim --> (((- - (a|claim)) - (b|claim)) - (c|claim))
@@ -592,14 +1246,75 @@ def _distribute(conj):
     return conj.forwardDistribute().forwardFollow(lambda x:
           x.onLeft(_distribute(x.left())))
 
-class ImportToPar(PrimitiveArrow):
-  # Import claim i of the list into the kth clause of the PAR at spot j.
-  # If the disjunction is par, values[i] must be exponential.
+class ParDiagonal(PrimitiveArrow):
+  # i < j
+  # PAR([Not(Always(A)), B, Not(Always(A)), C]), 0, 2 --> PAR([Not(Always(A)), B, C])
+  def __init__(self, par, i, j):
+    assert(par.__class__ == Conj)
+    assert(par.type() == parType)
+    assert(i < j)
+    assert(par.values()[i].translate() == par.values()[j].translate())
+    self._par = par
+    self._i = i
+    self._j = j
+    self._claim = par.values()[i]
+    assert(self._claim.__class__ == Not)
+    assert(self._claim.value().__class__ == Always)
+
+  def i(self):
+    return self._i
+  def j(self):
+    return self._j
+
+  def src(self):
+    return self._par
+  def tgt(self):
+    values = list(self.src().values())
+    values.pop(self.j())
+    return Par(values)
+
+  def translate(self):
+    return self.forwardShift(self.j(), self.i() - self.j()).forwardFollow(lambda x:
+        x.forwardAssociateIn(self.i(), self.i() + 2)).translate().forwardFollow(lambda x:
+            x.forwardOnNotFollow(lambda x:
+              _backwardWithin(x, len(self.src().values()) - (self.i() + 1), lambda x:
+                x.backwardOnRightFollow(lambda x:
+                  x.backwardOnNotFollow(lambda x:
+                    # x == Par([self._claim, self._clami]).translate()
+                    x.forwardOnNotFollow(lambda x:
+                      x.backwardOnLeftFollow(lambda x:
+                        x.backwardCommute().backwardFollow(lambda x:
+                          x.backwardIntroduceTrue().backwardFollow(lambda x:
+                            x.backwardIntroduceDoubleDual()))).backwardFollow(lambda x:
+                      x.backwardOnRightFollow(lambda x:
+                        x.backwardIntroduceDoubleDual())).backwardFollow(lambda x:
+                      x.backwardDiagonal())))))))
+
+class Diagonal(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return And([ self.src(), self.src() ])
+
+  def translate(self):
+    return self.src().translate().forwardDiagonal().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardIntroduceTrue().forwardFollow(lambda x:
+            x.forwardCommute())))
+
+class ImportToClause(PrimitiveArrow):
+  # Import claim i of the list into the kth clause of the PAR or AND at spot j.
   # e.g.  [A, B, C, D0 - D1 - D2, E], 1, 3, 0
   #   [A | B | C | D0 - D1 - D2 | E] ---> [A | C | ((D0 | B) - D1 - D2) | E]
   def __init__(self, values, i, j, k):
     assert(values[j].__class__ == Conj)
-    assert(values[j].type() == parType)
+    assert(values[j].type() in [andType, parType])
     assert(i != j)
     assert(0 <= i and i < len(values))
     assert(0 <= j and j < len(values))
@@ -609,39 +1324,53 @@ class ImportToPar(PrimitiveArrow):
     self._j = j
     self._k = k
 
+  def demorganed(self):
+    return self._values[self._j].type() == parType
+
   def src(self):
     return And(self._values)
   def tgt(self):
     kidValues = list(self._values[self._j].values())
     kidValues[self._k] = And([kidValues[self._k], self._values[self._i]])
     values = list(self._values)
-    values[self._j] = Par(kidValues)
+    values[self._j] = Conj(type = self._values[self._j].type(), values = kidValues)
     values.pop(self._i)
     return And(values)
 
   def translate(self):
     if self._i < self._j:
-      T = self._j - 1
+      J = self._j - 1
     else:
-      T = self._j
+      J = self._j
 
-    def f(parAndClaim):
-      return parAndClaim.forwardOnLeftFollow(lambda par:
-          par.forwardOnNotFollow(lambda conj:
-            _backwardBringToRight(conj, len(self._values[self._j].values()) - self._k - 1, lambda x:
-              x.backwardOnRightFollow(lambda kClaim:
-                kClaim.backwardOnNotFollow(lambda x:
+    if not self.demorganed():
+      return _onJandI(self.src(), self._j, self._i, lambda jAndi:
+          jAndi.forwardOnLeftFollow(lambda x:
+            _forwardWithin(x, len(self._values[self._j].values()) - (self._k + 1), lambda x:
+              x.forwardOnRightFollow(lambda x:
+                x.forwardIntroduceTrue().forwardFollow(lambda x:
+                  x.forwardCommute())))).forwardFollow(lambda x:
+          _toAnd(x, len(self._values[self._j].values()) - (self._k + 1)))).forwardCompose(
+              self.tgt().backwardShift(index = J, amount = -J).translate())
+    else:
+      return _onJandI(self.src(), self._j, self._i, lambda jAndi:
+        jAndi.forwardOnLeftFollow(lambda x:
+          x.forwardOnNotFollow(lambda x:
+            _backwardWithin(x, len(self._values[self._j].values()) - (self._k + 1), lambda x:
+              x.backwardOnRightFollow(lambda x:
+                x.backwardOnNotFollow(lambda x:
                   x.forwardIntroduceTrue().forwardFollow(lambda x:
-                  x.forwardCommute())).backwardFollow(lambda oneAndKClaim:
-                oneAndKClaim.backwardApply(parAndClaim.right()))).backwardFollow(lambda x:
-                  x.backwardAssociateA())))).forwardFollow(lambda x: x.forwardApply())
-    return _onJandI(self.src(), j = self._j, i = self._i, basicTransitionF = f).forwardCompose(
-        self.tgt().backwardShift(index = T, amount = -T).translate())
+                    x.forwardCommute())).backwardFollow(lambda x:
+                x.backwardApply(jAndi.right())))).backwardCompose(
+                  _toAnd(basic.And(self.tgt().values()[J].translate().value(), jAndi.right()),
+                    len(self.tgt().values()[J].values()) - (self._k + 1))))).forwardFollow(lambda x:
+                      x.forwardApply())).forwardCompose(
+                          self.tgt().backwardShift(index = J, amount = -J).translate())
 
 # conjOrUnit: a basic conj of the form (((1 | A) | B) | C) | D
 # outer: an integer
 # f: a function from a basic conj to a basic conj
-# return: a basic transition from a  conj like conjOrUnit,
+# return: a basic arrow from a  conj like conjOrUnit,
 #         but in which f was applied to the outerth claim,
 #         and the right side of the result was commuted and associated all the way to the right.
 # e.g.
@@ -661,12 +1390,12 @@ def _backwardBringToRight(conjOrUnit, outer, f):
 
 # conj: an enriched.Conj
 # i, j: i != j, are indices into the values of conj
-# basicTransitionF: a function generating a basic transition from:
+# basicArrowF: a function generating a basic arrow from:
 #     (conj.values()[j].translate() | conj.values()[i].translate())
 #   to any basic object L.
-# return: a transition with src conj.translate() which removes the ith and jth elements and leaves
+# return: an arrow with src conj.translate() which removes the ith and jth elements and leaves
 #         L at the front.
-def _onJandI(conj, j, i, basicTransitionF):
+def _onJandI(conj, j, i, basicArrowF):
   assert(conj.__class__ == Conj)
   assert(i != j)
   assert(0 <= i and i < len(conj.values()))
@@ -681,7 +1410,7 @@ def _onJandI(conj, j, i, basicTransitionF):
         # x = (% % values[j]) % values[i]
         x.forwardAssociateA().forwardFollow(lambda x:
         # x = % % (values[j] % values[i])
-        x.forwardOnRightFollow(basicTransitionF))))
+        x.forwardOnRightFollow(basicArrowF))))
 
 class RemoveQuantifier(PrimitiveArrow):
   def __init__(self, value, quantifierType):
@@ -726,8 +1455,8 @@ class ConjQuantifier(PrimitiveArrow):
     return Quantifier(type = self.quantifier().type(), variables = self.quantifier().variables(),
         body = Conj(type = self.conj().type(), values = values))
 
-  # Note: Though this method generates a basic transition of quadratic size,
-  #       extraction can safely convert the entire basic transition into the identity
+  # Note: Though this method generates a basic arrow of quadratic size,
+  #       extraction can safely convert the entire basic arrow into the identity
   #       program transformation.  Therefore, there is no performance penalty.
   def translate(self):
     return _conjQuantifierWithin(basicConj = self.src().translate(),
@@ -768,6 +1497,7 @@ class Eliminate(PrimitiveArrow):
     assert(quantifier.type() == forallType)
     assert(0 <= index)
     assert(index < len(quantifier.variables()))
+    assert(replacementVar.__class__ == Var)
     self._quantifier = quantifier
     self._index = index
     self._replacementVar = replacementVar
@@ -791,8 +1521,23 @@ class Eliminate(PrimitiveArrow):
     return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:
         basicBody.forwardEliminateVar(replacementVar = self.replacementVar().translate()))
 
+class Unalways(PrimitiveArrow):
+  def __init__(self, value):
+    self._value = value
+
+  def value(self):
+    return self._value
+
+  def src(self):
+    return Always(self.value())
+  def tgt(self):
+    return self.value()
+
+  def translate(self):
+    return self.src().translate().forwardUnalways()
+
 class Unsingleton(PrimitiveArrow):
-  # clever: we cheat by reversing the translated Singleton transition.
+  # clever: we cheat by reversing the translated Singleton arrow.
   def __init__(self, a, type):
     self._singleton = Singleton(a, type)
 
@@ -841,7 +1586,8 @@ class Singleton(PrimitiveArrow):
     else:
       raise Exception("Unrecognized self.type()")
 
-class UnusedExistential(PrimitiveArrow):
+# TODO Consider putting constraints on when these can be created.
+class UnusedQuantifier(PrimitiveArrow):
   def __init__(self, quantifier, index):
     assert(quantifier.__class__ == Quantifier)
     assert(quantifier.type() == existsType)
@@ -863,7 +1609,7 @@ class UnusedExistential(PrimitiveArrow):
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda x:
-        x.forwardUnusedExistential())
+        x.forwardUnusedQuantifier())
 
 class QuantifierJoin(PrimitiveArrow):
   def __init__(self, quantifier):
@@ -889,7 +1635,7 @@ class QuantifierJoin(PrimitiveArrow):
 class AssociateOut(PrimitiveArrow):
   # e.g. index = 1
   # [A, B, C, D] --> [A, [B, C], D]
-  # We are clever, we cheat by reversing the translated associateIn transition.
+  # We are clever, we cheat by reversing the translated associateIn arrow.
   # conj: the tgt conj
   # index: the index of the first thing associated out
   def __init__(self, conj, index):
@@ -915,6 +1661,8 @@ class AssociateIn(PrimitiveArrow):
     assert(conj.values()[index].type() == conj.type())
     self._src = conj
     self._index = index
+    assert(self.src().translate() == self.translate().src())
+    assert(self.tgt().translate() == self.translate().tgt())
 
   def index(self):
     return self._index
@@ -936,7 +1684,10 @@ class AssociateIn(PrimitiveArrow):
       basicObject = self.src().translate()
       assert(basicObject.__class__ == basic.Not)
       return basicObject.forwardOnNot(
-          _backwardWithin(basicObject.value(), stationary, _backwardAssociate))
+          _backwardWithin(basicObject.value(), stationary, lambda x:
+            x.backwardOnRightFollow(lambda x:
+              x.backwardIntroduceDoubleDual()).backwardFollow(lambda x:
+            _backwardAssociate(x))))
     else:
       return _forwardWithin(self.src().translate(), stationary, _forwardAssociate)
 
@@ -966,13 +1717,20 @@ def _backwardAssociate(basicObject):
     return basicObject.backwardAssociateA().backwardFollow(lambda basicObject:
         basicObject.backwardOnLeft(_backwardAssociate(basicObject.left())))
 
+def isEnrichedTrue(x):
+  return (x.__class__ == Conj and len(x.values()) == 0 and x.type() == andType
+      or x.__class__ == Not and isEnrichedTrue(x.value()))
+def isEnrichedFalse(x):
+  return (x.__class__ == Conj and len(x.values()) == 0 and x.type() in [orType, parType]
+      or x.__class__ == Not and isEnrichedTrue(x.value()))
+
 # Use this class only for conj with type in [orType, parType]
 #   the andType and withType units should be removed using forget.
 class RemoveUnit(PrimitiveArrow):
   def __init__(self, conj, index):
     assert(conj.__class__ == Conj)
     assert(conj.type() in [orType, parType])
-    assert(conj.values()[index] == false)
+    assert(isEnrichedFalse(conj.values()[index]))
     self._conj = conj
     self._index = index
 
@@ -1000,6 +1758,52 @@ class RemoveUnit(PrimitiveArrow):
             claim.backwardOnRightFollow(lambda claim:
               claim.backwardIntroduceDoubleDual()).backwardFollow(lambda claim:
             claim.backwardIntroduceTrue())))
+
+class ApplyPartial(PrimitiveArrow):
+  # Apply claim at spot i to the kth claim within the Not at spot j to remove it.
+  def __init__(self, values, i, j, k):
+    assert(i != j)
+    assert(values[j].__class__ == Not)
+    assert(values[j].value().__class__ == Conj)
+    assert(values[j].value().type() == andType)
+    assert(values[j].value().values()[k] == values[i])
+    assert(values[j].value().values()[k].translate() == values[i].translate())
+    self._values = values
+    self._i = i
+    self._j = j
+    self._k = k
+
+  def values(self):
+    return self._values
+  def i(self):
+    return self._i
+  def j(self):
+    return self._j
+  def k(self):
+    return self._k
+
+  def src(self):
+    return Conj(type = andType, values = self.values())
+  def tgt(self):
+    newValues = list(self.values())
+    jValues = list(self.values()[self.j()].value().values())
+    jValues.pop(self.k())
+    newValues[self.j()] = Not(Conj(type = andType, values = jValues))
+    newValues.pop(self.i())
+    return Conj(type = andType, values = newValues)
+
+  def translate(self):
+    bodyOfNot = self.values()[self.j()].value()
+    if self.i() < self.j():
+      J = self.j() - 1
+    else:
+      J = self.j()
+    return _onJandI(self.src(), self.j(), self.i(), lambda basicJandI:
+        basicJandI.forwardOnLeftFollow(lambda notClaim:
+          notClaim.forwardOnNot(
+            bodyOfNot.backwardShift(self.k(),
+              len(bodyOfNot.values()) - (self.k() + 1)).translate())).forwardFollow(lambda x:
+        x.forwardApply())).forwardCompose(self.tgt().backwardShift(J, J).translate())
 
 class Apply(PrimitiveArrow):
   # Apply claim at spot i to the claim within the Not at spot j to get false.
@@ -1046,9 +1850,43 @@ class Apply(PrimitiveArrow):
               claim.backwardForgetFirst(basic.true))))).forwardFollow(lambda claim:
         claim.forwardApply())
 
+class Admit(PrimitiveArrow):
+  def __init__(self, conj, index, value):
+    assert(conj.type() in [orType, parType])
+    assert(0 <= index)
+    assert(index <= len(conj.values()))
+    self._conj = conj
+    self._index = index
+    self._value = value
+
+  def conj(self):
+    return self._conj
+  def index(self):
+    return self._index
+  def value(self):
+    return self._value
+
+  def src(self):
+    return self.conj()
+  def tgt(self):
+    values = list(self.conj().values())
+    values.insert(self.index(), self.value())
+    return Conj(type = self.conj().type(), values = values)
+
+  def translate(self):
+    if self.conj().type() == orType:
+      return _forwardWithin(self.src().translate(),
+          len(self.conj().values()) - self.index(), lambda claim:
+            claim.forwardAdmit(self.value().translate()))
+    else:
+      assert(self.conj().type() == parType)
+      return self.src().translate().forwardOnNotFollow(lambda conj:
+          _backwardWithin(conj, len(self.conj().values()) - self.index(), lambda claim:
+            claim.backwardForget(basic.Not(self.value().translate()))))
+
 class Forget(PrimitiveArrow):
   def __init__(self, conj, index):
-    assert(self._conj.type() in [andType, withType])
+    assert(conj.type() in [andType, withType])
     self._conj = conj
     self._index = index
 
@@ -1172,32 +2010,74 @@ def _backwardSwap(basicObject):
         basicObject.backwardCommute()).backwardFollow(lambda basicObject:
           basicObject.backwardAssociateA()))
 
-# This Arrow is used to introduce a new claim
-class Begin(FunctorialArrow):
-  def __init__(self, claim):
-    self._claim = claim
+class Definition(PrimitiveArrow):
+  def __init__(self, relation, definition):
+    # relation must not be used elsewhere in the larger surrounding src.
+    self._relation = relation
+    self._definition = definition
 
-  def claim(self):
-    return self._claim
+  def relation(self):
+    return self._relation
+  def definition(self):
+    return self._definition
 
   def src(self):
     return true
   def tgt(self):
-    return Conj(type = parType, values = [claim.transpose(), claim])
+    return And([ Par([self.definition().transpose(), self.relation()])
+               , Par([self.relation().transpose(), self.definition()])])
 
-  # FIXME(koreiklein) Something here is broken.  Write tests and fix.
   def translate(self):
-    return basic.IntroduceDoubleDual(true).forwardFollow(lambda notNotTrue:
-          notNotTrue.forwardOnNotFollow(lambda value:
-            value.backwardApply(self.claim().translate()).backwardFollow(lambda x:
-              x.backwardCommute().backwardFollow(lambda x:
-                x.backwardOnRightFollow(lambda notOneAndClaim:
-                  notOneAndClaim.backwardOnNotFollow(lambda oneAndClaim:
-                    oneAndClaim.forwardForgetFirst()))).backwardFollow(lambda x:
-                x.backwardOnLeftFollow(lambda claim:
-                  self.claim().transpose().notToTranspose())))))
+    def f(notToTranspose, notAandNotB):
+      return notAandNotB.forwardOnNotFollow(lambda aAndNotB:
+          aAndNotB.backwardOnLeft(notToTranspose).backwardFollow(lambda x:
+            x.backwardOnLeftFollow(lambda x:
+              x.backwardForgetFirst(basic.true))))
+
+    return basic.Definition(relation = self.relation().translate(),
+        definition = self.definition().translate()).forwardFollow(lambda x:
+            x.forwardOnLeftFollow(lambda x:
+              f(self.definition().transpose().notToTranspose(), x).forwardFollow(lambda x:
+                x.forwardIntroduceTrue().forwardFollow(lambda x:
+                  x.forwardCommute()))).forwardFollow(lambda x:
+            x.forwardOnRightFollow(lambda x:
+              f(self.relation().transpose().notToTranspose(), x))))
 
 # Functorial Arrows
+
+class OnAlways(FunctorialArrow):
+  def __init__(self, arrow):
+    self._arrow = arrow
+
+  def arrow(self):
+    return self._arrow
+
+  def src(self):
+    return Always(self.arrow().src())
+  def tgt(self):
+    return Always(self.arrow().tgt())
+
+  def translate(self):
+    return self.src().translate().forwardOnAlways(self.arrow().translate())
+
+class OnNot(FunctorialArrow):
+  def __init__(self, arrow):
+    self._arrow = arrow
+
+  def src(self):
+    return Not(self._arrow.tgt())
+  def tgt(self):
+    return Not(self._arrow.src())
+
+  def translate(self):
+    return self.src().translate().forwardOnNot(self._arrow.translate())
+
+  def compress(self):
+    kid = self._arrow.compress()
+    if kid.__class__ == identity:
+      return self.src().identity()
+    else:
+      return OnNot(kid)
 
 class OnIth(FunctorialArrow):
   def __init__(self, conj, index, arrow):
@@ -1217,6 +2097,12 @@ class OnIth(FunctorialArrow):
     values = list(self.src().values())
     values[self.index()] = self.arrow().tgt()
     return Conj(type = self.src().type(), values = values)
+
+  def compress(self):
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnIth(self._src, self.index(), kid)
 
   def translate(self):
     stationary = len(self.src().values()) - (self.index() + 1)
@@ -1247,6 +2133,12 @@ class OnBody(FunctorialArrow):
   def arrow(self):
     return self._arrow
 
+  def compress(self):
+    kid = self.arrow().compress()
+    if kid.__class__ == Identity:
+      return self.src().identity()
+    return OnBody(self.type(), self.variables(), kid)
+
   def src(self):
     return Quantifier(type = self.type(), variables = self.variables(), body = self.arrow().src())
   def tgt(self):
@@ -1261,7 +2153,7 @@ class OnBody(FunctorialArrow):
 #                   type applied in sequence
 #         e.g. (n == 3)  forall a. forall b. forall c. forall d. <body>
 # f: a function between basic objects
-# return: the transition that applies f within the body of the first n quantifiers
+# return: the arrow that applies f within the body of the first n quantifiers
 #         e.g. (n == 3)  forall a. forall b. forall c. f(forall d. <body>)
 def _quantifierWithin(basicQuantifier, n, f):
   if n == 0:
@@ -1272,6 +2164,11 @@ def _quantifierWithin(basicQuantifier, n, f):
 
 # Compose any two arrows between enriched objects.
 def compose(left, right):
+  if left.__class__ == Identity:
+    return right
+  elif right.__class__ == Identity:
+    return left
+
   values = []
   if left.__class__ == Composite:
     values.extend(left.values())
@@ -1285,6 +2182,59 @@ def compose(left, right):
 
   return Composite(values)
 
+def _getValuesList(arrow):
+  values = []
+  if arrow.__class__ == Composite:
+    for kidArrow in arrow.values():
+      values.extend(_getValuesList(kidArrow))
+  else:
+    return [arrow]
+  return values
+
+# arrow: either an OnValues or an OnIth arrow.
+# return: an equivalent OnValues arrow.
+def _promoteToOnValues(arrow):
+  if arrow.__class__ == OnValues:
+    return arrow
+  elif arrow.__class__ == OnIth:
+    return OnValues(conj = arrow.src(), arrows = [(arrow.index(), arrow.arrow())])
+  else:
+    raise Exception("Can only promote to OnValues arrows that are either OnValues or OnIth")
+
+# left, right: non composite arrows with left.tgt().translate() == right.src().translate()
+# return: either:
+#           A list [combined] where combined is a single compressed arrow (not a Composite)
+#             which is equivalent to compose(left, right) if such an arrow exists.
+#           The list [left.compress(), right.compress()] otherwise
+def _tryMergePair(left, right):
+  if left.__class__ == Identity:
+    return [right.compress()]
+  elif right.__class__ == Identity:
+    return [left.compress()]
+  if left.__class__ in [OnValues, OnIth] and right.__class__ in [OnValues, OnIth]:
+    left = _promoteToOnValues(left)
+    right = _promoteToOnValues(right)
+    arrows = dict(left.arrows())
+    for (index, arrow) in right.arrows():
+      if arrows.has_key(index):
+        arrows[index] = arrows[index].forwardCompose(arrow).compress()
+      else:
+        arrows[index] = arrow
+    return [OnValues(left.src(), arrows.items())]
+  elif left.__class__ != right.__class__:
+    return [left.compress(), right.compress()]
+  else:
+    c = left.__class__
+    if c == OnBody:
+      # This assert should succeed because left and right are composable.
+      assert(left.type() == right.type() and left.variables() == right.variables())
+      return [OnBody(type = left.type(), variables = left.variables(),
+          arrow = left.arrow().forwardCompose(right.arrow()).compress())]
+    elif c == OnNot:
+      return [OnNot(left.arrow().backwardCompose(right.arrow()).compress())]
+    else:
+      return [left.compress(), right.compress()]
+
 class Composite(PrimitiveArrow):
   def __init__(self, values):
     assert(len(values) > 0)
@@ -1292,6 +2242,21 @@ class Composite(PrimitiveArrow):
 
   def values(self):
     return self._values
+
+  def compress(self):
+    kidArrows = _getValuesList(self)
+    i = 0
+    while i + 1 < len(kidArrows):
+      # Invariant: no pair of adjacent arrows at indices <= i
+      #            can be merged.
+      left = kidArrows.pop(i)
+      right = kidArrows.pop(i)
+      # This loop runs 1 or 2 times
+      for arrow in _tryMergePair(left, right):
+        kidArrows.insert(i, arrow)
+        i += 1
+      i -= 1
+    return Composite(kidArrows)
 
   def translate(self):
     res = self.values()[0].translate()
@@ -1303,4 +2268,49 @@ class Composite(PrimitiveArrow):
     return self.values()[0].src()
   def tgt(self):
     return self.values()[-1].tgt()
+
+class OnValues:
+  # conj: a Conj
+  # arrows: a list of (index, arrow) pairs where arrow can be applied to conj.values()[index]
+  def __init__(self, conj, arrows):
+    self._conj = conj
+    self._arrows = arrows
+
+  def arrows(self):
+    return self._arrows
+
+  def compress(self):
+    return OnValues(self._conj,
+        [ (index, arrow.compress()) for (index, arrow) in self.arrows() ])
+
+  def type(self):
+    return self._conj.type()
+  def src(self):
+    return self._conj
+  def tgt(self):
+    values = list(self._conj.values())
+    for (i, arrow) in self._arrows:
+      values[i] = arrow.tgt()
+    return Conj(type = self.type(), values = values)
+
+  def translate(self):
+    n = len(self.src().values())
+    arrowsDict = dict(self.arrows())
+    for i in range(n):
+      if not arrowsDict.has_key(i):
+        arrowsDict[i] = self.src().values()[i].identity()
+    # arrowsDict now maps every valid index to some arrow.
+    basicType = correspondingConcreteBasicType(self.type())
+    if not self.src().demorganed():
+      t = basic.unit(basicType).identity()
+      for i in range(n):
+        t = basic.OnConj(type = basicType, leftArrow = t,
+            rightArrow = arrowsDict[i].translate())
+      return t
+    else:
+      t = basic.unit(basicType).identity()
+      for i in range(n):
+        t = basic.OnConj(type = basicType, leftArrow = t,
+            rightArrow = basic.OnNot(arrowsDict[i].translate()))
+      return basic.OnNot(t)
 

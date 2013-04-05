@@ -1,75 +1,95 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-class SuccessorRep:
-  def __init__(self, small, big):
-    self.small = small
-    self.big = big
+from extraction.python import utils
 
-class CompareRep:
-  def __init__(self, values, strict):
-    self.values = values
-    self.strict = strict
+# Defining the representations of things:
+# rep(Natural(x))     =    a python integer x
+# rep(Equal(a, b)     =    the string "=="
+# rep(Successor(a, b) =    the string "successor"
 
-  def __repr__(self):
-    if self.strict:
-      c = "<"
-    else:
-      c = "<="
-    return "%s %s %s, via %s"%(self.values[0], c, self.values[-1], self.values)
+eqIdentityRep = (lambda ((one, assumptions), conclusions):
+    assumptions(lambda n:
+      conclusions("==")))
 
-increasingRep = (lambda ((one, notNotSTR), notC): notNotSTR(lambda STR:
-    notC(CompareRep(values = [STR.small, STR.big], strict = True))))
+eqSymmetricRep = (lambda ((one, assumptions), conclusions):
+    assumptions(lambda nEqualm:
+      conclusions("==")))
 
-successorExistsRep = (lambda ((one, notNotN), notResults): notNotN(lambda n:
-    notResults((((1, n + 1), SuccessorRep(n, n + 1)), SuccessorRep(n, n + 1)))))
+eqTransitiveRep = (lambda (((one, assumeAisB), assumeBisC), conclusions):
+    assumeAisB(lambda aEqualb:
+      assumeBisC(lambda bEqualc:
+        conclusions("=="))))
 
-def _e(compareABRep, compareBCRep):
-  if compareABRep.values[-1] != compareBCRep.values[0]:
-    raise Exception("\n\tCompare AB = %s, \n\tCompare BC = %s"%(compareABRep.values, compareBCRep.values))
-  assert(compareABRep.values[-1] == compareBCRep.values[0])
-  assert(False == compareABRep.strict)
-  assert(True == compareBCRep.strict)
-  values = list(compareABRep.values)
-  values.extend(compareBCRep.values[1:])
-  return CompareRep(values, True)
-transitivityRep = (lambda (((one, notNotCAB), notNotCBC), notC):
-  notNotCAB(lambda CAB: notNotCBC(lambda CBC:
-    notC(_e(CAB, CBC)))))
+def _testNaturalEquality(n, m):
+  assert(n.__class__ == int)
+  assert(m.__class__ == int)
+  if n == m:
+    return (0, (1, "==")) # First clause
+  else:
+    def _notEqual(equal):
+      raise Exception("We should not have been able to conclude that n and m were equal.")
+    return (1, _notEqual) # Second clause
 
-def _r(compareSLRep):
-  assert(compareSLRep.strict == True)
-  return CompareRep(compareSLRep.values, False)
-weakeningRep = (lambda ((one, notNotC), notC): notNotC(lambda c:
-  notC(_r(c))))
+eqDiscreteRep = (lambda (((one, assumeN), assumeM), conclusions):
+    assumeN(lambda n:
+      assumeM(lambda m:
+        conclusions(_testNaturalEquality(n, m)))))
 
-reflexivityRep = (lambda ((one, notNotN), notCompare): notNotN(lambda n:
-    notCompare(CompareRep([n], False))))
+eqClaimsRep = utils.repAnd([eqIdentityRep, eqSymmetricRep, eqTransitiveRep, eqDiscreteRep])
 
-zero_naturalRep = 0
+zeroIsNaturalRep = 0
 
-exists_fiveRep = 5
+successorExistsRep = (lambda ((one, assumptions), conclusions):
+    assumptions(lambda n:
+      conclusions( ((1, n + 1), "successor") )))
+
+successorUniqueRep = (lambda (((one, assumeAthenN), assumeAthenM), conclusions):
+    assumeAthenN(lambda AthenN:
+      assumeAthenM(lambda AthenM:
+        conclusions("=="))))
+
+successorInjectiveRep = (lambda (((one, assumeNthenB), assumeMthenB), conclusions):
+    assumeNthenB(lambda NthenB:
+      assumeMthenB(lambda MthenB:
+        conclusions("=="))))
+
+def successorNotZeroRep(NthenZero):
+  raise Exception("The successor of a natural number N can not be zero")
+
+
+successorClaimsRep = utils.repAnd(
+    [successorExistsRep, successorUniqueRep, successorInjectiveRep, successorNotZeroRep])
 
 def _f(base, middle):
   def _g(k):
-    cur = base
-    for i in range(k):
-      def r( (((one, notnotIP1), notnotS), notnotClaimIP1) ):
-        assert(1 == one)
-        def _r1(IP1):
-          assert(i + 1 == IP1)
-          def _r2(S):
-            assert(S.small == i)
-            assert(S.big == IP1)
-            def _r3(ClaimIP1):
-              return ClaimIP1
-            return notnotClaimIP1(_r3)
-          return notnotS(_r2)
-        return notnotIP1(_r1)
-      cur = middle(  (((1, i), cur), r) )
-    return cur
+    def _u(cur):
+      def _h(i):
+        def r( (((one, notnotIP1), notnotS), notnotClaimIP1) ):
+          assert(1 == one)
+          def _r1(IP1):
+            assert(i + 1 == IP1)
+            def _r2(S):
+              assert(S.small == i)
+              assert(S.big == IP1)
+              def _r3(ClaimIP1):
+                return ClaimIP1
+              return notnotClaimIP1(_r3)
+            return notnotS(_r2)
+          return notnotIP1(_r1)
+        cur = middle(  (((1, i), cur), r) )
+      for i in range(k):
+        _h(i)
+      return cur
+    return _u(base)
   return (lambda ((one, notNotK), notClaimK): notNotK(lambda k:
       notClaimK(_g(k))))
 
-inductionRep = (lambda (((one, notNotBase), middle), cont):
+allInductionRep = (lambda (((one, notNotBase), middle), cont):
   notNotBase(lambda base: cont(_f(base, middle))))
+
+startingFormulaRep = utils.repAnd([ zeroIsNaturalRep
+                                  , eqClaimsRep
+                                  , successorClaimsRep
+                                  , allInductionRep ])
+
 
