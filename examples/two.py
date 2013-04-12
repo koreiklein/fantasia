@@ -22,5 +22,4 @@ arrow = arrow.forwardFollow(lambda x:
           about.about([q.variables()[0]], 0))))).forwardFollow(lambda x:
             x.forwardHeavyClean())
 
-arrow.translate()
 

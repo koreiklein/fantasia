@@ -3,7 +3,7 @@
 from examples import natural as natural_example
 from examples.easy_induction import arrow #, ending_claim as claim
 from examples.two import arrow as natural_arrow
-from extraction.python.examples import easy_induction, silly, two
+from extraction.python.examples import easy_induction, silly
 from ui.run.glimmediate import slideshow, static
 from lib import natural
 

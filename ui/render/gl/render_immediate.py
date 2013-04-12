@@ -1,10 +1,11 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import enriched, relation, variable, datum
 from ui.render.gl import primitives, distances, colors
 
 from lib import oldNatural, natural
 from ui.stack import gl
+from ui.stack.stack import stackAll
 
 
 # object: a enriched.Logic object
@@ -21,24 +22,10 @@ def render(logic):
     return renderMaybe(logic)
   elif logic.__class__ == enriched.Not:
     return renderNot(logic)
-  elif logic.__class__ == enriched.Var:
+  elif isinstance(logic, variable.Variable):
     return renderVariable(logic)
-  elif logic.__class__ == enriched.Holds:
+  elif logic.__class__ == relation.Holds:
     return renderHolds(logic)
-  elif logic.__class__ == oldNatural.IsNatural:
-    return renderIsNatural(logic)
-  elif logic.__class__ == oldNatural.Compare:
-    return renderCompare(logic)
-  elif logic.__class__ == oldNatural.Successor:
-    return renderOldSuccessor(logic)
-  elif logic.__class__ == natural.Natural:
-    return renderNatural(logic)
-  elif logic.__class__ == natural.Successor:
-    return renderSuccessor(logic)
-  elif logic.__class__ == natural.Less:
-    return renderLess(logic)
-  elif logic.__class__ == natural.Equal:
-    return renderNaturalEqual(logic)
   else:
     raise Exception("Unrecognized logic object %s"%(logic,))
 
@@ -92,35 +79,50 @@ def renderNot(notObject):
   return primitives.notSymbol(value.widths()[:2]).below(value.shift(distances.notShiftOffset))
 
 def renderVariable(variable):
-  return gl.newTextualGLStack(colors.variableColor, variable.name())
+  return gl.newTextualGLStack(colors.variableColor, repr(variable))
 
 def renderHolds(holds):
-  return gl.newTextualGLStack(colors.textColor, repr(holds))
+  holding = renderVariable(holds.holding())
+  held = renderDatum(holds.held())
+  d = 1
+  between = primitives.holdsStack(max(holding.widths()[d], held.widths()[d]))
+  return stackAll(d, [holding, between, held])
 
-def renderIsNatural(isNatural):
-  return gl.newTextualGLStack(colors.textColor, isNatural.n().name()  + " : N")
+def renderSymbol(symbol):
+  return gl.newTextualGLStack(colors.symbolColor, repr(symbol))
 
-def renderCompare(compare):
-  if compare.strict():
-    c = " < "
+def renderDatum(d):
+  if d.__class__ == datum.Variable:
+    return renderDatumVariable(d)
+  elif d.__class__ == datum.Record:
+    return renderDatumRecord(d)
+  elif d.__class__ == datum.Case:
+    return renderDatumCase(d)
+  elif d.__class__ == datum.Projection:
+    return renderDatumProjection(d)
   else:
-    c = " <= "
-  return gl.newTextualGLStack(colors.textColor,
-      compare.lesser().name() + c + compare.greater().name())
-
-def renderOldSuccessor(successor):
-  return gl.newTextualGLStack(colors.textColor,
-      "S( %s ) = %s"%(successor.a().name(), successor.b().name()))
+    assert(d.__class__ == datum.Coinjection)
+    return renderDatumCoinjection(d)
 
 
-def renderNatural(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
+def renderDatumVariable(d):
+  return renderVariable(d.variable())
 
-def renderSuccessor(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
+def renderDatumRecord(d):
+  res = primitives.empty()
+  for (symbol, d) in d.pairs():
+    res = res.stack(0, renderSymbol(symbol).stackCentered(1, renderDatum(d)))
+  return res
 
-def renderNaturalEqual(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
+def renderDatumCase(d):
+  return renderSymbol(d.symbol()).stackCentered(1, renderDatum(d.value()))
 
-def renderLess(logic):
-  return gl.newTextualGLStack(colors.textColor, repr(logic))
+def renderDatumProjection(d):
+  return renderDatum(d.value()).stack(0,
+      primitives.projectionDot()).stack(0,
+          renderSymbol(d.symbol()))
+
+def renderDatumCoinjection(d):
+  return renderDatum(d.value()).stack(0,
+      primitives.coinjectionDot()).stack(0,
+          renderSymbol(d.symbol()))

@@ -1,159 +1,38 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched
+from calculus import basic, enriched, relation, variable, datum, symbol
 from lib import common_vars
 
 from sets import Set
 
-class Natural(enriched.Logic):
-  # n: a python natural number
-  def __init__(self, n):
-    self._n = n
-    self.initMarkable([])
+natural = variable.StringVariable('N')
 
-  def __repr__(self):
-    return "%s : N"%(self.n(),)
+natural_less = variable.StringVariable('<')
+smaller = variable.StringVariable('smaller')
+greater = variable.StringVariable('greater')
 
-  def n(self):
-    return self._n
+natural_successor = variable.StringVariable('S')
+before = variable.StringVariable('before')
+after = variable.StringVariable('after')
 
-  def freeVariables(self):
-    return Set([self.n()])
+natural_equal = variable.StringVariable('=')
+leftSymbol = symbol.StringSymbol('left')
+rightSymbol = symbol.StringSymbol('right')
 
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.n() == other.n()
+def Natural(n):
+  return relation.Holds(natural, datum.Variable(n))
 
-  def __ne__(self, other):
-    return not (self == other)
+def Equal(a, b):
+  return relation.Holds(natural_equal, datum.Record([ (leftSymbol, datum.Variable(a))
+                                                    , (rightSymbol, datum.Variable(b))]))
 
-  def substituteVar(self, a, b):
-    if self.n() == a:
-      return Natural(b)
-    else:
-      return self
+def Successor(a, b):
+  return relation.Holds(natural_successor, datum.Record([ (before, datum.Variable(a))
+                                                        , (after, datum.Variable(b))]))
 
-  def transposeIsNot(self):
-    return True
-
-  def translate(self):
-    return basic.Holds(natural = self.n().translate())
-
-class Equal(enriched.Logic):
-  def __init__(self, a, b):
-    self._a = a
-    self._b = b
-    self.initMarkable([])
-
-  def a(self):
-    return self._a
-  def b(self):
-    return self._b
-
-  def __repr__(self):
-    return "%s == %s"%(self.a(), self.b())
-
-  def freeVariables(self):
-    return Set([self.a(), self.b()])
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, x, y):
-    a = self.a()
-    b = self.b()
-    if a == x:
-      a = y
-    if b == x:
-      b = y
-    return Equal(a = a, b = b)
-
-  def transposeIsNot(self):
-    return True
-
-  def translate(self):
-    return basic.Holds(naturalEqualLeft = self.a().translate(),
-        naturalEqualRight = self.b().translate())
-
-class Successor(enriched.Logic):
-  def __init__(self, a, b):
-    self._a = a
-    self._b = b
-    self.initMarkable([])
-
-  def __repr__(self):
-    return "%s + 1 == %s"%(self.a(), self.b())
-
-  def a(self):
-    return self._a
-  def b(self):
-    return self._b
-
-  def freeVariables(self):
-    return Set([self.a(), self.b()])
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    smaller = self.a()
-    larger = self.b()
-    if smaller == a:
-      smaller = b
-    if larger == a:
-      larger = b
-    return Successor(a = smaller, b = larger)
-
-  def translate(self):
-    return basic.Holds(succeeded = self.a().translate(),
-        succeeding = self.b().translate())
-
-  def transposeIsNot(self):
-    return True
-
-class Less(enriched.Logic):
-  def __init__(self, a, b):
-    self._a = a
-    self._b = b
-    self.initMarkable([])
-
-  def __repr__(self):
-    return "%s < %s"%(self.a(), self.b())
-
-  def a(self):
-    return self._a
-  def b(self):
-    return self._b
-
-  def freeVariables(self):
-    return Set([self.a(), self.b()])
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.a() == other.a() and self.b() == other.b()
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    smaller = self.a()
-    larger = self.b()
-    if smaller == a:
-      smaller = b
-    if larger == a:
-      larger = b
-    return Less(a = smaller, b = larger)
-
-  def translate(self):
-    return basic.Holds(succeeded = self.a().translate(),
-        succeeding = self.b().translate())
-
-  def transposeIsNot(self):
-    return True
+def Less(a, b):
+  return relation.Holds(natural_less, datum.Record([ (smaller, datum.Variable(a))
+                                                   , (greater, datum.Variable(b))]))
 
 n = common_vars.n()
 eqIdentitiy = enriched.Forall([n],
@@ -186,7 +65,7 @@ eqDiscrete = enriched.Forall([n, m],
 
 eqClaims = [eqIdentitiy, eqSymmetric, eqTransitive, eqDiscrete]
 
-zero = enriched.Var('zero')
+zero = variable.StringVariable('zero')
 
 zeroIsNatural = Natural(zero)
 
@@ -242,7 +121,7 @@ successorClaims = [successorExists, successorUnique, successorInjective, success
 
 R = common_vars.R()
 allInduction = enriched.Forall([R],
-    byInduction(lambda v: enriched.Holds(holding = R, held = v)))
+    byInduction(lambda v: relation.Holds(holding = R, held = datum.Variable(v))))
 
 startingFormula = enriched.And([ zeroIsNatural
                                , enriched.And(eqClaims)

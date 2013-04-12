@@ -1,38 +1,10 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import types
 # Backend objects and arrows for the basic logic category.
 # Implement only the primitive objects and arrows, derived forms go in a separate enriched
 # calculus.
 
-n_vars = 0
-
-class Var:
-  def __init__(self, name):
-    global n_vars
-    self._id = n_vars
-    n_vars += 1
-    self._name = name
-
-  def name(self):
-    return self._name
-
-  def assertEqual(self, other):
-    if other.__class__ != Var:
-      raise Exception("basic Var unequal to some other object %s of class %s"%(other, other.__class__))
-    if self != other:
-      raise Exception("Unequal var %s != %s"%(self, other))
-
-  def __repr__(self):
-    return self.name()
-
-  def __eq__(self, other):
-    return other.__class__ == Var and self._id == other._id
-  def __ne__(self, other):
-    return not (self == other)
-
-  def __hash__(self):
-    return hash(self._id)
+from calculus import variable
 
 # Objects
 
@@ -42,15 +14,15 @@ orType = "OR"
 class PrimitiveObject:
   # Replace all occurences of a with b in self and return the result.
   # a must not be quantified anywhere in self.
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     raise Exception("Abstract superclass.")
   # Return a copy of self, but with all it's quantified variables
   # replaced with new ones.
-  def updateVars(self):
+  def updateVariables(self):
     raise Exception("Abstract superclass.")
   # For debugging.  If you call this method with an unequal object, it should produce
   # a usefull stracktrace that explain HOW the objects are unequal.
-  def assertEqual(self):
+  def assertEqual(self, other):
     raise Exception("Abstract superclass.")
   def forwardIntroduceDoubleDual(self):
     return IntroduceDoubleDual(self)
@@ -71,7 +43,7 @@ class PrimitiveObject:
   def backwardUnalways(self):
     return Unalways(self)
   def backwardEliminateVar(self, quantifiedVar, replacementVar):
-    return Eliminate(value = self.substituteVar(replacementVar, quantifiedVar),
+    return Eliminate(value = self.substituteVariable(replacementVar, quantifiedVar),
         quantifiedVar = quantifiedVar, replacementVar = replacementVar)
   def identity(self):
     return Identity(self)
@@ -80,51 +52,6 @@ class PrimitiveObject:
   def backwardIdentity(self):
     return Identity(self)
 
-class Holds(PrimitiveObject):
-  def __init__(self, **kwargs):
-    self._d = kwargs
-    for (key, value) in kwargs.items():
-      self.__dict__[key] = types.MethodType(lambda self: value, self)
-
-  def __getitem__(self, x):
-    return self._d[x]
-
-  def __repr__(self):
-    return "Holds : %s"%(self._d)
-
-  def __eq__(self, other):
-    if other.__class__ != Holds:
-      return False
-    else:
-      for (key, value) in self._d.items():
-        if (not other._d.has_key(key) ) or other[key] != value:
-          return False
-      for (key, value) in other._d.items():
-        if (not self._d.has_key(key) ) or self[key] != value:
-          return False
-      return True
-
-  def assertEqual(self, other):
-    assert(other.__class__ == Holds)
-    for (key, value) in self._d.items():
-      assert(other[key] == value)
-    for (key, value) in other._d.items():
-      assert(self[key] == value)
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def updateVars(self):
-    return self
-
-  def substituteVar(self, a, b):
-    _d = {}
-    for (key, value) in self._d.items():
-      if value == a:
-        _d[key] = b
-      else:
-        _d[key] = value
-    return Holds(**_d)
 
 forallType = "FORALL"
 existsType = "EXISTS"
@@ -148,22 +75,22 @@ class Quantifier(PrimitiveObject):
   def __repr__(self):
     return "< %s %s . %s >"%(self.type(), self.variable(), self.body())
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     assert(a != self.variable())
     return Quantifier(variable = self.variable(), type = self.type(),
-        body = self.body().substituteVar(a, b))
+        body = self.body().substituteVariable(a, b))
 
   def assertEqual(self, other):
     assert(other.__class__ == Quantifier)
     self.variable().assertEqual(other.variable())
     self.body().assertEqual(other.body())
 
-  def updateVars(self):
+  def updateVariables(self):
     a = self.variable()
-    b = Var(a.name())
+    b = a.updateVariables()
     return Quantifier(type = self.type(),
         variable = b,
-        body = self.body().substituteVar(a, b).updateVars())
+        body = self.body().substituteVariable(a, b).updateVariables())
 
   def variable(self):
     return self._variable
@@ -182,7 +109,7 @@ class Quantifier(PrimitiveObject):
       if self.variable() == other.variable():
         return self.body() == other.body()
       else:
-        return self.body() == other.body().substituteVar(other.variable(), self.variable())
+        return self.body() == other.body().substituteVariable(other.variable(), self.variable())
   def __ne__(self, other):
     return not (self == other)
 
@@ -254,13 +181,13 @@ class TrueClass(PrimitiveObject):
   def __init__(self):
     pass
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     return self
 
   def assertEqual(self, other):
     assert(self.__class__ == other.__class__)
 
-  def updateVars(self):
+  def updateVariables(self):
     return self
 
   def __repr__(self):
@@ -281,11 +208,11 @@ class Not(PrimitiveObject):
   def __repr__(self):
     return "~( %s )"%(self.value(),)
 
-  def substituteVar(self, a, b):
-    return Not(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Not(self.value().substituteVariable(a, b))
 
-  def updateVars(self):
-    return Not(self.value().updateVars())
+  def updateVariables(self):
+    return Not(self.value().updateVariables())
 
   def value(self):
     return self._value
@@ -367,10 +294,10 @@ class Conj(PrimitiveObject):
       c = '-'
     return "( %s %s %s )"%(self.left(), c, self.right())
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     return Conj(type = self.type(),
-        left = self.left().substituteVar(a, b),
-        right = self.right().substituteVar(a, b))
+        left = self.left().substituteVariable(a, b),
+        right = self.right().substituteVariable(a, b))
 
   def assertEqual(self, other):
     assert(other.__class__ == Conj)
@@ -378,10 +305,10 @@ class Conj(PrimitiveObject):
     self.left().assertEqual(other.left())
     self.right().assertEqual(other.right())
 
-  def updateVars(self):
+  def updateVariables(self):
     return Conj(type = self.type(),
-        left = self.left().updateVars(),
-        right = self.right().updateVars())
+        left = self.left().updateVariables(),
+        right = self.right().updateVariables())
 
   def type(self):
     return self._type
@@ -556,15 +483,15 @@ class Always(PrimitiveObject):
   def value(self):
     return self._value
 
-  def substituteVar(self, a, b):
-    return Always(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Always(self.value().substituteVariable(a, b))
 
   def assertEqual(self, other):
     assert(other.__class__ == Always)
     self.value().assertEqual(other.value())
 
-  def updateVars(self):
-    return Always(self.value().updateVars())
+  def updateVariables(self):
+    return Always(self.value().updateVariables())
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value() == other.value()
@@ -650,7 +577,7 @@ class Eliminate(PrimitiveArrow):
   def src(self):
     return Quantifier(type = forallType, variable = self.quantifiedVar(), body = self.value())
   def tgt(self):
-    return self.value().substituteVar(self.quantifiedVar(), self.replacementVar())
+    return self.value().substituteVariable(self.quantifiedVar(), self.replacementVar())
 
 class TrueAlways(PrimitiveArrow):
   def src(self):
@@ -785,7 +712,7 @@ class Diagonal(PrimitiveArrow):
   def src(self):
     return Always(self.value())
   def tgt(self):
-    return And(Always(self.value()), Always(self.value().updateVars()))
+    return And(Always(self.value()), Always(self.value().updateVariables()))
 
 class Unalways(PrimitiveArrow):
   # !A --> A

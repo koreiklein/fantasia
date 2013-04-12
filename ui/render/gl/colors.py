@@ -10,6 +10,9 @@ from calculus.basic import andType, orType
 trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 falseDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
+projectionDotColor = Color(r = 0.0, g = 0.0, b = 0.0)
+coinjectionDotColor = Color(r = 0.5, g = 0.5, b = 0.5)
+
 # Prefer choosing the colors of dividers based on the underlying basic type.
 chooseColorsByConcreteness = False
 
@@ -24,8 +27,12 @@ alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 0.2)
 maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.8)
 notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.8)
 
+# The color of the stack object drawn between a holding variable and the datum  that it holds of.
+holdsColor = Color(r = 0.8, g = 0.8, b = 0.8, a = 1.0)
+
 textColor = Color(r = 0.2, g = 0.2, b = 0.2, a= 1.0)
 variableColor = Color(r = 0.2, g = 0.5, b = 0.2, a= 1.0)
+symbolColor = Color(r = 0.2, g = 0.2, b = 0.5, a= 1.0)
 
 def colorOfConjType(type):
   if chooseColorsByConcreteness:

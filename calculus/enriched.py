@@ -1,9 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from mark import markable
-from calculus import basic
+from calculus import basic, variable
 from sets import Set
-import types
 
 # This module contains objects and arrows in much the same was as basic.
 # This module defines a functor F.
@@ -12,28 +11,6 @@ import types
 # F satifies all the appropriate properties for a functor
 #     (it respects src, tgt, identity, and composition)
 # We use x.translate() to implement F.
-
-class Var(markable.Markable):
-  def __init__(self, name):
-    self._base = basic.Var(name)
-    self.initMarkable([])
-
-  def translate(self):
-    return self._base
-
-  def name(self):
-    return self.translate().name()
-
-  def __repr__(self):
-    return self.name()
-
-  def __eq__(self, other):
-    return other.__class__ == Var and self._base == other._base
-  def __ne__(self, other):
-    return not (self == other)
-
-  def __hash__(self):
-    return hash(self._base)
 
 #Objects
 
@@ -84,7 +61,7 @@ class Logic(markable.Markable):
   # Return a Logic object like this one, but with the variable b substituted in
   # place of a.
   # a must not be quantified in self.
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     raise Exception("Abstract Superclass")
 
   # return a set of the free variables in self.
@@ -175,8 +152,8 @@ class Not(Logic):
   def value(self):
     return self._value
 
-  def substituteVar(self, a, b):
-    return Not(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Not(self.value().substituteVariable(a, b))
 
   def translate(self):
     return basic.Not(self.value().translate())
@@ -564,9 +541,9 @@ class Conj(Logic):
     assert(len(self.values()) == 0)
     return TrueAlways()
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     return Conj(type = self.type(),
-        values = [value.substituteVar(a, b) for value in self.values()])
+        values = [value.substituteVariable(a, b) for value in self.values()])
 
   def notToTranspose(self):
     if not self.demorganed():
@@ -820,7 +797,7 @@ class Quantifier(Logic):
     variables = list(self.variables())
     variables.insert(index, quantifiedVar)
     return Eliminate(quantifier = Quantifier(type = forallType, variables = variables,
-      body = self.body().substituteVar(replacementVar, quantifiedVar)),
+      body = self.body().substituteVariable(replacementVar, quantifiedVar)),
       index = index,
       replacementVar = replacementVar)
 
@@ -836,11 +813,11 @@ class Quantifier(Logic):
   def backwardOnBody(self, t):
     return OnBody(self.type(), self.variables(), t)
 
-  def substituteVar(self, a, b):
+  def substituteVariable(self, a, b):
     assert(a not in self.variables())
     return Quantifier(type = self.type(),
         variables = self.variables(),
-        body = self.body().substituteVar(a, b))
+        body = self.body().substituteVariable(a, b))
 
   def type(self):
     return self._type
@@ -902,8 +879,8 @@ class Always(Logic):
   def transpose(self):
     return Maybe(self.value().transpose())
 
-  def substituteVar(self, a, b):
-    return Always(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Always(self.value().substituteVariable(a, b))
 
   def value(self):
     return self._value
@@ -939,8 +916,8 @@ class Maybe(Logic):
     return self.transpose().translate().forwardOnAlways(
         self.value().transposeToNot()).forwardFollow(lambda x: x.forwardIntroduceDoubleDual())
 
-  def substituteVar(self, a, b):
-    return Maybe(self.value().substituteVar(a, b))
+  def substituteVariable(self, a, b):
+    return Maybe(self.value().substituteVariable(a, b))
 
   def transpose(self):
     return Always(self.value().transpose())
@@ -973,60 +950,6 @@ def Implies(predicate, consequent):
     values = [predicate.transpose()]
   values.append(consequent)
   return Par(values)
-
-# A formula stating that some arbitrary relation holds of some variables.
-class Holds(Logic):
-  def __init__(self, **kwargs):
-    self._d = kwargs
-    for (key, value) in kwargs.items():
-      self.__dict__[key] = types.MethodType(lambda self: value, self)
-    self.initMarkable([])
-
-  def __getitem__(self, x):
-    return self._d[x]
-
-  def __repr__(self):
-    s = ''
-    for (key, value) in self._d.items():
-      s += "%s : %s, "%(key, value)
-    return s
-
-  def __eq__(self, other):
-    if other.__class__ != Holds:
-      return False
-    else:
-      for (key, value) in self._d.items():
-        if (not other._d.has_key(key) ) or other[key] != value:
-          return False
-      for (key, value) in other._d.items():
-        if (not self._d.has_key(key) ) or self[key] != value:
-          return False
-      return True
-
-  def __ne__(self, other):
-    return not (self == other)
-
-  def substituteVar(self, a, b):
-    _d = {}
-    for (key, value) in self._d.items():
-      if value == a:
-        _d[key] = b
-      else:
-        _d[key] = value
-    return Holds(**_d)
-
-  def translate(self):
-    d = {}
-    for (key, value) in self._d.items():
-      d[key] = value.translate()
-    return basic.Holds(**d)
-
-  def transposeIsNot(self):
-    return True
-
-  # return a set of the free variables in self.
-  def freeVariables(self):
-    return self._d.values()
 
 # Arrows
 
@@ -1497,7 +1420,7 @@ class Eliminate(PrimitiveArrow):
     assert(quantifier.type() == forallType)
     assert(0 <= index)
     assert(index < len(quantifier.variables()))
-    assert(replacementVar.__class__ == Var)
+    assert(isinstance(replacementVar, variable.Variable))
     self._quantifier = quantifier
     self._index = index
     self._replacementVar = replacementVar
@@ -1515,7 +1438,7 @@ class Eliminate(PrimitiveArrow):
     variables = list(self.quantifier().variables())
     quantifiedVar = variables.pop(self.index())
     return Quantifier(type = forallType, variables = variables,
-        body = self.quantifier().body().substituteVar(quantifiedVar, self.replacementVar()))
+        body = self.quantifier().body().substituteVariable(quantifiedVar, self.replacementVar()))
 
   def translate(self):
     return _quantifierWithin(self.src().translate(), self.index(), lambda basicBody:

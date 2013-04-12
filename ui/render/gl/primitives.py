@@ -109,6 +109,9 @@ def quantifierDivider(type, length):
 def exponentialBox(always, widths):
   return solidSquare(colors.exponentialColor(always), widths)
 
+def empty():
+  return newGLStack([0.0, 0.0, 0.0], lambda: None)
+
 def solidSquare(color, widths):
   d = Point(0.0, 0.0, 0.0)
   a = d.translate(0, widths[0])
@@ -126,3 +129,15 @@ def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]
   return solidSquare(colors.notColor, upper).below(solidSquare(colors.notColor, lower))
+
+def holdsStack(distance):
+  widths = [distance, distances.holdsStackHeight, 0.0]
+  return solidSquare(colors.holdsColor, widths)
+
+
+def projectionDot():
+  return solidSquare(colors.projectionDotColor, distances.projectionDotWidths)
+
+def coinjectionDot():
+  return solidSquare(colors.coinjectionDotColor, distances.coinjectionDotWidths)
+
