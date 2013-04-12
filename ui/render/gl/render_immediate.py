@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched, relation, variable, limit
+from calculus import enriched, relation, variable, datum
 from ui.render.gl import primitives, distances, colors
 
 from lib import oldNatural, natural
@@ -83,31 +83,46 @@ def renderVariable(variable):
 
 def renderHolds(holds):
   holding = renderVariable(holds.holding())
-  held = renderLimitOrVariable(holds.held())
+  held = renderDatum(holds.held())
   d = 1
   between = primitives.holdsStack(max(holding.widths()[d], held.widths()[d]))
   return stackAll(d, [holding, between, held])
 
-def renderLimitOrVariable(x):
-  if isinstance(x, variable.Variable):
-    return renderVariable(x)
-  else:
-    assert(x.__class__ == limit.Limit)
-    return renderLimit(x)
-
-def renderLimit(limit):
-  d = primitives.stackingDimensionForLimit(limit)
-  result = primitives.limitClauseStart(d)
-  renderedPairs = [(renderSymbol(s), renderLimitOrVariable(v)) for (s,v) in limit.pairs()]
-  for (symbolStack, valueStack) in renderedPairs:
-    limitLineLength = max(symbolStack.widths()[d], valueStack.widths()[d])
-    nextClause = stackAll(primitives.transposeDimension(d),
-          [ symbolStack
-          , primitives.limitLine(d, limitLineLength, limit.usedAsAType())
-          , valueStack])
-    result = result.stack(d, nextClause, spacing = distances.betweenLimitClausesSpacing)
-  return result
-
 def renderSymbol(symbol):
   return gl.newTextualGLStack(colors.symbolColor, repr(symbol))
 
+def renderDatum(d):
+  if d.__class__ == datum.Variable:
+    return renderDatumVariable(d)
+  elif d.__class__ == datum.Record:
+    return renderDatumRecord(d)
+  elif d.__class__ == datum.Case:
+    return renderDatumCase(d)
+  elif d.__class__ == datum.Projection:
+    return renderDatumProjection(d)
+  else:
+    assert(d.__class__ == datum.Coinjection)
+    return renderDatumCoinjection(d)
+
+
+def renderDatumVariable(d):
+  return renderVariable(d.variable())
+
+def renderDatumRecord(d):
+  res = primitives.empty()
+  for (symbol, d) in d.pairs():
+    res = res.stack(0, renderSymbol(symbol).stackCentered(1, renderDatum(d)))
+  return res
+
+def renderDatumCase(d):
+  return renderSymbol(d.symbol()).stackCentered(1, renderDatum(d.value()))
+
+def renderDatumProjection(d):
+  return renderDatum(d.value()).stack(0,
+      primitives.projectionDot()).stack(0,
+          renderSymbol(d.symbol()))
+
+def renderDatumCoinjection(d):
+  return renderDatum(d.value()).stack(0,
+      primitives.coinjectionDot()).stack(0,
+          renderSymbol(d.symbol()))

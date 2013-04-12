@@ -2,7 +2,7 @@
 
 from OpenGL.GL import *
 
-from calculus import enriched, limit
+from calculus import enriched
 from ui.render.gl import colors, distances
 
 from ui.stack.gl import newGLStack
@@ -21,13 +21,6 @@ def stackingDimensionOfQuanifierType(type):
   else:
     assert(type == enriched.existsType)
     return 0
-
-def stackingDimensionForLimit(x):
-  if x.type() == limit.limitType:
-    return 0
-  else:
-    assert(x.type() == limit.colimitType)
-    return 1
 
 def transposeDimension(dimension):
   if dimension == 0:
@@ -105,22 +98,6 @@ def quantifierDivider(type, length):
       width = distances.widthOfQuantifierDividerByLength(length),
       capLength = distances.capLengthOfDividerByLength(length))
 
-def colorForLimitLine(usedAsType):
-  if usedAsType:
-    return colors.limitLineColorForType
-  else:
-    return colors.limitLineColor
-
-def limitLine(longDimension, length, usedAsType):
-  widths = [distances.limitLineThickness, distances.limitLineThickness, 0.0]
-  widths[longDimension] = length
-  return solidSquare(colorForLimitLine(usedAsType), widths)
-
-def limitClauseStart(stackingDimension):
-  widths = [0.0, 0.0, 0.0]
-  widths[stackingDimension] = distances.limitClausesOffset
-  return solidSquare(colors.limitLineColor, widths)
-
 # always: a boolean, True for always, false for Maybe.
 # widths: a list of the widths of the box.
 # return: a gl stack representing the background for an exponential.
@@ -131,6 +108,9 @@ def limitClauseStart(stackingDimension):
 #
 def exponentialBox(always, widths):
   return solidSquare(colors.exponentialColor(always), widths)
+
+def empty():
+  return newGLStack([0.0, 0.0, 0.0], lambda: None)
 
 def solidSquare(color, widths):
   d = Point(0.0, 0.0, 0.0)
@@ -153,3 +133,11 @@ def notSymbol(widths):
 def holdsStack(distance):
   widths = [distance, distances.holdsStackHeight, 0.0]
   return solidSquare(colors.holdsColor, widths)
+
+
+def projectionDot():
+  return solidSquare(colors.projectionDotColor, distances.projectionDotWidths)
+
+def coinjectionDot():
+  return solidSquare(colors.coinjectionDotColor, distances.coinjectionDotWidths)
+

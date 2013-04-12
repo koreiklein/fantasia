@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched, variable, symbol, relation, limit
+from calculus import basic, enriched, variable, symbol, relation, datum
 from lib import common_vars
 
 five = variable.StringVariable('5')
@@ -19,18 +19,21 @@ after = variable.StringVariable('after')
 
 # Stating that a variable is a natural number.
 def IsNatural(n):
-  return relation.Holds(natural, n)
+  return relation.Holds(natural, datum.Variable(n))
 
 def Compare(lesser, greater, strict):
   if strict:
     return relation.Holds(natural_less,
-        limit.newLimit([(smallerSymbol, lesser), (greaterSymbol, greater)]))
+        datum.Record([ (smallerSymbol, datum.Variable(lesser))
+                     , (greaterSymbol, datum.Variable(greater))]))
   else:
     return relation.Holds(natural_less_or_equal,
-        limit.newLimit([(smallerSymbol, lesser), (greaterSymbol, greater)]))
+        datum.Record([ (smallerSymbol, datum.Variable(lesser))
+                     , (greaterSymbol, datum.Variable(greater))]))
 
 def Successor(a, b):
-  return relation.Holds(natural_successor, limit.newLimit([(before, a), (after, b)]))
+  return relation.Holds(natural_successor, datum.Record([ (before, datum.Variable(a))
+                                                        , (after, datum.Variable(b))]))
 
 zero = variable.StringVariable('zero')
 

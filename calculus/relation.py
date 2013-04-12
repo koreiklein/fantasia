@@ -2,23 +2,20 @@
 
 from calculus import symbol
 from calculus import variable
-from calculus import limit
+from calculus import datum
 from calculus import enriched, basic
 
 class Holds(enriched.Logic):
   # holding: a variable.Variable
-  # held: a variable.Variable or a limit.Limit
+  # held: a datum.Datum
   def __init__(self, holding, held):
     assert(isinstance(holding, variable.Variable))
-    assert(limit.isLimitOrVariable(held))
+    assert(isinstance(held, datum.Datum))
     self._holding = holding
     self._held = held
     self.initMarkable([]) # TODO: Consider allowing the user to navigate limits.
 
   def assertEqual(self, other):
-    # TODO: Consider using a more detailed assert.
-    print self
-    print other
     assert(self == other)
 
   def __eq__(self, other):
@@ -56,11 +53,9 @@ outputSymbol = symbol.StringSymbol('output')
 
 # Special "function" holds objects can be constructed with this function.
 def FunctionHolds(functionVariable, input, output):
-  assert(isLimitOrVariable(input))
-  assert(isLimitOrVariable(output))
   return Holds(holding = functionVariable,
-      held = limit.newLimit([ (inputSymbol, input)
-                            , (outputSymbol, output)]))
+      held = datum.Record([ (inputSymbol, input)
+                          , (outputSymbol, output)]))
 
 class BasicHolds(basic.PrimitiveObject, Holds):
   def assertEqual(self, other):
@@ -72,6 +67,6 @@ class BasicHolds(basic.PrimitiveObject, Holds):
         held = self.held().substituteVariable(a, b))
 
   def updateVariables(self):
-    return Holds(holding = self.holding().updateVariables(),
+    return BasicHolds(holding = self.holding().updateVariables(),
         held = self.held().updateVariables())
 

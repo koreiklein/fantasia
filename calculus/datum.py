@@ -2,6 +2,8 @@
 
 from calculus import symbol, variable
 
+from sets import Set
+
 class Datum:
   def project(self, symbol):
     return Projection(value = self, symbol = symbol)
@@ -14,6 +16,12 @@ class Datum:
   def canSimplify(self):
     raise Exception("Abstract Superclass")
 
+  def substituteVariable(self, a, b):
+    raise Exception("Abstract Superclass")
+
+  def freeVariables(self):
+    raise Exception("Abstract Superclass")
+
 class Variable(Datum):
   # v: a variable.Variable
   def __init__(self, v):
@@ -24,6 +32,18 @@ class Variable(Datum):
 
   def canSimplify(self):
     return False
+
+  def __eq__(self, other):
+    return other.__class__ == Variable and self.variable() == other.variable()
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def substituteVariable(self, a, b):
+    return Variable(self.variable().substituteVariable(a, b))
+
+  def freeVariables(self):
+    return self.variable().freeVariables()
 
 class ConstructiveDatum(Datum):
   pass
@@ -39,6 +59,21 @@ class Record(ConstructiveDatum):
   def canSimplify(self):
     return False
 
+  def __eq__(self, other):
+    return other.__class__ == Record and self.pairs() == other.pairs()
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def substituteVariable(self, a, b):
+    return Record([(symbol, d.substituteVariable(a, b)) for (symbol, d) in self.pairs()])
+
+  def freeVariables(self):
+    res = Set()
+    for (symbol, datum) in self.pairs():
+      res.union_update(datum.freeVariables())
+    return res
+
 class Case(ConstructiveDatum):
   # value: a datum
   # symbol: a symbol
@@ -53,6 +88,18 @@ class Case(ConstructiveDatum):
 
   def canSimplify(self):
     return False
+
+  def __eq__(self, other):
+    return other.__class__ == Case and self.value() == other.value() and self.symbol() == other.symbol()
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def substituteVariable(self, a, b):
+    return Case(value = self.value().substituteVariable(a, b), symbol = self.symbol())
+
+  def freeVariables(self):
+    return self.value().freeVariables()
 
 class DestructiveDatum(Datum):
   def value(self):
@@ -83,6 +130,20 @@ class Projection(DestructiveDatum):
         return value
     raise Exception("Impossible: a simplifyable Projection's value must be defined on its symbol.")
 
+  def __eq__(self, other):
+    return (other.__class__ == Projection
+        and self.value() == other.value()
+        and self.symbol() == other.symbol())
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def substituteVariable(self, a, b):
+    return Projection(value = self.value().substituteVariable(a, b), symbol = self.symbol())
+
+  def freeVariables(self):
+    return self.value().freeVariables()
+
 class Coinjection(DestructiveDatum):
   def __init__(self, value, symbol):
     if value.__class__ == Case:
@@ -103,4 +164,18 @@ class Coinjection(DestructiveDatum):
     assert(self.canSimplify())
     assert(symbol == value.symbol())
     return self.value().value()
+
+  def __eq__(self, other):
+    return (other.__class__ == Coinjection
+        and self.value() == other.value()
+        and self.symbol() == other.symbol())
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def substituteVariable(self, a, b):
+    return Coinjection(value = self.value().substituteVariable(a, b), symbol = self.symbol())
+
+  def freeVariables(self):
+    return self.value().freeVariables()
 

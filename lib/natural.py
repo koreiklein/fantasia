@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched, relation, variable, limit, symbol
+from calculus import basic, enriched, relation, variable, datum, symbol
 from lib import common_vars
 
 from sets import Set
@@ -20,16 +20,19 @@ leftSymbol = symbol.StringSymbol('left')
 rightSymbol = symbol.StringSymbol('right')
 
 def Natural(n):
-  return relation.Holds(natural, n)
+  return relation.Holds(natural, datum.Variable(n))
 
 def Equal(a, b):
-  return relation.Holds(natural_equal, limit.newLimit([(leftSymbol, a), (rightSymbol, b)]))
+  return relation.Holds(natural_equal, datum.Record([ (leftSymbol, datum.Variable(a))
+                                                    , (rightSymbol, datum.Variable(b))]))
 
 def Successor(a, b):
-  return relation.Holds(natural_successor, limit.newLimit([(before, a), (after, b)]))
+  return relation.Holds(natural_successor, datum.Record([ (before, datum.Variable(a))
+                                                        , (after, datum.Variable(b))]))
 
 def Less(a, b):
-  return relation.Holds(natural_less, limit.newLimit([(smaller, a), (greater, b)]))
+  return relation.Holds(natural_less, datum.Record([ (smaller, datum.Variable(a))
+                                                   , (greater, datum.Variable(b))]))
 
 n = common_vars.n()
 eqIdentitiy = enriched.Forall([n],
@@ -118,7 +121,7 @@ successorClaims = [successorExists, successorUnique, successorInjective, success
 
 R = common_vars.R()
 allInduction = enriched.Forall([R],
-    byInduction(lambda v: relation.Holds(holding = R, held = v)))
+    byInduction(lambda v: relation.Holds(holding = R, held = datum.Variable(v))))
 
 startingFormula = enriched.And([ zeroIsNatural
                                , enriched.And(eqClaims)
