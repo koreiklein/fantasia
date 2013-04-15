@@ -4,7 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from ui.render.gl.render_immediate import render
+from ui.render.gl.render_esmerelda import render
 
 from ui.stack import gl
 

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.variable import StringVariable
+from calculus.esmerelda import StringVariable
 
 p = lambda: StringVariable('p')
 n = lambda: StringVariable('n')

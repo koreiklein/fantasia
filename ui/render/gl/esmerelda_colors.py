@@ -1,0 +1,30 @@
+# Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
+
+from OpenGL.GL import *
+
+from ui.stack.color import Color
+
+variableColor = Color(r = 0.9, g = 0.4, b = 0.35)
+
+andColor = Color(r = 0.0, g = 0.0, b = 1.0)
+orColor = Color(r = 0.68, g = 0.09, b = 0.63)
+
+intersectColor = Color(r = 0.0, g = 1.0, b = 1.0)
+
+quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.5)
+notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.8)
+
+alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 0.2)
+maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.8)
+
+def exponentialColor(isAlways):
+  if isAlways:
+    return alwaysBackgroundColor
+  else:
+    return maybeBackgroundColor
+
+projectDotColor = Color(r = 0.0, g = 0.0, b = 0.0)
+injectDotColor = Color(r = 0.5, g = 0.5, b = 0.5)
+
+trueColor = Color(r = 0.0, g = 0.0, b = 0.0)
+falseColor = Color(r = 0.0, g = 0.0, b = 0.0)

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, variable
+from calculus import symbol
 
 from sets import Set
 
@@ -60,31 +60,65 @@ class StringVariable(Variable):
   def updateVariables(self):
     return StringVariable(self.name())
 
-right_symbol = symbol.StringSymbol('')
+class Exists(Object):
+  def __init__(self, variables, value):
+    self.variables = variables
+    self.value = value
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.variables == other.variables
+        and self.value == other.value)
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def updateVariables(self):
+    variables = [variable.updateVariables() for variable in self.variables]
+    return self.__class__(variables = variables,
+        value = self.value.substituteVariable(
+          self.variable, variable).updateVariables())
+
+  def substituteVariable(self, a, b):
+    assert(a not in self.variables)
+    assert(b not in self.variables)
+    return self.__class__(variables = self.variables,
+        value = self.value.substituteVariable(a, b))
+
+  def freeVariables(self):
+    return self.value.freeVariables().difference(Set(self.variables))
+
+empty_symbol = symbol.StringSymbol('')
+right_symbol = empty_symbol
 
 # For And and Or.
 class Conjunction(Object):
   # There is only one global right symbol.
-  def __init__(self, left_symbol, left, right):
+  def __init__(self, left, right, left_symbol = empty_symbol,
+      right_symbol = empty_symbol):
     self.left = left
     self.left_symbol = left_symbol
     self.right = right
+    self.right_symbol = right_symbol
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
         and self.left == other.left
         and self.left_symbol == other.left_symbol
-        and self.right == other.right)
+        and self.right == other.right
+        and self.right_symbol == other.right_symbol)
   def __ne__(self, other):
     return not(self == other)
 
   def updateVariables(self):
     return self.__class__(left_symbol = self.left_symbol,
+        right_symbol = right_symbol,
         left = self.left.updateVariables(),
         right = self.right.updateVariables())
 
   def substituteVariable(self, a, b):
     return self.__class__(left_symbol = self.left_symbol,
+        right_symbol = right_symbol,
         left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
 
@@ -102,6 +136,13 @@ def MultiAnd(symbol_value_pairs):
   return multiple_conjunction(And, symbol_value_pairs)
 def MultiOr(symbol_value_pairs):
   return multiple_conjunction(Or, symbol_value_pairs)
+
+def Implies(predicate, consequent):
+  return Not(MultiAnd(
+    [(empty_symbol, predicate), (empty_symbol, Not(consequent))]))
+
+def Forall(variables, value):
+  return Not(Exists(variables = variables, value = Not(value)))
 
 class Intersect(Object):
   def __init__(self, left, right):
@@ -287,9 +328,9 @@ class Associate(Isomorphism):
     assert (self.src.left.__class__ == common_class
         and self.tgt.right.__class__ == common_class
 
-        and self.src.left.left = self.tgt.right
-        and self.src.left.right = self.tgt.right.left
-        and self.src.right = self.tgt.right.right)
+        and self.src.left.left == self.tgt.right
+        and self.src.left.right == self.tgt.right.left
+        and self.src.right == self.tgt.right.right)
 
 # A % 1 <-- A --> 1 % A
 class UnitIdentity(Isomorphism):
