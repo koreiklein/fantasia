@@ -98,32 +98,6 @@ def multiple_conjunction(conjunction, symbol_value_pairs):
     result = conjunction(left_symbol = symbol, left = value, right = result)
   return result
 
-class Destructor(Object):
-  def __init__(self, value, symbol):
-    self.value = value
-    self.symbol = symbol
-    self.validate()
-
-  def validate(self):
-    return
-
-  def updateVariables(self):
-    return self.__class__(value = self.value.updateVariables(),
-        symbol = self.symbol.updateVariables())
-
-  def substituteVariable(self, a, b):
-    return self.__class__(value = self.value.substituteVariable(a, b),
-        symbol = self.symbol.substituteVariable(a, b))
-
-  def freeVariables(self):
-    return self.value.freeVariables()
-
-class Project(Destructor):
-  pass
-
-class Inject(Destructor):
-  pass
-
 def MultiAnd(symbol_value_pairs):
   return multiple_conjunction(And, symbol_value_pairs)
 def MultiOr(symbol_value_pairs):
@@ -220,7 +194,7 @@ class OrUnit(Unit):
   pass
 
 true = AndUnit()
-false = OrUnit(true)
+false = OrUnit()
 
 def unit_for_conjunction(conjunction):
   if conjunction == And:
@@ -228,6 +202,41 @@ def unit_for_conjunction(conjunction):
   else:
     assert(conjunction == Or)
     return false
+
+
+class Destructor(Object):
+  def __init__(self, value, symbol):
+    self.value = value
+    self.symbol = symbol
+    self.validate()
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.symbol == other.symbol
+        and self.value == other.value)
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def updateVariables(self):
+    return self.__class__(value = self.value.updateVariables(),
+        symbol = self.symbol.updateVariables())
+
+  def substituteVariable(self, a, b):
+    return self.__class__(value = self.value.substituteVariable(a, b),
+        symbol = self.symbol.substituteVariable(a, b))
+
+  def freeVariables(self):
+    return self.value.freeVariables()
+
+class Project(Destructor):
+  pass
+
+class Inject(Destructor):
+  pass
+
+class Coinject(Destructor):
+  pass
 
 class Arrow:
   def __init__(self, src, tgt):
