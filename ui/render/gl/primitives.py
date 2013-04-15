@@ -2,101 +2,18 @@
 
 from OpenGL.GL import *
 
-from calculus import enriched
 from ui.render.gl import colors, distances
 
 from ui.stack.gl import newGLStack
 from ui.stack.point import Point
 
-def stackingDimensionOfConjType(type):
-  if type in [enriched.andType, enriched.withType]:
-    return 0
-  else:
-    assert(type in [enriched.orType, enriched.parType])
-    return 1
-
-def stackingDimensionOfQuanifierType(type):
-  if type == enriched.forallType:
-    return 1
-  else:
-    assert(type == enriched.existsType)
-    return 0
-
-def transposeDimension(dimension):
+def _dual_dimension(dimension):
   if dimension == 0:
     return 1
   else:
     assert(dimension == 1)
     return 0
 
-# Typical backgrounds will be some pleasant unassuming color.
-# Like, say, off white.
-
-# Unit divider (2 Kinds)
-  # enriched makes it appear as though there are 4 units. 2 of them, however, can be converted
-  # into the other two.  We will burden the author of this code with keeping track of
-  # the conversion in order to present the user with a mental model that involves only
-  # two units.
-# Conj divider (4 Kinds) | (Vertical, Horizontal) X (Blue, Yellow)
-# Quantifier divider (2 Kinds)
-  # Dotted lines, as quantifiers are really unimportant and should be downplayed as much as possible.
-# Exponential background (2 Kinds)
-  # ? Light Blue for Always  (Good, light blue is a normal, unassuming, boring color)
-  # ? Orange for Maybe       (Good, the Maybe combinator is INSANE and deserves to stand out)
-
-# return: a gl stack representing the unit for the given enriched conj type.
-#
-#   e===================================d
-#  /                                     \
-# f                                       c
-#  \                                     /
-#   a===================================b
-#
-def unitDivider(type, length):
-  return divider(
-      color = colors.colorOfUnitType(type),
-      dimension = stackingDimensionOfConjType(type),
-      length = length,
-      width = distances.widthOfDividerByLength(length),
-      capLength = distances.capLengthOfDividerByLength(length))
-
-# return: a gl stack representing the conj divider for the given enriched conj type.
-def conjDivider(type, length):
-  return divider(
-      color = colors.colorOfConjType(type),
-      dimension = stackingDimensionOfConjType(type),
-      length = length,
-      width = distances.widthOfDividerByLength(length),
-      capLength = distances.capLengthOfDividerByLength(length))
-
-def divider(color, dimension, length, width, capLength):
-  widths = [0 for i in range(3)]
-  tDimension = transposeDimension(dimension)
-  widths[dimension] = width
-  widths[tDimension] = length
-  z = Point(0.0, 0.0)
-  a = z.translate(tDimension, capLength)
-  b = a.translate(tDimension, length - 2 * capLength)
-  e = a.translate(dimension, width)
-  d = b.translate(dimension, width)
-  f = z.translate(dimension, width / 2.0)
-  c = f.translate(tDimension, length)
-  def render():
-    color.render()
-    glBegin(GL_TRIANGLE_FAN)
-    for point in [a, b, c, d, e, f]:
-      point.render()
-    glEnd()
-  return newGLStack(widths, render)
-
-# return: a gl stack representing the quantifier divider for the given enriched quantifier type.
-def quantifierDivider(type, length):
-  return divider(
-      color = colors.quantifierDividerColor,
-      dimension = stackingDimensionOfQuanifierType(type),
-      length = length,
-      width = distances.widthOfQuantifierDividerByLength(length),
-      capLength = distances.capLengthOfDividerByLength(length))
 
 # always: a boolean, True for always, false for Maybe.
 # widths: a list of the widths of the box.
@@ -125,19 +42,73 @@ def solidSquare(color, widths):
     glEnd()
   return newGLStack(widths, render)
 
+def divider(color, dimension, length, width, capLength):
+  widths = [0 for i in range(3)]
+  tDimension = _dual_dimension(dimension)
+  widths[dimension] = width
+  widths[tDimension] = length
+  z = Point(0.0, 0.0)
+  a = z.translate(tDimension, capLength)
+  b = a.translate(tDimension, length - 2 * capLength)
+  e = a.translate(dimension, width)
+  d = b.translate(dimension, width)
+  f = z.translate(dimension, width / 2.0)
+  c = f.translate(tDimension, length)
+  def render():
+    color.render()
+    glBegin(GL_TRIANGLE_FAN)
+    for point in [a, b, c, d, e, f]:
+      point.render()
+    glEnd()
+  return newGLStack(widths, render)
+
+def _dimension_for_variance(covariant):
+  if covariant:
+    return 0
+  else:
+    return 1
+
+
+def intersectDivider(covariant):
+  return (lambda length:
+    divider(colors.intersectColor, _dimension_for_variance(covariant),
+        max(length, distances.min_intersect_divider_length),
+        distances.conjunctiveDividerWidth,
+        distances.capLengthOfDividerByLength(length)))
+
+def andDivider(covariant):
+  return (lambda length:
+    divider(colors.andColor, _dimension_for_variance(covariant),
+        length, distances.conjunctiveDividerWidth,
+        distances.capLengthOfDividerByLength(length)))
+
+def orDivider(covariant):
+  return (lambda length:
+    divider(colors.orColor, _dimension_for_variance(covariant),
+        length, distances.conjunctiveDividerWidth,
+        distances.capLengthOfDividerByLength(length)))
+
+def quantifierDivider(covariant, length):
+  return divider(colors.quantifierDividerColor, _dimension_for_variance(covariant),
+      length, distances.quantifier_divider_width,
+      distances.capLengthOfDividerByLength(length))
+
+def trueDivider(length):
+  return divider(colors.trueColor, 0, length, distances.unit_width,
+      distances.capLengthOfDividerByLength(length))
+
+def falseDivider(length):
+  return divider(colors.falseColor, 1, length, distances.unit_width,
+      distances.capLengthOfDividerByLength(length))
+
+projecDot = solidSquare(colors.projectDotColor,
+    [distances.dotWidth, distances.dotWidth, 0.0])
+injectDot = solidSquare(colors.injectDotColor,
+    [distances.dotWidth, distances.dotWidth, 0.0])
+
 def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]
   return solidSquare(colors.notColor, upper).below(solidSquare(colors.notColor, lower))
 
-def holdsStack(distance):
-  widths = [distance, distances.holdsStackHeight, 0.0]
-  return solidSquare(colors.holdsColor, widths)
-
-
-def projectionDot():
-  return solidSquare(colors.projectionDotColor, distances.projectionDotWidths)
-
-def coinjectionDot():
-  return solidSquare(colors.coinjectionDotColor, distances.coinjectionDotWidths)
 

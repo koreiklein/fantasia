@@ -1,128 +1,181 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched, relation, variable, datum
+from calculus import basic
 from ui.render.gl import primitives, distances, colors
-
-from lib import oldNatural, natural
 from ui.stack import gl
-from ui.stack.stack import stackAll
 
-
-# object: a enriched.Logic object
-# return: a stack.stack.Stack object s that represents object.
-#         s will be 3-d and dispatch to a stack.gl.GLBackend backend.
-def render(logic):
-  if logic.__class__ == enriched.Conj:
-    return renderConj(logic)
-  elif logic.__class__ == enriched.Quantifier:
-    return renderQuantifier(logic)
-  elif logic.__class__ == enriched.Always:
-    return renderAlways(logic)
-  elif logic.__class__ == enriched.Maybe:
-    return renderMaybe(logic)
-  elif logic.__class__ == enriched.Not:
-    return renderNot(logic)
-  elif isinstance(logic, variable.Variable):
-    return renderVariable(logic)
-  elif logic.__class__ == relation.Holds:
-    return renderHolds(logic)
+def render(x, covariant = True):
+  if isinstance(x, basic.Variable):
+    return renderVariable(x, covariant = covariant)
+  elif isinstance(x, basic.Conjunction):
+    return renderConjunction(x, covariant = covariant)
+  elif x.__class__ == basic.Intersect:
+    return renderIntersect(x, covariant = covariant)
+  elif x.__class__ == basic.Exists:
+    return renderExists(x, covariant = covariant)
+  elif x.__class__ == basic.Not:
+    return renderNot(x, covariant = covariant)
+  elif x.__class__ == basic.Always:
+    return renderAlways(x, covariant = covariant)
+  elif x.__class__ == basic.AndUnit:
+    return renderAndUnit(x, covariant = covariant)
+  elif x.__class__ == basic.OrUnit:
+    return renderOrUnit(x, covariant = covariant)
+  elif isinstance(x, basic.Destructor):
+    return renderDestructor(x, covariant = covariant)
   else:
-    raise Exception("Unrecognized logic object %s"%(logic,))
+    raise Exception("Unrecognized logic object %s of class %s"%(x,x.__class__))
 
-def renderConj(conj):
-  dimension = primitives.stackingDimensionOfConjType(conj.type())
-  length = distances.min_unit_divider_length
-  kids = [render(logic) for logic in conj.values()]
-  for kid in kids:
-    length = max(length, kid.widths()[primitives.transposeDimension(dimension)])
-  length += distances.conj_increase
-  res = primitives.unitDivider(conj.type(), length)
-  for kid in kids:
-    divider = primitives.conjDivider(conj.type(), length)
-    res = (res.stack(dimension, kid, spacing = distances.conj_clause_spacing)
-      .stack(dimension, divider, spacing = distances.conj_clause_spacing))
-  return res
+def renderVariable(x, covariant = True):
+  if x.__class__ == basic.StringVariable:
+    return renderStringVariable(x, covariant = covariant)
+  else:
+    raise Exception("Unrecognized logic object %s"%(x,))
 
-def renderQuantifier(quantifier):
-  quantifierStackingDimension = primitives.stackingDimensionOfQuanifierType(quantifier.type())
-  variableStackingDimension = primitives.transposeDimension(quantifierStackingDimension)
-  if len(quantifier.variables()) == 0:
+def renderConjunction(x, covariant = True):
+  if x.__class__ == basic.And:
+    return renderAnd(x, covariant = covariant)
+  elif x.__class__ == basic.Or:
+    return renderOr(x, covariant = covariant)
+  else:
+    raise Exception("Unrecognized logic object %s"%(x,))
+
+def renderDestructor(x, covariant = True):
+  if x.__class__ == basic.Project:
+    return renderProject(x, covariant = covariant)
+  elif x.__class__ == basic.Inject:
+    return renderInject(x, covariant = covariant)
+  elif x.__class__ == basic.Coinject:
+    return renderCoinject(x, covariant = covariant)
+  else:
+    raise Exception("Unrecognized logic object %s"%(x,))
+
+def _dimension_for_variance(covariant):
+  if covariant:
+    return 0
+  else:
+    return 1
+
+def renderTripleCentered(dimension, left, middle, right):
+  codimension = primitives._dual_dimension(dimension)
+  m = max(left.widths()[codimension], right.widths()[codimension])
+  return left.stackCentered(dimension,
+      middle(length = m),
+      spacing = distances.divider_spacing).stackCentered(dimension,
+          right,
+          spacing = distances.divider_spacing)
+
+def renderTriple(dimension, left, middle, right):
+  codimension = primitives._dual_dimension(dimension)
+  m = max(left.widths()[codimension], right.widths()[codimension])
+  return left.stack(dimension,
+      middle(length = m),
+      spacing = distances.divider_spacing).stack(dimension,
+          right,
+          spacing = distances.divider_spacing)
+
+def renderIntersect(x, covariant = True):
+  res = renderTripleCentered(dimension = _dimension_for_variance(covariant = True),
+      left = render(x.left, True),
+      middle = primitives.intersectDivider(True),
+      right = render(x.right, True))
+  if covariant:
+    return res
+  else:
+    return renderNotWithSymbol(res)
+
+def renderAnd(x, covariant = True):
+  if x.right == basic.unit_for_conjunction(x.__class__):
+    return render(x.left, covariant)
+  return renderTriple(dimension = _dimension_for_variance(covariant),
+      left = render(x.left, covariant),
+      middle = primitives.andDivider(covariant),
+      right = render(x.right, covariant))
+
+def renderOr(x, covariant = True):
+  return renderTriple(dimension = _dimension_for_variance(covariant),
+      left = render(x.left, covariant),
+      middle = primitives.orDivider(covariant),
+      right = render(x.right, covariant))
+
+def renderNot(x, covariant = True):
+  if x.rendered:
+    return renderNotWithSymbol(render(x, covariant))
+  else:
+    return render(x.value, not covariant)
+
+def renderNotWithSymbol(value):
+  return primitives.notSymbol(value.widths()[:2]).below(
+      value.shift(distances.notShiftOffset))
+
+def renderExists(quantifier, covariant = True):
+  quantifierStackingDimension = _dimension_for_variance(covariant)
+  variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
+  if len(quantifier.variables) == 0:
     variablesStack = gl.nullStack
   else:
-    variablesStack = render(quantifier.variables()[0])
-    for variable in quantifier.variables()[1:]:
-      variablesStack = variablesStack.stack(variableStackingDimension, render(variable),
+    variablesStack = render(quantifier.variables[0])
+    for variable in quantifier.variables[1:]:
+      variablesStack = variablesStack.stack(variableStackingDimension,
+          render(variable),
           spacing = distances.quantifier_variables_spacing)
-  bodyStack = render(quantifier.body())
-  divider = primitives.quantifierDivider(quantifier.type(),
-      max(bodyStack.widths()[variableStackingDimension],
+  valueStack = render(quantifier.value, covariant)
+  divider = primitives.quantifierDivider(covariant,
+      max(valueStack.widths()[variableStackingDimension],
         variablesStack.widths()[variableStackingDimension]))
   return variablesStack.stackCentered(quantifierStackingDimension, divider,
       spacing = distances.quantifier_before_divider_spacing).stackCentered(
-      quantifierStackingDimension, bodyStack,
+      quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
 
-def renderAlways(always):
-  return renderExponential(True, always)
-def renderMaybe(maybe):
-  return renderExponential(False, maybe)
-
-def renderExponential(isAlways, exponential):
-  value = render(exponential.value())
+def renderAlways(x, covariant = True):
+  value = render(x.value(), covariant)
   widths = [x + 2 * distances.exponential_border_width for x in value.widths()]
   widths[2] = 0.0
-  return primitives.exponentialBox(isAlways, widths).stackCentered(2, value,
+  return primitives.exponentialBox(covariant, widths).stackCentered(2, value,
       spacing = distances.epsilon )
 
-def renderNot(notObject):
-  value = render(notObject.value())
-  return primitives.notSymbol(value.widths()[:2]).below(value.shift(distances.notShiftOffset))
+def renderAndUnit(x, covariant = True):
+  return primitives.trueDivider(distances.min_unit_divider_length)
 
-def renderVariable(variable):
-  return gl.newTextualGLStack(colors.variableColor, repr(variable))
+def renderOrUnit(x, covariant = True):
+  return primitives.falseDivider(distances.min_unit_divider_length)
 
-def renderHolds(holds):
-  holding = renderVariable(holds.holding())
-  held = renderDatum(holds.held())
-  d = 1
-  between = primitives.holdsStack(max(holding.widths()[d], held.widths()[d]))
-  return stackAll(d, [holding, between, held])
+def renderStringVariable(x, covariant = True):
+  return gl.newTextualGLStack(colors.variableColor, repr(x))
+
+def renderProject(x, covariant = True):
+  # TODO: Reconsider this choice for how to render.
+  return _renderDot(render(x.value, covariant), primitives.projectDot,
+      renderSymbol(x.symbol))
+
+def renderCoinject(x, covariant = True):
+  # TODO: Reconsider this choice for how to render.
+  return _renderDot(render(x.value, covariant), primitives.injectDot,
+      renderSymbol(x.symbol))
+
+def renderInject(x, covariant = True):
+  # TODO: Reconsider this choice for how to render.
+  value = render(x, covariant)
+  symbol = renderSymbol(x.symbol)
+  m = max(value.widths()[0], symbol.widths()[0])
+  return renderSymbol(x.symbol).stackCentered(1,
+      symbol,
+      spacing = distances.inject_spacing).stackCentered(1,
+          value,
+          spacing = distances.inject_spacing)
+
+def _renderDot(left, dot, symbol):
+  return left.stack(0,
+      dot, spacing = distances.before_dot_spacing).stack(0,
+      symbol, spacing = distances.after_dot_spacing)
 
 def renderSymbol(symbol):
+  if symbol.__class__ == StringSymbol:
+    return renderStringSymbol(symbol)
+  else:
+    raise Exception("Unrecognized symbol %s"%(symbol,))
+
+def renderStringSymbol(symbol):
   return gl.newTextualGLStack(colors.symbolColor, repr(symbol))
 
-def renderDatum(d):
-  if d.__class__ == datum.Variable:
-    return renderDatumVariable(d)
-  elif d.__class__ == datum.Record:
-    return renderDatumRecord(d)
-  elif d.__class__ == datum.Case:
-    return renderDatumCase(d)
-  elif d.__class__ == datum.Projection:
-    return renderDatumProjection(d)
-  else:
-    assert(d.__class__ == datum.Coinjection)
-    return renderDatumCoinjection(d)
-
-
-def renderDatumVariable(d):
-  return renderVariable(d.variable())
-
-def renderDatumRecord(d):
-  res = primitives.empty()
-  for (symbol, d) in d.pairs():
-    res = res.stack(0, renderSymbol(symbol).stackCentered(1, renderDatum(d)))
-  return res
-
-def renderDatumCase(d):
-  return renderSymbol(d.symbol()).stackCentered(1, renderDatum(d.value()))
-
-def renderDatumProjection(d):
-  return renderDatum(d.value()).stack(0,
-      primitives.projectionDot()).stack(0,
-          renderSymbol(d.symbol()))
-
-def renderDatumCoinjection(d):
-  return renderDatum(d.value()).stack(0,
-      primitives.coinjectionDot()).stack(0,
-          renderSymbol(d.symbol()))

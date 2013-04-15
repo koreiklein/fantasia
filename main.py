@@ -1,12 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-#from examples import natural as natural_example
-#from examples.easy_induction import arrow #, ending_claim as claim
-#from examples.two import arrow as natural_arrow
-#from extraction.python.examples import easy_induction, silly
-#from ui.run.glimmediate import slideshow
 from ui.run.glimmediate import static
-from lib import esmerelda_natural as esmerelda_natural
+from lib import natural
 
 import profile
 
@@ -24,7 +19,7 @@ setrecursionlimit(500000)
 #x.extend([t.tgt() for t in arrow.compress().values()])
 #slideshow.run(x)
 
-static.run(esmerelda_natural.eqIdentity)
+static.run(natural.eqIdentity)
 
 #static.run(natural.preludeFormula)
 #x = [t.src() for t in natural_arrow.values()]
