@@ -5,6 +5,10 @@ from calculus import symbol
 from sets import Set
 
 class Object:
+  # Always returns a "basic" object.
+  def translate(self):
+    raise Exception("Abstract superclass.")
+
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
@@ -37,6 +41,9 @@ class Variable(Object):
     global n_variables
     self._id = n_variables
     n_variables += 1
+
+  def translate(self):
+    return self
 
   def updateVariables(self):
     return Variable()
@@ -87,6 +94,10 @@ class Exists(Object):
   def __ne__(self, other):
     return not(self == other)
 
+  def translate(self):
+    return Exists(variables = [variable.translate() for variable in self.variables],
+        value = self.value.translate())
+
   def updateVariables(self):
     variables = [variable.updateVariables() for variable in self.variables]
     return self.__class__(variables = variables,
@@ -124,6 +135,10 @@ class Conjunction(Object):
   def __ne__(self, other):
     return not(self == other)
 
+  def translate(self):
+    return self.__class__(left_symbol = self.left_symbol, left = self.left.translate(),
+                          right_symbol = self.right_symbol, right = self.right.translate())
+
   def updateVariables(self):
     return self.__class__(left_symbol = self.left_symbol,
         right_symbol = right_symbol,
@@ -151,6 +166,9 @@ class Intersect(Object):
 
   def __ne__(self, other):
     return not(self == other)
+
+  def translate(self):
+    return Intersect(left = self.left.translate(), right = self.right.translate())
 
   def updateVariables(self):
     return self.__class__(left = self.left.updateVariables(),
@@ -181,6 +199,9 @@ class Not(Object):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
+
+  def translate(self):
+    return Not(value = self.value.translate(), rendered = self.rendered)
 
   def forwardOnNot(self, arrow):
     assert(arrow.tgt == self.value)
@@ -222,6 +243,9 @@ class Always(Object):
   def __ne__(self, other):
     return not(self == other)
 
+  def translate(self):
+    return Always(value = self.value.translate())
+
   def updateVariables(self):
     return self.__class__(value = self.value.updateVariables())
 
@@ -236,6 +260,9 @@ class Unit(Object):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
+
+  def translate(self):
+    return self
 
   def updateVariables(self):
     return self
@@ -272,6 +299,9 @@ class Destructor(Object):
   def validate(self):
     return
 
+  def translate(self):
+    return self.__class__(value = self.value.translate(), symbol = self.symbol)
+
   def __eq__(self, other):
     return (self.__class__ == other.__class__
         and self.symbol == other.symbol
@@ -305,6 +335,9 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.validate()
+
+  def translate(self):
+    return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
 
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
@@ -343,6 +376,9 @@ class InverseArrow(Isomorphism):
   def invert(self):
     return self.arrow
 
+  def translate(self):
+    return InverseArrow(arrow = self.arrow.translate())
+
 # A <--> A
 class Id(Arrow):
   def validate(self):
@@ -356,6 +392,9 @@ class Composite(Arrow):
     self.src = left.src
     self.tgt = right.tgt
     self.validate()
+
+  def translate(self):
+    return Composite(left = self.left.translate(), right = self.right.translate())
 
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
@@ -422,10 +461,15 @@ class Apply(Arrow):
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
-  pass
+  def translate(self):
+    raise Exception("Abstract superclass.")
 
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):
     self.arrow = arrow
     self.src = Not(arrow.tgt)
     self.tgt = Not(arrow.src)
+
+  def translate(self):
+    return OnNot(arrow = self.arrow.translate())
+

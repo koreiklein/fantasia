@@ -7,6 +7,9 @@ class Library:
     self.claims = claims
     self.formula = constructors.And(claims)
 
+  def translate(self):
+    return Library(claims = [claim.translate() for claim in self.claims])
+
   def union(self, other):
     assert(isinstance(other, Library))
     claims = []
@@ -26,6 +29,10 @@ class Proof:
       assert(arrow.src == library.formula)
       self.arrow = arrow
     self.tgt = self.arrow.tgt
+
+  def translate(self):
+    return Proof(library = self.library.translate(),
+        arrow = self.arrow.translate())
 
   def forwardFollow(self, f):
     return Proof(library = self.library, arrow = self.arrow.forwardFollow(f))
