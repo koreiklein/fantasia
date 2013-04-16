@@ -10,6 +10,10 @@ rightSymbol = symbol.StringSymbol('right')
 relationSymbol = symbol.StringSymbol('relation')
 domainSymbol = symbol.StringSymbol('domain')
 
+reflexiveSymbol = symbol.StringSymbol('reflexive')
+symmetricSymbol = symbol.StringSymbol('symmetric')
+transitiveSymbol = symbol.StringSymbol('transitive')
+
 def AreEquivalence(r, d):
   return constructors.Intersect(
       left = constructors.SymbolAnd([(relationSymbol, r), (domainSymbol, d)]),
@@ -53,7 +57,11 @@ def transitive(e):
 
 A = common_vars.A()
 claim = constructors.Forall([A],
-    constructors.Iff(left = constructors.And([reflexive(A), symmetric(A), transitive(A)]),
+    constructors.Iff(
+      left = constructors.SymbolAnd(
+        [ (reflexiveSymbol, reflexive(A))
+        , (symmetricSymbol, symmetric(A))
+        , (transitiveSymbol, transitive(A))]),
       right = constructors.Intersect(left = A, right = equivalence)))
 
 lib = library.Library([claim])
