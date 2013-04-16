@@ -431,7 +431,8 @@ class Apply(Arrow):
   def validate(self):
     assert(self.tgt.__class__ == Not)
     assert(self.src.__class__ == And)
-    assert(self.src.right.__class__ == And)
+    assert(self.src.right.__class__ == Not)
+    assert(self.src.right.value.__class__ == And)
     assert(self.src.left == self.src.right.value.left)
     assert(self.src.right.value.right == self.tgt.value)
 
