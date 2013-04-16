@@ -14,6 +14,14 @@ class Object:
   def freeVariables(self):
     raise Exception("Abstract superclass.")
 
+  def forwardDoubleDual(self):
+    return DoubleDual(src = self, tgt = Not(Not(self)))
+
+  def forwardAssume(self, a):
+    return self.forwardDoubleDual().forwardFollow(lambda x:
+        x.forwardOnNotFollow(lambda x:
+          x.backwardApply(a)))
+
 n_variables = 0
 class Variable(Object):
   def __init__(self):
@@ -169,7 +177,10 @@ class Intersect(Object):
     return self.left.freeVariables().union(self.right.freeVariables())
 
 class And(Conjunction):
-  pass
+  def forwardApply(self):
+    assert(self.right.__class__ == Not)
+    assert(self.right.value.__class__ == And)
+    return Apply(src = self, tgt = Not(self.right.value.right))
 
 class Or(Conjunction):
   pass
@@ -183,6 +194,26 @@ class Not(Object):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
+
+  def forwardOnNot(self, arrow):
+    assert(arrow.tgt == self.value)
+    return OnNot(arrow)
+  def forwardOnNotFollow(self, f):
+    return self.forwardOnNot(f(self.value))
+
+  def backwardOnNot(self, arrow):
+    assert(arrow.src == self.value)
+    return OnNot(arrow)
+  def backwardOnNotFollow(self, f):
+    return self.backwardOnNot(f(self.value))
+
+  def backwardDoubleDual(self):
+    assert(self.value.__class__ == Not)
+    return self.value.value.forwardDoubleDual()
+
+  def backwardApply(self, a):
+    return Apply(src = And(left = a, right = Not(And(left = a, right = self.value))),
+                 tgt = self)
 
   def updateVariables(self):
     return self.__class__(value = self.value.updateVariables(),
@@ -298,6 +329,14 @@ class Arrow:
   def __ne__(self, other):
     return not(self == other)
 
+  def forwardFollow(self, other):
+    assert(isinstance(other, Arrow))
+    return Composite(left = self, right = other)
+
+  def backwardFollow(self, other):
+    assert(isinstance(other, Arrow))
+    return Composite(right = self, left = other)
+
 class Isomorphism(Arrow):
   def invert(self):
     return InverseArrow(self)
@@ -310,6 +349,38 @@ class InverseArrow(Isomorphism):
 
   def invert(self):
     return self.arrow
+
+# A <--> A
+class Id(Arrow):
+  def validate(self):
+    assert(self.src == self.tgt)
+
+# A --> B --> C
+class Composite(Arrow):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+    self.src = left.src
+    self.tgt = right.tgt
+    self.validate()
+
+  # Throw an exception if self is not valid.
+  # Subclasses should override to implement checking.
+  def validate(self):
+    assert(self.left.tgt == self.right.src)
+
+  # May throw an exception.
+  def invert(self):
+    return Composite(left = self.right.invert(), right = self.left.invert())
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.left == other.left
+        and self.right == other.right)
+
+  def __ne__(self, other):
+    return not(self == other)
+
 
 class Commute(Isomorphism):
   def validate(self):
@@ -339,3 +410,28 @@ class UnitIdentity(Isomorphism):
     assert((self.tgt.right == unit and self.tgt.left == self.src)
         or (self.tgt.left == unit and self.tgt.right == self.src))
 
+# A <--> ~(~A)
+class DoubleDual(Isomorphism):
+  def validate(self):
+    assert(self.tgt.__class__ == Not)
+    assert(self.tgt.value.__class__ == Not)
+    assert(self.src == self.tgt.value.value)
+
+# A | ~(A | B) --> ~B
+class Apply(Arrow):
+  def validate(self):
+    assert(self.tgt.__class__ == Not)
+    assert(self.src.__class__ == And)
+    assert(self.src.right.__class__ == And)
+    assert(self.src.left == self.src.right.value.left)
+    assert(self.src.right.value.right == self.tgt.value)
+
+# For arrow built from the application of functors to other arrows.
+class FunctorialArrow(Arrow):
+  pass
+
+class OnNot(FunctorialArrow):
+  def __init__(self, arrow):
+    self.arrow = arrow
+    self.src = Not(arrow.tgt)
+    self.tgt = Not(arrow.src)
