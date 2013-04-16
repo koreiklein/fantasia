@@ -18,14 +18,14 @@ class Library:
     return Proof(formula = self.formula)
 
 class Proof:
-  def __init__(self, formula, arrow = None):
-    self.formula = formula
+  def __init__(self, library, arrow = None):
+    self.library = library
     if arrow is None:
-      self.arrow = formula.identity()
+      self.arrow = library.formula.identity()
     else:
-      assert(arrow.src == formula)
+      assert(arrow.src == library.formula)
       self.arrow = arrow
 
   def forwardFollow(self, f):
-    return Proof(formula = self.formula, arrow = self.arrow.forwardFollow(f))
+    return Proof(library = self.library, arrow = self.arrow.forwardFollow(f))
 
