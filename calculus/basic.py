@@ -22,6 +22,9 @@ class Object:
         x.forwardOnNotFollow(lambda x:
           x.backwardApply(a)))
 
+  def forwardAndTrue(self):
+    return UnitIdentity(src = self, tgt = And(left = true, right = self))
+
   def identity(self):
     return Id(src = self, tgt = self)
 
@@ -332,13 +335,16 @@ class Arrow:
   def __ne__(self, other):
     return not(self == other)
 
-  def forwardFollow(self, other):
+  def forwardCompose(self, other):
     assert(isinstance(other, Arrow))
     return Composite(left = self, right = other)
-
-  def backwardFollow(self, other):
+  def backwardCompose(self, other):
     assert(isinstance(other, Arrow))
     return Composite(right = self, left = other)
+  def forwardFollow(self, f):
+    return self.forwardCompose(f(self.tgt))
+  def backwardFollow(self, f):
+    return self.backwardCompose(f(self.src))
 
 class Isomorphism(Arrow):
   def invert(self):
@@ -409,7 +415,7 @@ class Associate(Isomorphism):
 # A % 1 <-- A --> 1 % A
 class UnitIdentity(Isomorphism):
   def validate(self):
-    unit = unit_for_conjunction(self.tgt)
+    unit = unit_for_conjunction(self.tgt.__class__)
     assert((self.tgt.right == unit and self.tgt.left == self.src)
         or (self.tgt.left == unit and self.tgt.right == self.src))
 

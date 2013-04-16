@@ -6,3 +6,5 @@ from lib import natural, library
 # A proof that forall n : N . S (S n) > n
 
 proof = natural.lib.beginProof()
+proof = proof.forwardFollow(lambda x:
+    x.forwardAndTrue())
