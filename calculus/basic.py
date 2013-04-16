@@ -22,6 +22,9 @@ class Object:
         x.forwardOnNotFollow(lambda x:
           x.backwardApply(a)))
 
+  def identity(self):
+    return Id(src = self, tgt = self)
+
 n_variables = 0
 class Variable(Object):
   def __init__(self):

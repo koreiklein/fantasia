@@ -5,7 +5,7 @@ from calculus import basic
 class Library:
   def __init__(self, claims):
     self.claims = claims
-    self.formula = basic.MultiAnd(self.claims)
+    self.formula = basic.MultiAnd([(basic.empty_symbol, claim) for claim in claims])
 
   def union(self, other):
     assert(isinstance(other, Library))
@@ -15,7 +15,7 @@ class Library:
     return Library(claims)
 
   def beginProof(self):
-    return Proof(formula = self.formula)
+    return Proof(library = self)
 
 class Proof:
   def __init__(self, library, arrow = None):
@@ -25,6 +25,7 @@ class Proof:
     else:
       assert(arrow.src == library.formula)
       self.arrow = arrow
+    self.tgt = self.arrow.tgt
 
   def forwardFollow(self, f):
     return Proof(library = self.library, arrow = self.arrow.forwardFollow(f))

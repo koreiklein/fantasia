@@ -2,6 +2,7 @@
 
 from ui.run.glimmediate import static
 from lib import natural
+from examples import SS
 
 import profile
 
@@ -19,7 +20,7 @@ setrecursionlimit(500000)
 #x.extend([t.tgt() for t in arrow.compress().values()])
 #slideshow.run(x)
 
-static.run(natural.eqIdentity)
+static.run(SS.proof)
 
 #static.run(natural.preludeFormula)
 #x = [t.src() for t in natural_arrow.values()]

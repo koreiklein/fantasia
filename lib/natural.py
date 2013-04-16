@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import symbol, basic
-from lib import common_vars
+from lib import library, common_vars
 
 natural = basic.StringVariable('N')
 
@@ -41,3 +41,4 @@ eqIdentity = basic.Forall([n],
       predicate = Natural(n),
       consequent = Equal(n, n)))
 
+lib = library.Library([eqIdentity])

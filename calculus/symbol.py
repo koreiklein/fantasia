@@ -14,7 +14,7 @@ class Symbol:
     self._id = n_symbols
     n_symbols += 1
 
-  def __eq__(self):
+  def __eq__(self, other):
     return self.__class__ == other.__class__ and self._id == other._id
   def __ne__(self):
     return not(self == other)

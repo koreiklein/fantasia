@@ -23,7 +23,7 @@ def display():
   startingStack.shift([0, 0, -10])._backend.render()
   glFlush()
 
-def run(claim):
+def run(proof):
   global startingStack
   glutInit()
   glutInitWindowSize(w, h)
@@ -38,5 +38,5 @@ def run(claim):
   glLoadIdentity()
   glOrtho(0.0, w + 0.0, 0.0, h + 0.0, -1.0, 1.0)
   glScale(scale, scale, scale)
-  startingStack = render(claim)
+  startingStack = render(proof.tgt)
   glutMainLoop()
