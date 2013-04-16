@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from ui.run.glimmediate import static
-from lib import natural
+from lib import natural, equivalence
 from examples import SS
 
 import profile
@@ -20,7 +20,8 @@ setrecursionlimit(500000)
 #x.extend([t.tgt() for t in arrow.compress().values()])
 #slideshow.run(x)
 
-static.run(SS.proof)
+#static.run(SS.proof)
+static.run(equivalence.lib.beginProof())
 
 #static.run(natural.preludeFormula)
 #x = [t.src() for t in natural_arrow.values()]

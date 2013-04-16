@@ -1,43 +1,43 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, basic
+from calculus import symbol, constructors
 from lib import library, common_vars
 
-natural = basic.StringVariable('N')
+natural = constructors.StringVariable('N')
 
-natural_less = basic.StringVariable('<')
-smaller = basic.StringVariable('smaller')
-greater = basic.StringVariable('greater')
+natural_less = constructors.StringVariable('<')
+smaller = constructors.StringVariable('smaller')
+greater = constructors.StringVariable('greater')
 
-natural_successor = basic.StringVariable('S')
-before = basic.StringVariable('before')
-after = basic.StringVariable('after')
+natural_successor = constructors.StringVariable('S')
+before = constructors.StringVariable('before')
+after = constructors.StringVariable('after')
 
-natural_equal = basic.StringVariable('=')
+natural_equal = constructors.StringVariable('=')
 leftSymbol = symbol.StringSymbol('left')
 rightSymbol = symbol.StringSymbol('right')
 
 def Natural(n):
-  return basic.Intersect(left = n, right = natural)
+  return constructors.Intersect(left = n, right = natural)
 
 def Equal(a, b):
-  return basic.Intersect(
-      left = basic.MultiAnd([(leftSymbol, a), (rightSymbol, b)]),
+  return constructors.Intersect(
+      left = constructors.SymbolAnd([(leftSymbol, a), (rightSymbol, b)]),
       right = natural_equal)
 
 def Successor(a, b):
-  return basic.Intersect(
-      left = basic.MultiAnd([(before, a), (after, b)]),
+  return constructors.Intersect(
+      left = constructors.SymbolAnd([(before, a), (after, b)]),
       right = natural_successor)
 
 def Less(a, b):
-  return basic.Intersect(
-      left = basic.MultiAnd([(smaller, a), (greater, b)]),
+  return constructors.Intersect(
+      left = constructors.SymbolAnd([(smaller, a), (greater, b)]),
       right = natural_less)
 
 n = common_vars.n()
-eqIdentity = basic.Forall([n],
-    basic.Implies(
+eqIdentity = constructors.Forall([n],
+    constructors.Implies(
       predicate = Natural(n),
       consequent = Equal(n, n)))
 

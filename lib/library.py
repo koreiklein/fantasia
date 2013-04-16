@@ -1,11 +1,11 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
+from calculus import constructors
 
 class Library:
   def __init__(self, claims):
     self.claims = claims
-    self.formula = basic.MultiAnd([(basic.empty_symbol, claim) for claim in claims])
+    self.formula = constructors.And(claims)
 
   def union(self, other):
     assert(isinstance(other, Library))

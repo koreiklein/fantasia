@@ -30,5 +30,5 @@ class StringSymbol(Symbol):
     self._string = s
 
   def __repr__(self):
-    return self._s
+    return self._string
 

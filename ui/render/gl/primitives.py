@@ -101,7 +101,7 @@ def falseDivider(length):
   return divider(colors.falseColor, 1, length, distances.unit_width,
       distances.capLengthOfDividerByLength(length))
 
-projecDot = solidSquare(colors.projectDotColor,
+projectDot = solidSquare(colors.projectDotColor,
     [distances.dotWidth, distances.dotWidth, 0.0])
 injectDot = solidSquare(colors.injectDotColor,
     [distances.dotWidth, distances.dotWidth, 0.0])

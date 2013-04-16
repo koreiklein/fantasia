@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.basic import StringVariable
+from calculus.constructors import StringVariable
 
 p = lambda: StringVariable('p')
 n = lambda: StringVariable('n')
@@ -11,9 +11,18 @@ t = lambda: StringVariable('t')
 r = lambda: StringVariable('r')
 s = lambda: StringVariable('s')
 l = lambda: StringVariable('l')
+
 a = lambda: StringVariable('a')
 b = lambda: StringVariable('b')
 c = lambda: StringVariable('c')
+
+A = lambda: StringVariable('A')
+B = lambda: StringVariable('A')
+C = lambda: StringVariable('A')
+
+x = lambda: StringVariable('x')
+y = lambda: StringVariable('y')
+z = lambda: StringVariable('z')
 
 R = lambda: StringVariable('R')
 

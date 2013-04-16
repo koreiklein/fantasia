@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
+from calculus import basic, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 
@@ -129,7 +129,7 @@ def renderExists(quantifier, covariant = True):
       spacing = distances.quantifier_after_divider_spacing)
 
 def renderAlways(x, covariant = True):
-  value = render(x.value(), covariant)
+  value = render(x.value, covariant)
   widths = [x + 2 * distances.exponential_border_width for x in value.widths()]
   widths[2] = 0.0
   return primitives.exponentialBox(covariant, widths).stackCentered(2, value,
@@ -157,25 +157,25 @@ def renderCoinject(x, covariant = True):
 def renderInject(x, covariant = True):
   # TODO: Reconsider this choice for how to render.
   value = render(x, covariant)
-  symbol = renderSymbol(x.symbol)
-  m = max(value.widths()[0], symbol.widths()[0])
+  s = renderSymbol(x.symbol)
+  m = max(value.widths()[0], s.widths()[0])
   return renderSymbol(x.symbol).stackCentered(1,
-      symbol,
+      s,
       spacing = distances.inject_spacing).stackCentered(1,
           value,
           spacing = distances.inject_spacing)
 
-def _renderDot(left, dot, symbol):
+def _renderDot(left, dot, s):
   return left.stack(0,
       dot, spacing = distances.before_dot_spacing).stack(0,
-      symbol, spacing = distances.after_dot_spacing)
+      s, spacing = distances.after_dot_spacing)
 
-def renderSymbol(symbol):
-  if symbol.__class__ == StringSymbol:
-    return renderStringSymbol(symbol)
+def renderSymbol(s):
+  if s.__class__ == symbol.StringSymbol:
+    return renderStringSymbol(s)
   else:
-    raise Exception("Unrecognized symbol %s"%(symbol,))
+    raise Exception("Unrecognized symbol %s"%(s,))
 
-def renderStringSymbol(symbol):
-  return gl.newTextualGLStack(colors.symbolColor, repr(symbol))
+def renderStringSymbol(s):
+  return gl.newTextualGLStack(colors.symbolColor, repr(s))
 

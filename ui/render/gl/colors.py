@@ -5,14 +5,15 @@ from OpenGL.GL import *
 from ui.stack.color import Color
 
 variableColor = Color(r = 0.9, g = 0.4, b = 0.35)
+symbolColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
 andColor = Color(r = 0.0, g = 0.0, b = 1.0)
 orColor = Color(r = 0.68, g = 0.09, b = 0.63)
 
-intersectColor = Color(r = 0.0, g = 1.0, b = 1.0)
+intersectColor = Color(r = 1.0, g = 1.0, b = 1.0)
 
-quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.5)
-notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.8)
+quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.3)
+notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.3)
 
 alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 0.2)
 maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.8)

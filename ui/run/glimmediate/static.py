@@ -20,7 +20,7 @@ scale = 0.10
 def display():
   global startingStack
   glClear(GL_COLOR_BUFFER_BIT)
-  startingStack.shift([0, 0, -10])._backend.render()
+  startingStack.shift([0, 0, 0])._backend.render()
   glFlush()
 
 def run(proof):

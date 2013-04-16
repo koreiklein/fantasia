@@ -139,25 +139,6 @@ class Conjunction(Object):
   def freeVariables(self):
     return self.left.freeVariables().union(self.right.freeVariables())
 
-# Multiple conjunction will be represented (a | (b | (c | 1)))
-def multiple_conjunction(conjunction, symbol_value_pairs):
-  result = unit_for_conjunction(conjunction)
-  for (symbol, value) in symbol_value_pairs[::-1]:
-    result = conjunction(left_symbol = symbol, left = value, right = result)
-  return result
-
-def MultiAnd(symbol_value_pairs):
-  return multiple_conjunction(And, symbol_value_pairs)
-def MultiOr(symbol_value_pairs):
-  return multiple_conjunction(Or, symbol_value_pairs)
-
-def Implies(predicate, consequent):
-  return Not(MultiAnd(
-    [(empty_symbol, predicate), (empty_symbol, Not(consequent))]))
-
-def Forall(variables, value):
-  return Not(Exists(variables = variables, value = Not(value)))
-
 class Intersect(Object):
   def __init__(self, left, right):
     self.left = left
@@ -287,6 +268,9 @@ class Destructor(Object):
     self.value = value
     self.symbol = symbol
     self.validate()
+
+  def validate(self):
+    return
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
