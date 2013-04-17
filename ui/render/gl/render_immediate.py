@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, symbol
+from calculus import basic, enriched, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 
@@ -12,7 +12,9 @@ def render(x, covariant = True):
   elif x.__class__ == basic.Intersect:
     return renderIntersect(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
-    return renderExists(x, covariant = covariant)
+    return renderBasicExists(x, covariant = covariant)
+  elif x.__class__ == enriched.Exists:
+    return renderEnrichedExists(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     return renderNot(x, covariant = covariant)
   elif x.__class__ == basic.Always:
@@ -108,18 +110,17 @@ def renderNotWithSymbol(value):
   return primitives.notSymbol(value.widths()[:2]).below(
       value.shift(distances.notShiftOffset))
 
-def renderExists(quantifier, covariant = True):
+def renderExists(valueStack, variablesList, covariant):
   quantifierStackingDimension = _dimension_for_variance(covariant)
   variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
-  if len(quantifier.variables) == 0:
+  if len(variablesList) == 0:
     variablesStack = gl.nullStack
   else:
-    variablesStack = render(quantifier.variables[0])
-    for variable in quantifier.variables[1:]:
+    variablesStack = variablesList[0]
+    for variable in variablesList[1:]:
       variablesStack = variablesStack.stack(variableStackingDimension,
-          render(variable),
+          variable,
           spacing = distances.quantifier_variables_spacing)
-  valueStack = render(quantifier.value, covariant)
   divider = primitives.quantifierDivider(covariant,
       max(valueStack.widths()[variableStackingDimension],
         variablesStack.widths()[variableStackingDimension]))
@@ -127,6 +128,29 @@ def renderExists(quantifier, covariant = True):
       spacing = distances.quantifier_before_divider_spacing).stackCentered(
       quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
+
+def renderBasicExists(quantifier, covariant = True):
+  return renderExists(valueStack = render(quantifier.value, covariant),
+      variablesList = [render(variable, covariant) for variable in quantifier.variables],
+      covariant = covariant)
+
+def renderEnrichedExists(quantifier, covariant = True):
+  return renderExists(valueStack = render(quantifier.value, covariant),
+      variablesList = [renderVariableBinding(binding, covariant) for binding in quantifier.bindings],
+      covariant = covariant)
+
+def renderVariableBinding(binding, covariant = True):
+  dimension = _dimension_for_variance(covariant)
+  if binding.unique:
+    c = '!'
+  else:
+    c = ':'
+  middleStack = gl.newTextualGLStack(colors.variableColor, c)
+  return renderVariable(binding.variable, covariant).stack(dimension,
+      middleStack,
+      spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
+          render(binding.equivalence, covariant),
+          spacing = distances.enriched_variable_binding_spacing)
 
 def renderAlways(x, covariant = True):
   value = render(x.value, covariant)

@@ -10,7 +10,11 @@ class VariableBinidng:
   # variable: a basic.Variable
   # equivalence: an Object whose representation is an equivalence in the sense of lib.equivalence
   # uinque: a boolean indicating whether or not this variable is quantified uniquely.
-  def __init__(self, variable, equivalence, unique):
+  def __init__(self, variable, equivalence, unique, alternate_variable = None):
+    if alternate_variable is None:
+      self.alternate_variable = common_vars.x()
+    else:
+      self.alternate_variable = alternate_variable
     self.variable = variable
     self.equivalence = equivalence
     self.unique = unique
@@ -47,19 +51,15 @@ class Enriched(basic.Object):
 class Exists(Enriched):
   # bindings: a list of VariableBinidng
   # value: an Object
-  def __init__(self, bindings, value, alternate_variable = None):
+  def __init__(self, bindings, value):
     self.bindings = bindings
     self.value = value
-    if alternate_variable is None:
-      self.alternate_variable = common_vars.x()
-    else:
-      self.alternate_variable = alternate_variable
 
   # Always returns a "basic" object.
   def translate(self):
-    x = self.alternate_variable
     result = self.value.translate()
-    for binding in self.bindings:
+    for binding in self.bindings[::-1]:
+      x = binding.alternate_variable
       claims = []
       claims.append(constructors.Intersect(binding.variable, binding.domain()))
       claims.append(result)

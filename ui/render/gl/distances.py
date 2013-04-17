@@ -14,6 +14,7 @@ notShiftThickness = notThickness + 11.0
 notShiftOffset = [notShiftThickness, notShiftThickness, 0.0]
 
 quantifier_variables_spacing = 80.0
+enriched_variable_binding_spacing = 80.0
 quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
 
