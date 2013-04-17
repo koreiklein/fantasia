@@ -7,8 +7,8 @@ equivalence = constructors.StringVariable('equivalence')
 leftSymbol = symbol.StringSymbol('left')
 rightSymbol = symbol.StringSymbol('right')
 
-relationSymbol = symbol.StringSymbol('relation')
-domainSymbol = symbol.StringSymbol('domain')
+relationSymbol = symbol.StringSymbol('=')
+domainSymbol = symbol.StringSymbol('\'')
 
 reflexiveSymbol = symbol.StringSymbol('reflexive')
 symmetricSymbol = symbol.StringSymbol('symmetric')
