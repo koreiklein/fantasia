@@ -570,6 +570,7 @@ class OnAlways(FunctorialArrow):
 class OnBody(FunctorialArrow):
   def __init__(self, variables, arrow):
     self.arrow = arrow
+    self.variables = variables
     self.src = Exists(variables, arrow.src)
     self.tgt = Exists(variables, arrow.tgt)
 
