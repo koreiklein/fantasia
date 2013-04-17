@@ -101,6 +101,17 @@ class Exists(Object):
     return Exists(variables = [variable.translate() for variable in self.variables],
         value = self.value.translate())
 
+  def forwardOnBody(self, arrow):
+    assert(arrow.src == self.value)
+    return OnBody(variables = self.variables, arrow = arrow)
+  def backwardOnBody(self, arrow):
+    assert(arrow.tgt == self.value)
+    return OnBody(variables = self.variables, arrow = arrow)
+  def forwardOnBodyFollow(self, f):
+    return self.forwardOnBody(f(self.value))
+  def backwardOnBodyFollow(self, f):
+    return self.backwardOnBody(f(self.value))
+
   def updateVariables(self):
     variables = [variable.updateVariables() for variable in self.variables]
     return self.__class__(variables = variables,
@@ -139,6 +150,38 @@ class Conjunction(Object):
   def translate(self):
     return self.__class__(left_symbol = self.left_symbol, left = self.left.translate(),
                           right_symbol = self.right_symbol, right = self.right.translate())
+
+  def forwardOnConjunction(self, leftArrow, rightArrow):
+    return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+        src = self,
+        tgt = self.__class__(left = leftArrow.tgt,
+                             right = rightArrow.tgt,
+                             left_symbol = self.left_symbol,
+                             right_symbol = self.right_symbol))
+  def backwardOnConjunction(self, leftArrow, rightArrow):
+    return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+        tgt = self,
+        src = self.__class__(left = leftArrow.src,
+                             right = rightArrow.src,
+                             left_symbol = self.left_symbol,
+                             right_symbol = self.right_symbol))
+  def forwardOnLeft(self, arrow):
+    return self.forwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
+  def forwardOnRight(self, arrow):
+    return self.forwardOnConjunction(rightArrow = arrow, leftArrow = self.left.identity())
+  def backwardOnLeft(self, arrow):
+    return self.backwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
+  def backwardOnRight(self, arrow):
+    return self.backwardOnConjunction(rightArrow = arrow, leftArrow = self.left.identity())
+
+  def forwardOnLeftFollow(self, f):
+    return self.forwardOnLeft(f(self.left))
+  def forwardOnRightFollow(self, f):
+    return self.forwardOnRight(f(self.right))
+  def backwardOnLeftFollow(self, f):
+    return self.backwardOnLeft(f(self.left))
+  def backwardOnRightFollow(self, f):
+    return self.backwardOnRight(f(self.right))
 
   def updateVariables(self):
     return self.__class__(left_symbol = self.left_symbol,
@@ -256,6 +299,17 @@ class Always(Object):
 
   def __repr__(self):
     return "!(%s)"%(self.value)
+
+  def forwardOnAlways(self, arrow):
+    assert(arrow.src == self.value)
+    return OnAlways(arrow)
+  def backwardOnAlways(self, arrow):
+    assert(arrow.tgt == self.value)
+    return OnAlways(arrow)
+  def forwardOnAlwaysFollow(self, f):
+    return self.forwardOnAlways(f(self.value))
+  def backwardOnAlwaysFollow(self, f):
+    return self.backwardOnAlways(f(self.value))
 
   def translate(self):
     return Always(value = self.value.translate())
@@ -484,6 +538,44 @@ class Apply(Arrow):
 class FunctorialArrow(Arrow):
   def translate(self):
     raise Exception("Abstract superclass.")
+
+class OnConjunction(FunctorialArrow):
+  def __init__(self, leftArrow, rightArrow, src, tgt):
+    assert(src.__class__ in [And, Or])
+    assert(src.__class__ == tgt.__class__)
+    assert(leftArrow.src == src.left)
+    assert(leftArrow.tgt == tgt.left)
+    assert(rightArrow.src == src.right)
+    assert(rightArrow.tgt == tgt.right)
+    self.leftArrow = leftArrow
+    self.rightArrow = rightArrow
+    self.src = src
+    self.tgt = tgt
+
+  def translate(self):
+    return OnConjunction(leftArrow = self.leftArrow.translate(),
+        rightArrow = self.rightArrow.translate(),
+        src = self.src.translate(),
+        tgt = self.tgt.translate())
+
+class OnAlways(FunctorialArrow):
+  def __init__(self, arrow):
+    self.arrow = arrow
+    self.src = Always(arrow.src)
+    self.tgt = Always(arrow.tgt)
+
+  def translate(self):
+    return OnAlways(self.arrow.translate())
+
+class OnBody(FunctorialArrow):
+  def __init__(self, variables, arrow):
+    self.arrow = arrow
+    self.src = Exists(variables, arrow.src)
+    self.tgt = Exists(variables, arrow.tgt)
+
+  def translate(self):
+    return OnBody([variable.translate() for variable in self.variables],
+        self.arrow.translate())
 
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):

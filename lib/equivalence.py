@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, constructors
+from calculus import symbol, basicConstructors as constructors
 from lib import library, common_vars
 
 equivalence = constructors.StringVariable('equivalence')

@@ -1,12 +1,12 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import constructors, basic
+from calculus import basic, basicConstructors as constructors
 from lib.equivalence import relationSymbol, domainSymbol, leftSymbol, rightSymbol
 from lib import common_vars
 
 from sets import Set
 
-class VariableBinidng:
+class VariableBinding:
   # variable: a basic.Variable
   # equivalence: an Object whose representation is an equivalence in the sense of lib.equivalence
   # uinque: a boolean indicating whether or not this variable is quantified uniquely.
@@ -25,12 +25,12 @@ class VariableBinidng:
     return constructors.Project(value = self.equivalence, symbol = domainSymbol)
 
   def updateVariables(self):
-    return VariableBinidng(variable = self.variable.updateVariables(),
+    return VariableBinding(variable = self.variable.updateVariables(),
         equivalence = self.equivalence.updateVariables(),
         unique = self.unique)
 
   def substituteVariable(self, a, b):
-    return VariableBinidng(variable = self.variable.substituteVariable(a, b),
+    return VariableBinding(variable = self.variable.substituteVariable(a, b),
         equivalence = self.equivalence.substituteVariable(a, b),
         unique = self.unique)
 
@@ -49,7 +49,7 @@ class Enriched(basic.Object):
   pass
 
 class Exists(Enriched):
-  # bindings: a list of VariableBinidng
+  # bindings: a list of VariableBinding
   # value: an Object
   def __init__(self, bindings, value):
     self.bindings = bindings
@@ -98,7 +98,7 @@ def Function(domain_variable, domain, codomain_variable, codomain, unique, value
         predicate = constructors.Intersect(left = domain_variable,
           right = constructors.Project(domain, domainSymbol)),
         consequent = Exists(
-          bindings = [VariableBinidng(variable = codomain_variable,
+          bindings = [VariableBinding(variable = codomain_variable,
                                       equivalence = codomain,
                                       unique = unique)],
           value = value)))

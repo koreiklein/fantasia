@@ -140,7 +140,7 @@ def renderEnrichedExists(quantifier, covariant = True):
       covariant = covariant)
 
 def renderVariableBinding(binding, covariant = True):
-  dimension = _dimension_for_variance(covariant)
+  dimension = 0
   if binding.unique:
     c = '!'
   else:

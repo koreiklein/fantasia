@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import constructors
+from calculus import basicConstructors as constructors
 
 class Library:
   def __init__(self, claims, variables):
@@ -30,7 +30,10 @@ class Proof:
   def __init__(self, library, arrow = None):
     self.library = library
     if arrow is None:
-      self.arrow = library.formula.identity()
+      self.arrow = library.formula.forwardOnAlwaysFollow(lambda x:
+          x.forwardOnBodyFollow(lambda x:
+            x.forwardOnAlwaysFollow(lambda x:
+              x.forwardAndTrue())))
     else:
       assert(arrow.src == library.formula)
       self.arrow = arrow
@@ -41,5 +44,10 @@ class Proof:
         arrow = self.arrow.translate())
 
   def forwardFollow(self, f):
-    return Proof(library = self.library, arrow = self.arrow.forwardFollow(f))
+    return Proof(library = self.library, arrow = self.arrow.forwardFollow(lambda x:
+      x.forwardOnAlwaysFollow(lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardOnAlwaysFollow(lambda x:
+            x.forwardOnLeftFollow(lambda x:
+              f(x)))))))
 

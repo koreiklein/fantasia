@@ -1,63 +1,36 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
+from calculus import basic, enriched, basicConstructors as constructors
 
-# Multiple conjunction will be represented (a | (b | (c | 1)))
-def multiple_conjunction(conjunction, symbol_value_pairs):
-  result = basic.unit_for_conjunction(conjunction)
-  for (symbol, value) in symbol_value_pairs[::-1]:
-    result = conjunction(left_symbol = symbol, left = value, right = result)
-  return basic.Always(result)
+multiple_conjunction = constructors.multiple_conjunction
 
-def SymbolAnd(symbol_value_pairs):
-  return multiple_conjunction(basic.And, symbol_value_pairs)
-def SymbolOr(symbol_value_pairs):
-  return multiple_conjunction(basic.Or, symbol_value_pairs)
+SymbolAnd = constructors.SymbolAnd
+SymbolOr = constructors.SymbolOr
+And = constructors.And
+Or = constructors.Or
+Implies = constructors.Implies
+Iff = constructors.Iff
+Exists = constructors.Exists
+Forall = constructors.Forall
+Intersect = constructors.Intersect
+Not = constructors.Not
+Project = constructors.Project
+Inject = constructors.Inject
+Coinject = constructors.Coinject
+StringVariable = constructors.StringVariable
 
-def And(values):
-  if len(values) == 1:
-    return values[0]
-  else:
-    return SymbolAnd([(basic.empty_symbol, value) for value in values])
-def Or(values):
-  if len(values) == 1:
-    return values[0]
-  else:
-    return SymbolOr([(basic.empty_symbol, value) for value in values])
+true = constructors.true
+false = constructors.false
 
-# There are two reasonable ways to implement this function.
-def Implies(predicate, consequent):
-  return basic.Always(basic.Not(
-    value = basic.And(left = predicate,
-                      right = basic.Not(consequent))))
-  #return basic.Always(basic.Not(
-  #  value = basic.And(left = basic.Not(basic.Not(value = predicate, rendered = True)),
-  #                    right = basic.Not(consequent))))
+def EnrichedExists(bindings, value):
+  return basic.Always(enriched.Exists(bindings = bindings, value = value))
 
-def Iff(left, right):
-  return And([Implies(left, right), Implies(right, left)])
+def EnrichedForall(bindings, value):
+  return basic.Always(basic.Not(enriched.Exists(bindings = bindings, value = basic.Not(value))))
 
-def Exists(variables, value):
-  return basic.Always(basic.Exists(variables = variables, value = value))
-def Forall(variables, value):
-  return basic.Always(basic.Not(basic.Exists(variables = variables, value = basic.Not(value))))
-
-def Intersect(left, right):
-  return basic.Always(basic.Intersect(left = left, right = right))
-
-def Not(a):
-  return basic.Always(basic.Not(value = a, rendered = True))
-
-def Project(value, symbol):
-  return basic.Always(basic.Project(value = value, symbol = symbol))
-
-def Inject(value, symbol):
-  return basic.Always(basic.Inject(value = value, symbol = symbol))
-
-def Coinject(value, symbol):
-  return basic.Always(basic.Coinject(value = value, symbol = symbol))
-
-StringVariable = basic.StringVariable
-
-true = basic.Always(basic.true)
-false = basic.Always(basic.false)
+def VariableBinding(variable, equivalence, unique = False, alternate_variable = None):
+  return enriched.VariableBinding(
+    variable = variable,
+    equivalence = equivalence,
+    unique = unique,
+    alternate_variable = alternate_variable)
