@@ -1,29 +1,24 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, constructors
-from lib import library, common_vars
+from calculus import symbol, constructors, enriched
+from lib import equivalence, library, common_vars
 
 natural = constructors.StringVariable('N')
 
 natural_less = constructors.StringVariable('<')
-smaller = constructors.StringVariable('smaller')
-greater = constructors.StringVariable('greater')
+smaller = symbol.StringSymbol('smaller')
+greater = symbol.StringSymbol('greater')
 
 natural_successor = constructors.StringVariable('S')
-before = constructors.StringVariable('before')
-after = constructors.StringVariable('after')
+before = symbol.StringSymbol('before')
+after = symbol.StringSymbol('after')
 
-natural_equal = constructors.StringVariable('=')
 leftSymbol = symbol.StringSymbol('left')
 rightSymbol = symbol.StringSymbol('right')
 
 def Natural(n):
-  return constructors.Intersect(left = n, right = natural)
-
-def Equal(a, b):
-  return constructors.Intersect(
-      left = constructors.SymbolAnd([(leftSymbol, a), (rightSymbol, b)]),
-      right = natural_equal)
+  return constructors.Intersect(left = n,
+      right = constructors.Project(natural, equivalence.domainSymbol))
 
 def Successor(a, b):
   return constructors.Intersect(
@@ -35,10 +30,16 @@ def Less(a, b):
       left = constructors.SymbolAnd([(smaller, a), (greater, b)]),
       right = natural_less)
 
-n = common_vars.n()
-eqIdentity = constructors.Forall([n],
-    constructors.Implies(
-      predicate = Natural(n),
-      consequent = Equal(n, n)))
+isEquivalence = constructors.Intersect(
+    left = natural,
+    right = equivalence.equivalence)
 
-lib = library.Library([eqIdentity])
+a = common_vars.a()
+b = common_vars.b()
+existsUniqueSuccessor = enriched.Function(
+    domain_variable = a, domain = natural,
+    codomain_variable = b, codomain = natural, unique = True,
+    value = Successor(a, b))
+
+lib = library.Library(claims = [isEquivalence, existsUniqueSuccessor],
+    variables = [natural, natural_less, natural_successor])

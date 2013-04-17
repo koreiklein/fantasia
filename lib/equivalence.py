@@ -64,4 +64,4 @@ claim = constructors.Forall([A],
         , (transitiveSymbol, transitive(A))]),
       right = constructors.Intersect(left = A, right = equivalence)))
 
-lib = library.Library([claim])
+lib = library.Library(claims = [claim], variables = [equivalence])

@@ -15,7 +15,7 @@ startingStack = None
 w = 1340
 h = 680
 
-scale = 0.10
+scale = 0.15
 
 def display():
   global startingStack

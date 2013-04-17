@@ -94,6 +94,9 @@ class Exists(Object):
   def __ne__(self, other):
     return not(self == other)
 
+  def __repr__(self):
+    return "( Exists %s . %s )"%(self.variables, self.value)
+
   def translate(self):
     return Exists(variables = [variable.translate() for variable in self.variables],
         value = self.value.translate())
@@ -129,9 +132,7 @@ class Conjunction(Object):
   def __eq__(self, other):
     return (self.__class__ == other.__class__
         and self.left == other.left
-        and self.left_symbol == other.left_symbol
-        and self.right == other.right
-        and self.right_symbol == other.right_symbol)
+        and self.right == other.right)
   def __ne__(self, other):
     return not(self == other)
 
@@ -158,6 +159,9 @@ class Intersect(Object):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+
+  def __repr__(self):
+    return "(%s INTERSECT %s)"%(self.left, self.right)
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
@@ -187,8 +191,12 @@ class And(Conjunction):
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
 
+  def __repr__(self):
+    return "(%s AND %s)"%(self.left, self.right)
+
 class Or(Conjunction):
-  pass
+  def __repr__(self):
+    return "(%s OR %s)"%(self.left, self.right)
 
 class Not(Object):
   def __init__(self, value, rendered = False):
@@ -199,6 +207,9 @@ class Not(Object):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
+
+  def __repr__(self):
+    return "~(%s)"%(self.value,)
 
   def translate(self):
     return Not(value = self.value.translate(), rendered = self.rendered)
@@ -243,6 +254,9 @@ class Always(Object):
   def __ne__(self, other):
     return not(self == other)
 
+  def __repr__(self):
+    return "!(%s)"%(self.value)
+
   def translate(self):
     return Always(value = self.value.translate())
 
@@ -274,10 +288,12 @@ class Unit(Object):
     return Set()
 
 class AndUnit(Unit):
-  pass
+  def __repr__(self):
+    return "1"
 
 class OrUnit(Unit):
-  pass
+  def __repr__(self):
+    return "0"
 
 true = AndUnit()
 false = OrUnit()
@@ -322,13 +338,16 @@ class Destructor(Object):
     return self.value.freeVariables()
 
 class Project(Destructor):
-  pass
+  def __repr__(self):
+    return "%s_._%s"%(self.value, self.symbol)
 
 class Inject(Destructor):
-  pass
+  def __repr__(self):
+    return "%s_inject_%s"%(self.value, self.symbol)
 
 class Coinject(Destructor):
-  pass
+  def __repr__(self):
+    return "%s_o_%s"%(self.value, self.symbol)
 
 class Arrow:
   def __init__(self, src, tgt):
@@ -382,7 +401,9 @@ class InverseArrow(Isomorphism):
 # A <--> A
 class Id(Arrow):
   def validate(self):
-    assert(self.src == self.tgt)
+    # FIXME Remove
+    if not(self.src == self.tgt):
+      raise Exception("Id arrow between different things \n%s\n!=\n%s"%(self.src, self.tgt))
 
 # A --> B --> C
 class Composite(Arrow):

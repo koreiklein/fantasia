@@ -100,7 +100,7 @@ def renderOr(x, covariant = True):
 
 def renderNot(x, covariant = True):
   if x.rendered:
-    return renderNotWithSymbol(render(x, covariant))
+    return renderNotWithSymbol(render(x.value, covariant))
   else:
     return render(x.value, not covariant)
 

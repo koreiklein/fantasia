@@ -25,9 +25,14 @@ def Or(values):
   else:
     return SymbolOr([(basic.empty_symbol, value) for value in values])
 
+# There are two reasonable ways to implement this function.
 def Implies(predicate, consequent):
-  return basic.Always(basic.Not(basic.And(left = basic.Always(predicate),
-    right = basic.Not(basic.Always(consequent)))))
+  return basic.Always(basic.Not(
+    value = basic.And(left = predicate,
+                      right = basic.Not(consequent))))
+  #return basic.Always(basic.Not(
+  #  value = basic.And(left = basic.Not(basic.Not(value = predicate, rendered = True)),
+  #                    right = basic.Not(consequent))))
 
 def Iff(left, right):
   return And([Implies(left, right), Implies(right, left)])

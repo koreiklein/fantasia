@@ -3,19 +3,25 @@
 from calculus import constructors
 
 class Library:
-  def __init__(self, claims):
+  def __init__(self, claims, variables):
+    self.variables = variables
     self.claims = claims
-    self.formula = constructors.And(claims)
+    self.formula = constructors.Exists(variables,
+        constructors.And(claims))
 
   def translate(self):
-    return Library(claims = [claim.translate() for claim in self.claims])
+    return Library(claims = [claim.translate() for claim in self.claims],
+        variables = [variable.translate() for variable in self.variables])
 
   def union(self, other):
     assert(isinstance(other, Library))
     claims = []
+    variables = []
     claims.extend(self.claims)
+    variables.extend(self.variables)
     claims.extend(other.claims)
-    return Library(claims)
+    variables.extend(other.variables)
+    return Library(claims = claims, variables = variables)
 
   def beginProof(self):
     return Proof(library = self)
