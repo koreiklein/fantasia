@@ -410,16 +410,6 @@ class Arrow:
     self.validate()
 
   def translate(self):
-    if self.__class__ == Id:
-      assert(self.src == self.tgt)
-      self.src.translate()
-      assert(self.src == self.tgt)
-      self.tgt.translate()
-      assert(self.src == self.tgt)
-      print self.src
-      assert(self.src.translate() == self.tgt.translate())
-      l = self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
-      assert(l.src == l.tgt)
     return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
 
   # Throw an exception if self is not valid.
