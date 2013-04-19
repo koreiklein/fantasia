@@ -106,6 +106,9 @@ projectDot = solidSquare(colors.projectDotColor,
 injectDot = solidSquare(colors.injectDotColor,
     [distances.dotWidth, distances.dotWidth, 0.0])
 
+callDot = solidSquare(colors.callColor,
+    [distances.callWidth, distances.callWidth, 0.0])
+
 def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]

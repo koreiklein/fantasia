@@ -79,6 +79,9 @@ class Quantifier(Enriched):
         and self.value == other.value
         and self.underlying == other.underlying)
 
+  def __ne__(self, other):
+    return not(self == other)
+
   def uniquenessCombinator(self):
     if self.underlying == BoundedExists:
       return constructors.Uniquely
@@ -174,4 +177,48 @@ def Function(domain_variable, domain, codomain_variable, codomain, unique, value
                                       equivalence = codomain,
                                       unique = True)],
           value = value))
+
+outputSymbol = constructors.StringVariable('output')
+inputSymbol = constructors.StringVariable('input')
+
+class Call(Enriched):
+  def __init__(self, left, right, intermediate_variable = None):
+    self.left = left
+    self.right = right
+    if intermediate_variable is None:
+      self.intermediate_variable = common_vars.x()
+    else:
+      self.intermediate_variable = intermediate_variable
+
+  def translate(self):
+    return constructors.Exists([self.intermediate_variable],
+        constructors.Project(symbol = outputSymbol,
+          value = constructors.Intersect(
+            left = constructors.SymbolAnd([ (inputSymbol, self.left)
+                                          , (outputSymbol, self.intermediate_variable) ]),
+            right = self.right)))
+
+  def updateVariables(self):
+    return Call(left = self.left.updateVariables(),
+        right = self.right.updateVariables(),
+        intermediate_variable = self.intermediate_variable.updateVariables())
+
+  def substituteVariable(self, a, b):
+    return Call(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b),
+        intermediate_variable = self.intermediate_variable.substituteVariable(a, b))
+
+  def freeVariables(self):
+    return Set([self.intermediate_variable]).union(self.left.freeVariables()).union(
+        self.right.freeVariables())
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.left == other.left
+        and self.right == other.right
+        and self.intermediate_variable == other.intermediate_variable)
+
+  def __ne__(self, other):
+    return not(self == other)
+
 

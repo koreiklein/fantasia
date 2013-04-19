@@ -15,6 +15,8 @@ def render(x, covariant = True):
     return renderBasicExists(x, covariant = covariant)
   elif x.__class__ == enriched.Quantifier:
     return renderEnrichedQuantifier(x, covariant = covariant)
+  elif x.__class__ == enriched.Call:
+    return renderCall(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     return renderNot(x, covariant = covariant)
   elif x.__class__ == basic.Always:
@@ -203,3 +205,11 @@ def renderSymbol(s):
 def renderStringSymbol(s):
   return gl.newTextualGLStack(colors.symbolColor, repr(s))
 
+def renderCall(x, covariant = True):
+  res = render(x.left, True).stack(0,
+      primitives.callDot).stack(0,
+          render(x.right, True))
+  if covariant:
+    return res
+  else:
+    return renderNotWithSymbol(res)

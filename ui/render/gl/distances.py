@@ -18,6 +18,8 @@ enriched_variable_binding_spacing = 80.0
 quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
 
+callWidth = 18.0
+
 exponential_border_width = 40.0
 
 min_unit_divider_length = 100.0
