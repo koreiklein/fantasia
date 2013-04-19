@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic, enriched, basicConstructors as constructors
+from lib import equivalence, common_vars
 
 multiple_conjunction = constructors.multiple_conjunction
 

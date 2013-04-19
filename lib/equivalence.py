@@ -2,13 +2,9 @@
 
 from calculus import symbol, basicConstructors as constructors
 from lib import library, common_vars
+from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
 equivalence = constructors.StringVariable('equivalence')
-leftSymbol = symbol.StringSymbol('left')
-rightSymbol = symbol.StringSymbol('right')
-
-relationSymbol = symbol.StringSymbol('=')
-domainSymbol = symbol.StringSymbol('\'')
 
 reflexiveSymbol = symbol.StringSymbol('reflexive')
 symmetricSymbol = symbol.StringSymbol('symmetric')

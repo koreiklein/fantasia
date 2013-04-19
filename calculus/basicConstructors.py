@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic
+from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 
 # Multiple conjunction will be represented (a | (b | (c | 1)))
 def multiple_conjunction(conjunction, symbol_value_pairs):
@@ -61,3 +62,26 @@ StringVariable = basic.StringVariable
 
 true = basic.Always(basic.true)
 false = basic.Always(basic.false)
+
+def Uniquely(variable, value, domain, x):
+  return And(
+      [ value
+      , Forall([x],
+        Implies(
+          predicate = And([ Intersect(x, Project(domain, domainSymbol))
+                          , value.substituteVariable(variable, x) ]),
+          consequent = Intersect(SymbolAnd([ (leftSymbol, x)
+                                           , (rightSymbol, variable) ]),
+                                 Project(domain, relationSymbol))))])
+
+def Welldefinedly(variable, value, domain, x):
+  return And(
+      [ value
+      , Forall([x],
+        Implies(
+          predicate = And([ Intersect(x, Project(domain, domainSymbol))
+                          , Intersect(SymbolAnd([ (leftSymbol, x)
+                                                , (rightSymbol, variable) ]),
+                                      Project(domain, relationSymbol))]),
+          consequent = value.substituteVariable(variable, x)))])
+

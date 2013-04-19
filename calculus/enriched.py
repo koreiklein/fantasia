@@ -64,16 +64,8 @@ class Exists(Enriched):
       claims.append(constructors.Intersect(binding.variable, binding.domain()))
       claims.append(result)
       if binding.unique:
-        claims.append(constructors.Forall([x],
-          constructors.Implies(
-            predicate = constructors.And(
-              [ constructors.Intersect(x, binding.domain())
-              , result.substituteVariable(binding.variable, x) ]),
-            consequent = constructors.Intersect(
-              left = constructors.SymbolAnd(
-                [ (leftSymbol, x)
-                , (rightSymbol, binding.variable) ]),
-              right = binding.relation()))))
+        claims.append(constructors.Uniquely(variable = binding.variable,
+          value = result, domain = binding.equivalence, x = x))
       result = constructors.And(claims)
     return constructors.Exists([binding.variable for binding in self.bindings],
         result)
