@@ -19,6 +19,14 @@ class VariableBinding:
     self.equivalence = equivalence
     self.unique = unique
 
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__ and self.variable == other.variable
+        and self.equivalence == other.equivalence and self.unique == other.unique
+        and self.alternate_variable == other.alternate_variable)
+
+  def __ne__(self, other):
+    return not(self == other)
+
   def relation(self):
     return constructors.Project(value = self.equivalence, symbol = relationSymbol)
   def domain(self):
@@ -27,11 +35,13 @@ class VariableBinding:
   def updateVariables(self):
     return VariableBinding(variable = self.variable.updateVariables(),
         equivalence = self.equivalence.updateVariables(),
+        alternate_variable = self.alternate_variable.updateVariables(),
         unique = self.unique)
 
   def substituteVariable(self, a, b):
     return VariableBinding(variable = self.variable.substituteVariable(a, b),
         equivalence = self.equivalence.substituteVariable(a, b),
+        alternate_variable = self.alternate_variable.substituteVariable(a, b),
         unique = self.unique)
 
   def freeVariables(self):
@@ -48,50 +58,120 @@ class VariableBinding:
 class Enriched(basic.Object):
   pass
 
-class Exists(Enriched):
+def Forall(bindings, value):
+  return Quantifier(bindings = bindings, value = value, underlying = BoundedForall)
+
+def Exists(bindings, value):
+  return Quantifier(bindings = bindings, value = value, underlying = BoundedExists)
+
+class Quantifier(Enriched):
   # bindings: a list of VariableBinding
   # value: an Object
-  def __init__(self, bindings, value):
+  # underlying: BoundedExists or BoundedForall
+  def  __init__(self, bindings, value, underlying):
     self.bindings = bindings
+    self.value = value
+    self.underlying = underlying
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.bindings == other.bindings
+        and self.value == other.value
+        and self.underlying == other.underlying)
+
+  def uniquenessCombinator(self):
+    if self.underlying == BoundedExists:
+      return constructors.Uniquely
+    else:
+      assert(self.underlying == BoundedForall)
+      return constructors.Welldefinedly
+
+  # Always returns a "basic" object.
+  def translate(self):
+    value = self.value
+    for binding in self.bindings:
+      if binding.unique:
+        value = self.uniquenessCombinator()(
+            variable = binding.variable,
+            value = value,
+            domain = binding.domain(),
+            x = binding.alternate_variable)
+    return self.underlying(
+        variables = [binding.variable for binding in self.bindings],
+        domains = [binding.domain() for binding in self.bindings],
+        value = value).translate()
+
+  def isForall(self):
+    return self.underlying == BoundedForall
+
+  def isExists(self):
+    return self.underlying == BoundedExists
+
+  def updateVariables(self):
+    return Quantifier(
+        bindings = [binding.updateVariables() for binding in self.bindings],
+        value = self.value.updateVariables(),
+        underlying = self.underlying)
+
+  def substituteVariable(self, a, b):
+    return Quantifier(
+        bindings = [binding.substituteVariable(a, b) for binding in self.bindings],
+        value = self.value.substituteVariable(a, b),
+        underlying = self.underlying)
+
+  def freeVariables(self):
+    result = self.value.freeVariables()
+    for binding in self.bindings:
+      result = result.union(binding.domain().freeVariables()).difference(Set([binding.variable]))
+    return result
+
+def BoundedForall(variables, domains, value):
+  return constructors.Not(BoundedExists(
+    variables = variables,
+    domains = domains,
+    value = constructors.Not(value)))
+
+class BoundedExists(Enriched):
+  def __init__(self, variables, domains, value):
+    assert(len(variables ) == len(domains))
+    self.variables = variables
+    self.domains = domains
     self.value = value
 
   # Always returns a "basic" object.
   def translate(self):
     result = self.value.translate()
-    for binding in self.bindings[::-1]:
-      x = binding.alternate_variable
-      claims = []
-      claims.append(constructors.Intersect(binding.variable, binding.domain()))
-      claims.append(result)
-      if binding.unique:
-        claims.append(constructors.Uniquely(variable = binding.variable,
-          value = result, domain = binding.equivalence, x = x))
-      result = constructors.And(claims)
-    return constructors.Exists([binding.variable for binding in self.bindings],
-        result)
+    for i in range(len(self.variables)):
+      result = constructors.And([ constructors.Intersect(self.variables[i], self.domains[i])
+                                , result])
+    return constructors.Exists(self.variables, result)
 
   def updateVariables(self):
-    return Exists(bindings = [binding.updateVariables() for binding in self.bindings],
+    return BoundedExists(
+        variables = [variable.updateVariables() for variable in self.variables],
+        domains = [domain.updateVariables() for domain in self.domains],
         value = self.value.updateVariables())
 
   def substituteVariable(self, a, b):
-    return Exists(bindings = [binding.substituteVariable(a, b) for binding in self.bindings],
+    return BoundedExists(
+        variables = [variable.substituteVariable(a, b) for variable in self.variables],
+        domains = [domain.substituteVariable(a, b) for domain in self.domains],
         value = self.value.substituteVariable(a, b))
 
   def freeVariables(self):
     result = self.value.freeVariables()
-    for binding in self.bindings:
-      result = result.union(binding.freeVariables()).difference(Set([binding.variable]))
+    for i in range(len(self.variables)):
+      result = result.union(self.domains[i].freeVariables()).difference(Set([self.variables[i]]))
     return result
 
 def Function(domain_variable, domain, codomain_variable, codomain, unique, value):
-  return constructors.Forall([domain_variable],
-      constructors.Implies(
-        predicate = constructors.Intersect(left = domain_variable,
-          right = constructors.Project(domain, domainSymbol)),
-        consequent = Exists(
+  return Forall(
+      bindings = [VariableBinding(variable = domain_variable,
+                                  equivalence = domain,
+                                  unique = True)],
+      value = Exists(
           bindings = [VariableBinding(variable = codomain_variable,
                                       equivalence = codomain,
-                                      unique = unique)],
-          value = value)))
+                                      unique = True)],
+          value = value))
 

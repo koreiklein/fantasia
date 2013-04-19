@@ -24,10 +24,10 @@ true = constructors.true
 false = constructors.false
 
 def EnrichedExists(bindings, value):
-  return basic.Always(enriched.Exists(bindings = bindings, value = value))
+  return basic.Always(enriched.Forall(bindings = bindings, value = value))
 
 def EnrichedForall(bindings, value):
-  return basic.Always(basic.Not(enriched.Exists(bindings = bindings, value = basic.Not(value))))
+  return basic.Always(enriched.Exists(bindings = bindings, value = value))
 
 def VariableBinding(variable, equivalence, unique = False, alternate_variable = None):
   return enriched.VariableBinding(

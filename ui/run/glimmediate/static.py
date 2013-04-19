@@ -15,11 +15,12 @@ startingStack = None
 w = 1340
 h = 680
 
-scale = 0.15
+scale = 0.12
 
 def display():
   global startingStack
   glClear(GL_COLOR_BUFFER_BIT)
+  print startingStack
   startingStack.shift([0, 0, 0])._backend.render()
   glFlush()
 

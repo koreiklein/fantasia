@@ -20,4 +20,4 @@ claim = constructors.EnrichedForall([constructors.VariableBinding(variable = n,
 
 proof = natural.lib.beginProof()
 proof = proof.forwardFollow(lambda x:
-          x.forwardAssume(claim)).translate()
+          x.forwardAssume(claim))

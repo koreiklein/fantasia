@@ -13,8 +13,8 @@ def render(x, covariant = True):
     return renderIntersect(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
     return renderBasicExists(x, covariant = covariant)
-  elif x.__class__ == enriched.Exists:
-    return renderEnrichedExists(x, covariant = covariant)
+  elif x.__class__ == enriched.Quantifier:
+    return renderEnrichedQuantifier(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     return renderNot(x, covariant = covariant)
   elif x.__class__ == basic.Always:
@@ -134,10 +134,10 @@ def renderBasicExists(quantifier, covariant = True):
       variablesList = [render(variable, covariant) for variable in quantifier.variables],
       covariant = covariant)
 
-def renderEnrichedExists(quantifier, covariant = True):
+def renderEnrichedQuantifier(quantifier, covariant = True):
   return renderExists(valueStack = render(quantifier.value, covariant),
       variablesList = [renderVariableBinding(binding, covariant) for binding in quantifier.bindings],
-      covariant = covariant)
+      covariant = covariant if quantifier.isExists() else not covariant)
 
 def renderVariableBinding(binding, covariant = True):
   dimension = 0

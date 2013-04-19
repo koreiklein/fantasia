@@ -410,6 +410,16 @@ class Arrow:
     self.validate()
 
   def translate(self):
+    if self.__class__ == Id:
+      assert(self.src == self.tgt)
+      self.src.translate()
+      assert(self.src == self.tgt)
+      self.tgt.translate()
+      assert(self.src == self.tgt)
+      print self.src
+      assert(self.src.translate() == self.tgt.translate())
+      l = self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
+      assert(l.src == l.tgt)
     return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
 
   # Throw an exception if self is not valid.
@@ -455,9 +465,7 @@ class InverseArrow(Isomorphism):
 # A <--> A
 class Id(Arrow):
   def validate(self):
-    # FIXME Remove
-    if not(self.src == self.tgt):
-      raise Exception("Id arrow between different things \n%s\n!=\n%s"%(self.src, self.tgt))
+    assert(self.src == self.tgt)
 
 # A --> B --> C
 class Composite(Arrow):

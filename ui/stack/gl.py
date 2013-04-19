@@ -27,10 +27,9 @@ class GLBackend(stack.Backend):
     for i in range(len(offset)):
       t[i] = offset[i]
     def render():
-      glPushMatrix()
       glTranslate(t[0], t[1], t[2])
       self.render()
-      glPopMatrix()
+      glTranslate(-t[0], -t[1], -t[2])
     return GLBackend(render)
 
   @staticmethod
