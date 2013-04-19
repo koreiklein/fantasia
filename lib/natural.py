@@ -27,6 +27,7 @@ def Equal(a, b):
       left = constructors.SymbolAnd([ (equivalence.leftSymbol, a)
                                     , (equivalence.rightSymbol, b)]),
       right = constructors.Project(natural, equivalence.relationSymbol))
+
 def Less(a, b):
   return constructors.Intersect(
       left = constructors.SymbolAnd([(smaller, a), (greater, b)]),
@@ -41,7 +42,8 @@ b = common_vars.b()
 existsUniqueSuccessor = enriched.Function(
     domain_variable = a, domain = natural,
     codomain_variable = b, codomain = natural, unique = True,
-    value = Successor(a, b))
+    value = Equal(enriched.Call(a, natural_successor), b))
+    #value = Successor(a, b))
 
 zero = constructors.StringVariable('zero')
 zeroNatural = constructors.Intersect(zero, constructors.Project(natural, equivalence.domainSymbol))

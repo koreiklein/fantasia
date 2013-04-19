@@ -207,8 +207,10 @@ def renderStringSymbol(s):
 
 def renderCall(x, covariant = True):
   res = render(x.left, True).stack(0,
-      primitives.callDot).stack(0,
-          render(x.right, True))
+      primitives.callDot,
+      spacing = distances.callSpacing).stack(0,
+          render(x.right, True),
+          spacing = distances.callSpacing)
   if covariant:
     return res
   else:

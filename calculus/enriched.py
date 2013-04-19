@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, basicConstructors as constructors
+from calculus import basic, symbol, basicConstructors as constructors
 from lib.equivalence import relationSymbol, domainSymbol, leftSymbol, rightSymbol
 from lib import common_vars
 
@@ -178,8 +178,8 @@ def Function(domain_variable, domain, codomain_variable, codomain, unique, value
                                       unique = True)],
           value = value))
 
-outputSymbol = constructors.StringVariable('output')
-inputSymbol = constructors.StringVariable('input')
+outputSymbol = symbol.StringSymbol('output')
+inputSymbol = symbol.StringSymbol('input')
 
 class Call(Enriched):
   def __init__(self, left, right, intermediate_variable = None):

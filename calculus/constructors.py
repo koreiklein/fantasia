@@ -23,11 +23,14 @@ StringVariable = constructors.StringVariable
 true = constructors.true
 false = constructors.false
 
+def Call(left, right, intermediate_variable = None):
+  return enriched.Call(left = left, right = right, intermediate_variable = intermediate_variable)
+
 def EnrichedExists(bindings, value):
-  return basic.Always(enriched.Forall(bindings = bindings, value = value))
+  return basic.Always(enriched.Exists(bindings = bindings, value = value))
 
 def EnrichedForall(bindings, value):
-  return basic.Always(enriched.Exists(bindings = bindings, value = value))
+  return basic.Always(enriched.Forall(bindings = bindings, value = value))
 
 def VariableBinding(variable, equivalence, unique = False, alternate_variable = None):
   return enriched.VariableBinding(

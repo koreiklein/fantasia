@@ -386,7 +386,7 @@ class Destructor(Object):
 
   def substituteVariable(self, a, b):
     return self.__class__(value = self.value.substituteVariable(a, b),
-        symbol = self.symbol.substituteVariable(a, b))
+        symbol = self.symbol)
 
   def freeVariables(self):
     return self.value.freeVariables()
