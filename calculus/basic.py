@@ -301,6 +301,34 @@ class And(Conjunction):
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
 
+  def forwardDistibute(self):
+    # A | (B - C) --> (A | B) - (A | C)
+    assert(self.right.__class__ == Or)
+    def pairWith(x):
+      return And(
+          left_symbol = self.left_symbol,
+          right_symbol = self.right_symbol,
+          left = self.left,
+          right = x)
+    return Distribute(src = self,
+        tgt = Or(
+          left_symbol = self.right.left_symbol,
+          right_symbol = self.right.right_symbol,
+          left = pairWith(self.right.left),
+          right = pairWith(self.right.right)))
+
+  def forwardDistributeLeft(self):
+    # A | (B - C) --> (A | B) - (A | C) --> (A | B) - C
+    return self.forwardDistibute().forwardFollow(lambda x:
+        x.forwardOnRightFollow(lambda x:
+          x.forwardForgetLeft()))
+
+  def forwardDistributeRight(self):
+    # A | (B - C) --> (A | B) - (A | C) --> B - (A | C)
+    return self.forwardDistibute().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardForgetLeft()))
+
   def backwardCopy(self):
     return Copy(tgt = self, src = self.left)
 
@@ -571,6 +599,19 @@ class Composite(Arrow):
 
   def __ne__(self, other):
     return not(self == other)
+
+# A | (B - C) --> (A | B) - (A | C)
+class Distribute(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == And)
+    assert(self.src.right.__class__ == Or)
+    assert(self.tgt.__class__ == Or)
+    assert(self.tgt.left.__class__ == And)
+    assert(self.tgt.right.__class__ == And)
+    assert(self.src.left == self.tgt.left.left)
+    assert(self.src.left == self.tgt.right.left)
+    assert(self.src.right.left == self.tgt.left.right)
+    assert(self.src.right.right == self.tgt.right.right)
 
 # A | B --> A,  A | B --> B
 class Forget(Arrow):
