@@ -29,6 +29,19 @@ class Object:
   def forwardAndTrue(self):
     return UnitIdentity(src = self, tgt = And(left = true, right = self))
 
+  def backwardUnalways(self):
+    return Unalways(tgt = self, src = Always(self))
+
+  def forwardAdmitLeft(self, x):
+    return Admit(src = self, tgt = Or(self, x))
+  def forwardAdmitRight(self, x):
+    return Admit(src = self, tgt = Or(x, self))
+
+  def backwardForgetLeft(self, x):
+    return Forget(tgt = self, src = And(self, x))
+  def backwardForgetRight(self, x):
+    return Forget(tgt = self, src = And(x, self))
+
   def identity(self):
     return Id(src = self, tgt = self)
 
@@ -291,12 +304,22 @@ class And(Conjunction):
   def backwardCopy(self):
     return Copy(tgt = self, src = self.left)
 
+  def forwardForgetLeft(self):
+    return Forget(src = self, tgt = self.right)
+  def forwardForgetRight(self):
+    return Forget(src = self, tgt = self.left)
+
   def __repr__(self):
     return "(%s AND %s)"%(self.left, self.right)
 
 class Or(Conjunction):
   def __repr__(self):
     return "(%s OR %s)"%(self.left, self.right)
+
+  def backwardAdmitLeft(self):
+    return Admit(tgt = self, src = self.right)
+  def backwardAdmitRight(self):
+    return Admit(tgt = self, src = self.left)
 
 class Not(Object):
   def __init__(self, value, rendered = False):
@@ -356,6 +379,9 @@ class Always(Object):
 
   def __repr__(self):
     return "!(%s)"%(self.value)
+
+  def forwardUnalways(self):
+    return Unalways(src = self, tgt = self.value)
 
   def forwardOnAlways(self, arrow):
     assert(arrow.src == self.value)
@@ -546,6 +572,17 @@ class Composite(Arrow):
   def __ne__(self, other):
     return not(self == other)
 
+# A | B --> A,  A | B --> B
+class Forget(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == And)
+    assert(self.tgt in [self.src.left, self.src.right])
+
+# A - B <-- A,  A - B <-- B
+class Admit(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == Or)
+    assert(self.src in [self.tgt.left, self.tgt.right])
 
 class Commute(Isomorphism):
   def validate(self):
@@ -599,6 +636,12 @@ class Copy(Arrow):
     assert(self.tgt.__class__ == And)
     assert(self.tgt.left == self.src)
     assert(self.tgt.right == self.src)
+
+# !A --> A
+class Unalways(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == Always)
+    assert(self.src.value == self.tgt)
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
