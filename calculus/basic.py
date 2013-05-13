@@ -198,6 +198,52 @@ class Conjunction(Object):
   def freeVariables(self):
     return self.left.freeVariables().union(self.right.freeVariables())
 
+  def forwardCommute(self):
+    return Commute(
+        src = self,
+        tgt = self.__class__(
+          left_symbol = self.right_symbol,
+          right_symbol = self.left_symbol,
+          left = self.right,
+          right = self.left))
+
+  def backwardCommute(self):
+    return Commute(
+        tgt = self,
+        src = self.__class__(
+          left_symbol = self.right_symbol,
+          right_symbol = self.left_symbol,
+          left = self.right,
+          right = self.left))
+
+  def forwardAssociate(self):
+    # (A % B) % C ---> A % (B % C)
+    assert(self.__class__ == self.left.__class__)
+    return Associate(src = self,
+        tgt = self.__class__(
+          left_symbol = self.left.left_symbol,
+          right_symbol = self.left_symbol,
+          left = self.left.left,
+          right = self.__class__(
+            left_symbol = self.left.right_symbol,
+            right_symbol = self.right_symbol,
+            left = self.left.right,
+            right = self.right)))
+
+  def backwardAssociate(self):
+    # (A % B) % C ---> A % (B % C)
+    assert(self.__class__ == self.right.__class__)
+    return Associate(tgt = self,
+        src = self.__class__(
+          right_symbol = self.right.right_symbol,
+          left_symbol = self.right_symbol,
+          right = self.right.right,
+          left = self.__class__(
+            right_symbol = self.right.left_symbol,
+            left_symbol = self.left_symbol,
+            right = self.right.left,
+            left = self.left)))
+
 class Intersect(Object):
   def __init__(self, left, right):
     self.left = left
