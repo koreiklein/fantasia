@@ -244,6 +244,14 @@ class Conjunction(Object):
             right = self.right.left,
             left = self.left)))
 
+  def forwardAssociateOther(self):
+    # A % (B % C) ---> (A % B) % C
+    return self.backwardAssociate().invert()
+
+  def backwardAssociateOther(self):
+    # A % (B % C) ---> (A % B) % C
+    return self.forwardAssociate().invert()
+
 class Intersect(Object):
   def __init__(self, left, right):
     self.left = left
@@ -279,6 +287,9 @@ class And(Conjunction):
     assert(self.right.__class__ == Not)
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
+
+  def backwardCopy(self):
+    return Copy(tgt = self, src = self.left)
 
   def __repr__(self):
     return "(%s AND %s)"%(self.left, self.right)
@@ -356,6 +367,9 @@ class Always(Object):
     return self.forwardOnAlways(f(self.value))
   def backwardOnAlwaysFollow(self, f):
     return self.backwardOnAlways(f(self.value))
+
+  def forwardCopy(self):
+    return Copy(src = self, tgt = And(self, self))
 
   def translate(self):
     return Always(value = self.value.translate())
@@ -577,6 +591,14 @@ class Apply(Arrow):
     assert(self.src.right.value.__class__ == And)
     assert(self.src.left == self.src.right.value.left)
     assert(self.src.right.value.right == self.tgt.value)
+
+# !A --> !A | !A
+class Copy(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == Always)
+    assert(self.tgt.__class__ == And)
+    assert(self.tgt.left == self.src)
+    assert(self.tgt.right == self.src)
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
