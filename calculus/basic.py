@@ -42,6 +42,11 @@ class Object:
   def backwardForgetRight(self, x):
     return Forget(tgt = self, src = And(x, self))
 
+  def forwardIntroExists(self, variables):
+    return IntroExists(src = self, tgt = Exists(variables = variables, value = self))
+  def backwardRemoveExists(self, variables):
+    return RemoveExists(src = Exists(variables = variables, value = self), tgt = self)
+
   def identity(self):
     return Id(src = self, tgt = self)
 
@@ -124,6 +129,11 @@ class Exists(Object):
     return self.forwardOnBody(f(self.value))
   def backwardOnBodyFollow(self, f):
     return self.backwardOnBody(f(self.value))
+
+  def forwardRemoveExists(self):
+    return RemoveExists(src = self, tgt = self.value)
+  def backwardIntroExists(self):
+    return IntroExists(src = self.value, tgt = self)
 
   def updateVariables(self):
     variables = [variable.updateVariables() for variable in self.variables]
@@ -683,6 +693,21 @@ class Unalways(Arrow):
   def validate(self):
     assert(self.src.__class__ == Always)
     assert(self.src.value == self.tgt)
+
+# A --> Exists x . A
+class IntroExists(Arrow):
+  def validate(self):
+    assert(self.tgt.__class__ == Exists)
+    assert(self.src == self.tgt.value)
+
+# Exists x . A --> A
+class RemoveExists(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == Exists)
+    assert(self.tgt == self.src.value)
+    free = self.tgt.freeVariables()
+    for variable in self.src.variables:
+      assert(variable not in free)
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
