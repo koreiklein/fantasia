@@ -19,7 +19,7 @@ b = common_vars.b()
 #            , natural.Less(n, b) ])))
 
 claim = constructors.EnrichedForall(
-    [constructors.VariableBinding(variable = n, equivalence = natural.natural)],
+    [constructors.VariableBinding(variable = n, equivalence = natural.natural, unique = True)],
     natural.Less(n, constructors.Call(constructors.Call(n, natural.natural_successor),
       natural.natural_successor)))
 

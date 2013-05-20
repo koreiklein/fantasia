@@ -45,6 +45,11 @@ existsUniqueSuccessor = enriched.Function(
     value = Equal(enriched.Call(a, natural_successor), b))
     #value = Successor(a, b))
 
+a = common_vars.a()
+successorIsGreater = constructors.EnrichedForall(
+    [constructors.VariableBinding(variable = a, equivalence = natural, unique = True)],
+    Less(a, constructors.Call(a, natural_successor)))
+
 zero = constructors.StringVariable('zero')
 zeroNatural = constructors.Intersect(zero, constructors.Project(natural, equivalence.domainSymbol))
 
@@ -58,5 +63,5 @@ zeroFirst = constructors.Forall([n, m],
         , Successor(n, m) ]),
       consequent = constructors.Not(Equal(n, zero))))
 
-lib = library.Library(claims = [isEquivalence, zeroNatural, zeroFirst, existsUniqueSuccessor],
+lib = library.Library(claims = [isEquivalence, zeroNatural, zeroFirst, existsUniqueSuccessor, successorIsGreater],
     variables = [natural, zero, natural_less, natural_successor])
