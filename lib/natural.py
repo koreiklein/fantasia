@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import symbol, enriched
-from lib import equivalence, library, common_vars, function
+from lib import equivalence, library, common_vars, common_symbols, function
 
 natural = enriched.StringVariable('N')
 
@@ -25,7 +25,10 @@ def Equal(a, b):
 def Less(a, b):
   return enriched.Holds(enriched.ProductVariable([(smaller, a), (greater, b)]), natural_less)
 
-successorIsFunction = function.IsFunction(natural_successor)
+successorIsFunction = function.IsFunction(
+    enriched.VariableProduct([ (common_symbols.functionPairsSymbol, natural_successor)
+                             , (common_symbols.srcSymbol, natural)
+                             , (common_symbols.tgtSymbol, natural)]))
 
 #a = common_vars.a()
 #successorIsGreater = enriched.EnrichedForall(

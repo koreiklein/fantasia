@@ -11,8 +11,8 @@ domainSymbol = symbol.StringSymbol('\'')
 
 srcSymbol = symbol.StringSymbol('src')
 tgtSymbol = symbol.StringSymbol('tgt')
+functionPairsSymbol = symbol.StringSymbol('\'')
 
 inputSymbol = symbol.StringSymbol('input')
 outputSymbol = symbol.StringSymbol('output')
-functionPairsSymbol = symbol.StringSymbol('\'')
 

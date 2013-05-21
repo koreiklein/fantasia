@@ -77,8 +77,9 @@ equivalencelib = library.Library(claims = [claim], variables = [equivalence])
 
 lib = library.Library(
     claims = [ enriched.Hidden(claim, "Function")
-             , equivalence.claim
-             #, enriched.Hidden(equivalence.claim, "Equivalence")
+               #claim
+             #, equivalence.claim
+             , enriched.Hidden(equivalence.claim, "Equivalence")
     ],
     variables = [equivalence.equivalence, function])
 
