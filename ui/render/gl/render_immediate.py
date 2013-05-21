@@ -11,10 +11,10 @@ def render(x, covariant = True):
     return renderBasicExists(x, covariant = covariant)
   elif x.__class__ == enriched.Iff:
     return renderEnrichedIff(x, covariant = covariant)
+  elif x.__class__ == enriched.Hidden:
+    return renderEnrichedHidden(x, covariant = covariant)
   elif x.__class__ == enriched.Quantifier:
     return renderEnrichedQuantifier(x, covariant = covariant)
-  elif x.__class__ == enriched.FunctionallyEnrichedHolds:
-    return renderFunctionallyEnrichedHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     return renderNot(x, covariant = covariant)
   elif x.__class__ == basic.Always:
@@ -200,10 +200,10 @@ def renderEnrichedIff(x, covariant):
   else:
     return renderNotWithSymbol(res)
 
-def renderHolds(x, covariant):
-  return gl.newTextualGLStack(colors.relationColor, repr(x))
+def renderEnrichedHidden(x, covariant):
+  return gl.newTextualGLStack(colors.hiddenColor, "<<" + x.name + ">>")
 
-def renderFunctionallyEnrichedHolds(x, covariant):
+def renderHolds(x, covariant):
   return gl.newTextualGLStack(colors.relationColor, repr(x))
 
 def renderProjectionVariable(v, covariant):

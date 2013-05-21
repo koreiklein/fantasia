@@ -28,4 +28,4 @@ b = common_vars.b()
 #proof = proof.forwardFollow(lambda x:
 #          x.forwardAssume(claim))
 
-proof = function.lib.union(equivalence.lib).beginProof()
+proof = function.lib.beginProof()
