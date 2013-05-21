@@ -5,12 +5,12 @@ from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 
 def render(x, covariant = True):
-  if isinstance(x, basic.Variable):
-    return renderVariable(x, covariant = covariant)
-  elif isinstance(x, basic.Conjunction):
+  if isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
     return renderBasicExists(x, covariant = covariant)
+  elif x.__class__ == enriched.Iff:
+    return renderEnrichedIff(x, covariant = covariant)
   elif x.__class__ == enriched.Quantifier:
     return renderEnrichedQuantifier(x, covariant = covariant)
   elif x.__class__ == enriched.FunctionallyEnrichedHolds:
@@ -127,7 +127,7 @@ def renderExists(valueStack, variablesList, covariant):
 
 def renderBasicExists(quantifier, covariant = True):
   return renderExists(valueStack = render(quantifier.value, covariant),
-      variablesList = [render(variable, covariant) for variable in quantifier.variables],
+      variablesList = [renderVariable(variable, covariant) for variable in quantifier.variables],
       covariant = covariant)
 
 def renderEnrichedQuantifier(quantifier, covariant = True):
@@ -145,7 +145,7 @@ def renderVariableBinding(binding, covariant = True):
   return renderVariable(binding.variable, covariant).stack(dimension,
       middleStack,
       spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
-          render(binding.equivalence, covariant),
+          renderVariable(binding.equivalence, covariant),
           spacing = distances.enriched_variable_binding_spacing)
 
 def renderAlways(x, covariant = True):
@@ -189,6 +189,17 @@ def renderCall(x, covariant = True):
   else:
     return renderNotWithSymbol(res)
 
+def renderEnrichedIff(x, covariant):
+  res = render(x.left, True).stack(0,
+      primitives.iff(),
+      spacing = distances.iffSpacing).stack(0,
+          render(x.right, True),
+          spacing = distances.iffSpacing)
+  if covariant:
+    return res
+  else:
+    return renderNotWithSymbol(res)
+
 def renderHolds(x, covariant):
   return gl.newTextualGLStack(colors.relationColor, repr(x))
 
@@ -203,3 +214,4 @@ def renderInjectionVariable(v, covariant):
 
 def renderProductVariable(v, covariant):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
+

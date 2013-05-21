@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import constructors
-from lib import natural, library, common_vars, equivalence
+from lib import natural, library, common_vars, equivalence, function
 
 # A proof that forall n : N . S (S n) > n
 n = common_vars.n()
@@ -24,6 +24,8 @@ b = common_vars.b()
 #    natural.Less(n, constructors.Call(constructors.Call(n, natural.natural_successor),
 #      natural.natural_successor)))
 
-proof = equivalence.lib.beginProof()
+#proof = equivalence.lib.beginProof()
 #proof = proof.forwardFollow(lambda x:
 #          x.forwardAssume(claim))
+
+proof = function.lib.union(equivalence.lib).beginProof()

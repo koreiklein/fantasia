@@ -4,7 +4,7 @@ from OpenGL.GL import *
 
 from ui.render.gl import colors, distances
 
-from ui.stack.gl import newGLStack
+from ui.stack.gl import newGLStack, newTextualGLStack
 from ui.stack.point import Point
 
 def _dual_dimension(dimension):
@@ -113,5 +113,8 @@ def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]
   return solidSquare(colors.notColor, upper).below(solidSquare(colors.notColor, lower))
+
+def iff():
+  return newTextualGLStack(colors.iffColor, "<==>")
 
 

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, basicConstructors as constructors
+from calculus import basicConstructors as constructors
 from lib import library, common_vars
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 

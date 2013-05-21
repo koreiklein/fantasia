@@ -249,6 +249,8 @@ empty_symbol = symbol.StringSymbol('')
 class Conjunction(Object):
   # There is only one global right symbol.
   def __init__(self, left, right):
+    # FIXME
+    assert(not isinstance(left, list))
     self.left = left
     self.right = right
 

@@ -27,7 +27,6 @@ def Less(a, b):
 
 isEquivalence = constructors.Holds(natural, equivalence.equivalence)
 
-# FIXME Reimplement.
 #a = common_vars.a()
 #b = common_vars.b()
 #existsUniqueSuccessor = enriched.Function(

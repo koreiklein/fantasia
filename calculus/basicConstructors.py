@@ -52,11 +52,15 @@ StringVariable = basic.StringVariable
 true = basic.Always(basic.true)
 false = basic.Always(basic.false)
 
-def Uniquely(variable, value, domain, x):
-  # FIXME
-  assert(False)
+def Uniquely(variable, value, domain, relation, x):
+  return And([value, Forall([x], Implies(
+    predicate = And([Holds(x, domain), value.substituteVariable(variable, x)]),
+    consequent = Holds(VariableProduct([(leftSymbol, x), (rightSymbol, variable)]), relation)))])
 
 def Welldefinedly(variable, value, domain, x):
-  # FIXME
-  assert(False)
+  return And([value, Forall([x], Implies(
+    predicate = And([ Holds(x, domain)
+                    , Holds( VariableProduct([(leftSymbol, x), (rightSymbol, variable)])
+                           , relation) ]),
+    consequent = value.substituteVariable(variable, x)))])
 

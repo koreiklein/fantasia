@@ -28,9 +28,9 @@ class VariableBinding:
     return not(self == other)
 
   def relation(self):
-    return constructors.Project(value = self.equivalence, symbol = relationSymbol)
+    return constructors.ProjectionVariable(self.equivalence, relationSymbol)
   def domain(self):
-    return constructors.Project(value = self.equivalence, symbol = domainSymbol)
+    return constructors.ProjectionVariable(self.equivalence, domainSymbol)
 
   def updateVariables(self):
     return VariableBinding(variable = self.variable.updateVariables(),
@@ -98,6 +98,7 @@ class Quantifier(Enriched):
             variable = binding.variable,
             value = value,
             domain = binding.domain(),
+            relation = binding.relation(),
             x = binding.alternate_variable)
     return self.underlying(
         variables = [binding.variable for binding in self.bindings],
@@ -145,7 +146,7 @@ class BoundedExists(Enriched):
   def translate(self):
     result = self.value.translate()
     for i in range(len(self.variables)):
-      result = constructors.And([ constructors.Intersect(self.variables[i], self.domains[i])
+      result = constructors.And([ constructors.Holds(self.variables[i], self.domains[i])
                                 , result])
     return constructors.Exists(self.variables, result)
 
@@ -282,3 +283,18 @@ def _listCons(x, xs):
   result = [x]
   result.extend(xs)
   return result
+
+class Iff(Enriched):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+  def translate(self):
+    return constructors.Iff(self.left, self.right)
+  def updateVariables(self):
+    return Iff(left = self.left.updateVariables(),
+        right = self.right.updateVariables())
+  def substituteVariable(self, a, b):
+    return Iff(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
+  def freeVariables(self):
+    return self.left.freeVariables().union(self.right.freeVariables())

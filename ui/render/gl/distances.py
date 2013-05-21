@@ -13,13 +13,15 @@ notShiftThickness = notThickness + 11.0
 # Amount by which to shift the value contained inside a Not.
 notShiftOffset = [notShiftThickness, notShiftThickness, 0.0]
 
-quantifier_variables_spacing = 80.0
-enriched_variable_binding_spacing = 80.0
+quantifier_variables_spacing = 100.0
+enriched_variable_binding_spacing = 20.0
 quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
 
 callWidth = 18.0
 callSpacing = 25.0
+
+iffSpacing = 35.0
 
 exponential_border_width = 40.0
 

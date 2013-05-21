@@ -9,3 +9,9 @@ rightSymbol = symbol.StringSymbol('right')
 relationSymbol = symbol.StringSymbol('=')
 domainSymbol = symbol.StringSymbol('\'')
 
+srcSymbol = symbol.StringSymbol('src')
+tgtSymbol = symbol.StringSymbol('tgt')
+
+inputSymbol = symbol.StringSymbol('input')
+outputSymbol = symbol.StringSymbol('output')
+

@@ -8,7 +8,7 @@ multiple_conjunction = constructors.multiple_conjunction
 And = constructors.And
 Or = constructors.Or
 Implies = constructors.Implies
-Iff = constructors.Iff
+Iff = enriched.Iff
 Exists = constructors.Exists
 Forall = constructors.Forall
 Not = constructors.Not
@@ -25,6 +25,18 @@ def EnrichedExists(bindings, value):
 
 def EnrichedForall(bindings, value):
   return basic.Always(enriched.Forall(bindings = bindings, value = value))
+
+def BoundedForall(variableEquivalencePairs, value):
+  return EnrichedForall(
+      bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
+                  for (v,e) in variableEquivalencePairs],
+      value = value)
+
+def BoundedExists(variableEquivalencePairs, value):
+  return EnrichedExists(
+      bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
+                  for (v,e) in variableEquivalencePairs],
+      value = value)
 
 def VariableBinding(variable, equivalence, unique = False, alternate_variable = None):
   return enriched.VariableBinding(

@@ -15,6 +15,12 @@ l = lambda: StringVariable('l')
 a = lambda: StringVariable('a')
 b = lambda: StringVariable('b')
 c = lambda: StringVariable('c')
+d = lambda: StringVariable('d')
+
+aprime = lambda: StringVariable('a\'')
+bprime = lambda: StringVariable('b\'')
+cprime = lambda: StringVariable('c\'')
+dprime = lambda: StringVariable('d\'')
 
 A = lambda: StringVariable('A')
 B = lambda: StringVariable('A')
