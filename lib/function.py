@@ -9,7 +9,7 @@ def Maps(a, b, f):
   return constructors.Holds(
       constructors.VariableProduct([ (common_symbols.inputSymbol, a)
                                    , (common_symbols.outputSymbol, b)]),
-      f)
+      constructors.VariableProject(f, common_symbols.functionPairsSymbol))
 
 def projectSrc(f):
   return constructors.VariableProject(f, common_symbols.srcSymbol)
@@ -60,13 +60,18 @@ def unique(f):
                                      , equivalence.EqualUnder(b, bprime, projectSrc(f))]),
         consequent = equivalence.EqualUnder(a, aprime, projectTgt(f))))
 
+def IsFunction(f):
+  return constructors.Holds(f, function)
+
 A = common_vars.A()
 claim = constructors.Forall([A],
     constructors.Iff(
-      left = constructors.And([ defined(A)
+      left = constructors.And([ equivalence.IsEquivalence(projectSrc(A))
+                              , equivalence.IsEquivalence(projectTgt(A))
+                              , defined(A)
                               , wellDefined(A)
                               , unique(A)]),
-      right = constructors.Holds(A, function)))
+      right = IsFunction(A)))
 
 lib = library.Library(claims = [claim], variables = [function])
 

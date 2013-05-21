@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import symbol, constructors, enriched
-from lib import equivalence, library, common_vars
+from lib import equivalence, library, common_vars, function
 
 natural = constructors.StringVariable('N')
 
@@ -27,13 +27,8 @@ def Less(a, b):
 
 isEquivalence = constructors.Holds(natural, equivalence.equivalence)
 
-#a = common_vars.a()
-#b = common_vars.b()
-#existsUniqueSuccessor = enriched.Function(
-#    domain_variable = a, domain = natural,
-#    codomain_variable = b, codomain = natural, unique = True,
-#    value = Equal(enriched.Call(a, natural_successor), b))
-#    #value = Successor(a, b))
+successorIsFunction = constructors.Holds(natural_successor, function.function)
+
 #
 #a = common_vars.a()
 #successorIsGreater = constructors.EnrichedForall(

@@ -45,6 +45,9 @@ def transitive(e):
           , EqualUnder(y, z, e) ]),
         consequent = EqualUnder(x, z, e)))
 
+def IsEquivalence(e):
+  return constructors.Holds(e, equivalence)
+
 A = common_vars.A()
 claim = constructors.Forall([A],
     constructors.Iff(
@@ -52,6 +55,6 @@ claim = constructors.Forall([A],
         [ reflexive(A)
         , symmetric(A)
         , transitive(A)]),
-      right = constructors.Holds(A, equivalence)))
+      right = IsEquivalence(A)))
 
 lib = library.Library(claims = [claim], variables = [equivalence])

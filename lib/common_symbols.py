@@ -14,4 +14,5 @@ tgtSymbol = symbol.StringSymbol('tgt')
 
 inputSymbol = symbol.StringSymbol('input')
 outputSymbol = symbol.StringSymbol('output')
+functionPairsSymbol = symbol.StringSymbol('\'')
 
