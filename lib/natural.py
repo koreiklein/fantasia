@@ -25,11 +25,8 @@ def Equal(a, b):
 def Less(a, b):
   return constructors.Holds(constructors.ProductVariable([(smaller, a), (greater, b)]), natural_less)
 
-isEquivalence = constructors.Holds(natural, equivalence.equivalence)
+successorIsFunction = function.IsFunction(natural_successor)
 
-successorIsFunction = constructors.Holds(natural_successor, function.function)
-
-#
 #a = common_vars.a()
 #successorIsGreater = constructors.EnrichedForall(
 #    [constructors.VariableBinding(variable = a, equivalence = natural, unique = True)],
