@@ -249,8 +249,6 @@ empty_symbol = symbol.StringSymbol('')
 class Conjunction(Object):
   # There is only one global right symbol.
   def __init__(self, left, right):
-    # FIXME
-    assert(not isinstance(left, list))
     self.left = left
     self.right = right
 
@@ -687,10 +685,8 @@ class Associate(Isomorphism):
 class UnitIdentity(Isomorphism):
   def validate(self):
     unit = unit_for_conjunction(self.tgt.__class__)
-    # FIXME
-    if not((self.tgt.right == unit and self.tgt.left == self.src)
-        or (self.tgt.left == unit and self.tgt.right == self.src)):
-      raise Exception("Improper unit identity arrow \n%s\n-->\n%s"%(self.src, self.tgt))
+    assert((self.tgt.right == unit and self.tgt.left == self.src)
+        or (self.tgt.left == unit and self.tgt.right == self.src))
 
 # A <--> ~(~A)
 class DoubleDual(Isomorphism):
