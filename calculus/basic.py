@@ -9,6 +9,7 @@ class Object:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  # Replace all bound variables with new variables.
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
@@ -51,7 +52,7 @@ class Object:
     return Id(src = self, tgt = self)
 
 n_variables = 0
-class Variable(Object):
+class Variable:
   def __init__(self):
     self._generate_id()
 
@@ -98,6 +99,98 @@ class StringVariable(Variable):
 
   def updateVariables(self):
     return StringVariable(self.name())
+
+class InjectionVariable:
+  def __init__(self, variable, symbol):
+    self.variable = variable
+    self.symbol = symbol
+  def __eq__(self, other):
+    return (other.__class__ == InjectionVariable
+        and self.variable == other.variable
+        and self.symbol == other.symbol)
+  def __ne__(self, other):
+    return not (self == other)
+  def __repr__(self):
+    return "<: " + repr(self.variable) + " :: " + repr(self.symbol) + " :>"
+  def updateVariables(self):
+    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
+  def substituteVariable(self, a, b):
+    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
+  def freeVariables(self):
+    return self.variable.freeVariables()
+
+class ProjectionVariable:
+  def __init__(self, variable, symbol):
+    self.variable = variable
+    self.symbol = symbol
+  def __eq__(self, other):
+    return (other.__class__ == ProjectionVariable
+        and self.variable == other.variable
+        and self.symbol == other.symbol)
+  def __ne__(self, other):
+    return not (self == other)
+  def __repr__(self):
+    return repr(self.variable) + "." + repr(self.symbol)
+  def updateVariables(self):
+    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
+  def substituteVariable(self, a, b):
+    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
+  def freeVariables(self):
+    return self.variable.freeVariables()
+
+# A more elaborate syntax for VARIABLES!!! These construct are under no means
+# meant to be used for objects, nether have they any sort of computational manifestation.
+# They are ENTIRELY FOR BOOKEEPING.
+class ProductVariable:
+  def __init__(self, symbol_variable_pairs):
+    self.symbol_variable_pairs = symbol_variable_pairs
+
+  def __eq__(self, other):
+    return (other.__class__ == ProductVariable
+        and self.symbol_variable_pairs == other.symbol_variable_pairs)
+  def __ne__(self, other):
+    return not(self == other)
+  def __repr__(self):
+    return "{" + ", ".join([repr(s) + ": " + repr(v) for (s,v) in self.symbol_variable_pairs]) + "}"
+  def updateVariables(self):
+    return ProductVariable(
+        symbol_variable_pairs = [(s, v.updateVariables()) for (s,v) in self.symbol_variable_pairs])
+  def substituteVariable(self, a, b):
+    return ProductVariable(
+        symbol_variable_pairs = [(s, v.substituteVariable(a, b))
+                                 for (s,v) in self.symbol_variable_pairs])
+  def freeVariables(self):
+    result = Set()
+    for (s, v) in self.symbol_variable_pairs:
+      result.union_with(v.freeVariables())
+    return result
+
+class Holds(Object):
+  def __init__(self, held, holding):
+    self.held = held
+    self.holding = holding
+
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__
+        and self.holding == other.holding
+        and self.held == other.held)
+
+  def __ne__(self, other):
+    return not (self == other)
+  def __repr__(self):
+    return repr(self.held) + " : " + repr(self.holding)
+  def translate(self):
+    return self
+  def updateVariables(self):
+    return self
+  def substituteVariable(self, a, b):
+    return Holds(held = self.held.substituteVariable(a, b),
+        holding = self.holding.substituteVariable(a, b))
+  def freeVariables(self):
+    result = Set()
+    result.union_with(self.holding.freeVariables())
+    result.union_with(self.held.freeVariables())
+    return result
 
 class Exists(Object):
   def __init__(self, variables, value):
@@ -151,17 +244,13 @@ class Exists(Object):
     return self.value.freeVariables().difference(Set(self.variables))
 
 empty_symbol = symbol.StringSymbol('')
-right_symbol = empty_symbol
 
 # For And and Or.
 class Conjunction(Object):
   # There is only one global right symbol.
-  def __init__(self, left, right, left_symbol = empty_symbol,
-      right_symbol = empty_symbol):
+  def __init__(self, left, right):
     self.left = left
-    self.left_symbol = left_symbol
     self.right = right
-    self.right_symbol = right_symbol
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
@@ -171,23 +260,19 @@ class Conjunction(Object):
     return not(self == other)
 
   def translate(self):
-    return self.__class__(left_symbol = self.left_symbol, left = self.left.translate(),
-                          right_symbol = self.right_symbol, right = self.right.translate())
+    return self.__class__(left = self.left.translate(),
+                          right = self.right.translate())
 
   def forwardOnConjunction(self, leftArrow, rightArrow):
     return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
         src = self,
         tgt = self.__class__(left = leftArrow.tgt,
-                             right = rightArrow.tgt,
-                             left_symbol = self.left_symbol,
-                             right_symbol = self.right_symbol))
+                             right = rightArrow.tgt))
   def backwardOnConjunction(self, leftArrow, rightArrow):
     return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
         tgt = self,
         src = self.__class__(left = leftArrow.src,
-                             right = rightArrow.src,
-                             left_symbol = self.left_symbol,
-                             right_symbol = self.right_symbol))
+                             right = rightArrow.src))
   def forwardOnLeft(self, arrow):
     return self.forwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
   def forwardOnRight(self, arrow):
@@ -207,14 +292,12 @@ class Conjunction(Object):
     return self.backwardOnRight(f(self.right))
 
   def updateVariables(self):
-    return self.__class__(left_symbol = self.left_symbol,
-        right_symbol = right_symbol,
+    return self.__class__(
         left = self.left.updateVariables(),
         right = self.right.updateVariables())
 
   def substituteVariable(self, a, b):
-    return self.__class__(left_symbol = self.left_symbol,
-        right_symbol = right_symbol,
+    return self.__class__(
         left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
 
@@ -225,8 +308,6 @@ class Conjunction(Object):
     return Commute(
         src = self,
         tgt = self.__class__(
-          left_symbol = self.right_symbol,
-          right_symbol = self.left_symbol,
           left = self.right,
           right = self.left))
 
@@ -234,8 +315,6 @@ class Conjunction(Object):
     return Commute(
         tgt = self,
         src = self.__class__(
-          left_symbol = self.right_symbol,
-          right_symbol = self.left_symbol,
           left = self.right,
           right = self.left))
 
@@ -244,12 +323,8 @@ class Conjunction(Object):
     assert(self.__class__ == self.left.__class__)
     return Associate(src = self,
         tgt = self.__class__(
-          left_symbol = self.left.left_symbol,
-          right_symbol = self.left_symbol,
           left = self.left.left,
           right = self.__class__(
-            left_symbol = self.left.right_symbol,
-            right_symbol = self.right_symbol,
             left = self.left.right,
             right = self.right)))
 
@@ -258,12 +333,8 @@ class Conjunction(Object):
     assert(self.__class__ == self.right.__class__)
     return Associate(tgt = self,
         src = self.__class__(
-          right_symbol = self.right.right_symbol,
-          left_symbol = self.right_symbol,
           right = self.right.right,
           left = self.__class__(
-            right_symbol = self.right.left_symbol,
-            left_symbol = self.left_symbol,
             right = self.right.left,
             left = self.left)))
 
@@ -274,36 +345,6 @@ class Conjunction(Object):
   def backwardAssociateOther(self):
     # A % (B % C) ---> (A % B) % C
     return self.forwardAssociate().invert()
-
-class Intersect(Object):
-  def __init__(self, left, right):
-    self.left = left
-    self.right = right
-
-  def __repr__(self):
-    return "(%s INTERSECT %s)"%(self.left, self.right)
-
-  def __eq__(self, other):
-    return (self.__class__ == other.__class__
-       and self.left == other.left
-       and self.right == other.right)
-
-  def __ne__(self, other):
-    return not(self == other)
-
-  def translate(self):
-    return Intersect(left = self.left.translate(), right = self.right.translate())
-
-  def updateVariables(self):
-    return self.__class__(left = self.left.updateVariables(),
-        right = self.right.updateVariables())
-
-  def substituteVariable(self, a, b):
-    return self.__class__(left = self.left.substituteVariable(a, b),
-        right = self.right.substituteVariable(a, b))
-
-  def freeVariables(self):
-    return self.left.freeVariables().union(self.right.freeVariables())
 
 class And(Conjunction):
   def forwardApply(self):
@@ -316,14 +357,10 @@ class And(Conjunction):
     assert(self.right.__class__ == Or)
     def pairWith(x):
       return And(
-          left_symbol = self.left_symbol,
-          right_symbol = self.right_symbol,
           left = self.left,
           right = x)
     return Distribute(src = self,
         tgt = Or(
-          left_symbol = self.right.left_symbol,
-          right_symbol = self.right.right_symbol,
           left = pairWith(self.right.left),
           right = pairWith(self.right.right)))
 
@@ -515,18 +552,6 @@ class Destructor(Object):
   def freeVariables(self):
     return self.value.freeVariables()
 
-class Project(Destructor):
-  def __repr__(self):
-    return "%s_._%s"%(self.value, self.symbol)
-
-class Inject(Destructor):
-  def __repr__(self):
-    return "%s_inject_%s"%(self.value, self.symbol)
-
-class Coinject(Destructor):
-  def __repr__(self):
-    return "%s_o_%s"%(self.value, self.symbol)
-
 class Arrow:
   def __init__(self, src, tgt):
     self.src = src
@@ -660,8 +685,10 @@ class Associate(Isomorphism):
 class UnitIdentity(Isomorphism):
   def validate(self):
     unit = unit_for_conjunction(self.tgt.__class__)
-    assert((self.tgt.right == unit and self.tgt.left == self.src)
-        or (self.tgt.left == unit and self.tgt.right == self.src))
+    # FIXME
+    if not((self.tgt.right == unit and self.tgt.left == self.src)
+        or (self.tgt.left == unit and self.tgt.right == self.src)):
+      raise Exception("Improper unit identity arrow \n%s\n-->\n%s"%(self.src, self.tgt))
 
 # A <--> ~(~A)
 class DoubleDual(Isomorphism):

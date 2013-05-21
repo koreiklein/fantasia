@@ -9,14 +9,12 @@ def render(x, covariant = True):
     return renderVariable(x, covariant = covariant)
   elif isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
-  elif x.__class__ == basic.Intersect:
-    return renderIntersect(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
     return renderBasicExists(x, covariant = covariant)
   elif x.__class__ == enriched.Quantifier:
     return renderEnrichedQuantifier(x, covariant = covariant)
-  elif x.__class__ == enriched.Call:
-    return renderCall(x, covariant = covariant)
+  elif x.__class__ == enriched.FunctionallyEnrichedHolds:
+    return renderFunctionallyEnrichedHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     return renderNot(x, covariant = covariant)
   elif x.__class__ == basic.Always:
@@ -25,14 +23,20 @@ def render(x, covariant = True):
     return renderAndUnit(x, covariant = covariant)
   elif x.__class__ == basic.OrUnit:
     return renderOrUnit(x, covariant = covariant)
-  elif isinstance(x, basic.Destructor):
-    return renderDestructor(x, covariant = covariant)
+  elif x.__class__ == basic.Holds:
+    return renderHolds(x, covariant = covariant)
   else:
     raise Exception("Unrecognized logic object %s of class %s"%(x,x.__class__))
 
 def renderVariable(x, covariant = True):
   if x.__class__ == basic.StringVariable:
     return renderStringVariable(x, covariant = covariant)
+  elif x.__class__ == basic.ProjectionVariable:
+    return renderProjectionVariable(x, covariant = covariant)
+  elif x.__class__ == basic.InjectionVariable:
+    return renderProjectionVariable(x, covariant = covariant)
+  elif x.__class__ == basic.ProductVariable:
+    return renderProjectionVariable(x, covariant = covariant)
   else:
     raise Exception("Unrecognized logic object %s"%(x,))
 
@@ -41,16 +45,6 @@ def renderConjunction(x, covariant = True):
     return renderAnd(x, covariant = covariant)
   elif x.__class__ == basic.Or:
     return renderOr(x, covariant = covariant)
-  else:
-    raise Exception("Unrecognized logic object %s"%(x,))
-
-def renderDestructor(x, covariant = True):
-  if x.__class__ == basic.Project:
-    return renderProject(x, covariant = covariant)
-  elif x.__class__ == basic.Inject:
-    return renderInject(x, covariant = covariant)
-  elif x.__class__ == basic.Coinject:
-    return renderCoinject(x, covariant = covariant)
   else:
     raise Exception("Unrecognized logic object %s"%(x,))
 
@@ -170,27 +164,6 @@ def renderOrUnit(x, covariant = True):
 def renderStringVariable(x, covariant = True):
   return gl.newTextualGLStack(colors.variableColor, repr(x))
 
-def renderProject(x, covariant = True):
-  # TODO: Reconsider this choice for how to render.
-  return _renderDot(render(x.value, covariant), primitives.projectDot,
-      renderSymbol(x.symbol))
-
-def renderCoinject(x, covariant = True):
-  # TODO: Reconsider this choice for how to render.
-  return _renderDot(render(x.value, covariant), primitives.injectDot,
-      renderSymbol(x.symbol))
-
-def renderInject(x, covariant = True):
-  # TODO: Reconsider this choice for how to render.
-  value = render(x, covariant)
-  s = renderSymbol(x.symbol)
-  m = max(value.widths()[0], s.widths()[0])
-  return renderSymbol(x.symbol).stackCentered(1,
-      s,
-      spacing = distances.inject_spacing).stackCentered(1,
-          value,
-          spacing = distances.inject_spacing)
-
 def _renderDot(left, dot, s):
   return left.stack(0,
       dot, spacing = distances.before_dot_spacing).stack(0,
@@ -215,3 +188,18 @@ def renderCall(x, covariant = True):
     return res
   else:
     return renderNotWithSymbol(res)
+
+def renderHolds(x, covariant):
+  return gl.newTextualGLStack(colors.relationColor, repr(x))
+
+def renderFunctionallyEnrichedHolds(x, covariant):
+  return gl.newTextualGLStack(colors.relationColor, repr(x))
+
+def renderProjectionVariable(v, covariant):
+  return gl.newTextualGLStack(colors.variableColor, repr(v))
+
+def renderInjectionVariable(v, covariant):
+  return gl.newTextualGLStack(colors.variableColor, repr(v))
+
+def renderProductVariable(v, covariant):
+  return gl.newTextualGLStack(colors.variableColor, repr(v))

@@ -181,44 +181,104 @@ def Function(domain_variable, domain, codomain_variable, codomain, unique, value
 outputSymbol = symbol.StringSymbol('output')
 inputSymbol = symbol.StringSymbol('input')
 
-class Call(Enriched):
-  def __init__(self, left, right, intermediate_variable = None):
-    self.left = left
-    self.right = right
-    if intermediate_variable is None:
-      self.intermediate_variable = common_vars.x()
+class Apply:
+  # x: a variable on an Apply object
+  # f: a variable (the "function") or an Apply object
+  # tmp: the temporary variable to use for the output (or None if a new one should be generated)
+  def __init__(self, x, f, tmp = None):
+    self.x = x
+    self.f = f
+    if tmp is None:
+      self.tmp = common_vars.tmp()
     else:
-      self.intermediate_variable = intermediate_variable
-
-  def translate(self):
-    return constructors.Exists([self.intermediate_variable],
-        constructors.Project(symbol = outputSymbol,
-          value = constructors.Intersect(
-            left = constructors.SymbolAnd([ (inputSymbol, self.left)
-                                          , (outputSymbol, self.intermediate_variable) ]),
-            right = self.right)))
-
-  def updateVariables(self):
-    return Call(left = self.left.updateVariables(),
-        right = self.right.updateVariables(),
-        intermediate_variable = self.intermediate_variable.updateVariables())
-
-  def substituteVariable(self, a, b):
-    return Call(left = self.left.substituteVariable(a, b),
-        right = self.right.substituteVariable(a, b),
-        intermediate_variable = self.intermediate_variable.substituteVariable(a, b))
-
-  def freeVariables(self):
-    return Set([self.intermediate_variable]).union(self.left.freeVariables()).union(
-        self.right.freeVariables())
+      self.tmp = tmp
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__
-        and self.left == other.left
-        and self.right == other.right
-        and self.intermediate_variable == other.intermediate_variable)
+    return (other.__class__ == Apply
+        and self.x == other.x and self.f == other.f and self.tmp == other.tmp)
 
   def __ne__(self, other):
     return not(self == other)
 
+  def __repr__(self, other):
+    return "< " + repr(self.x) + " |> " + repr(self.f) + " >"
 
+  def updateVariables(self):
+    return Apply(x = self.x.updateVariables(),
+        f = self.f.updateVariables(),
+        tmp = self.tmp.updateVariables())
+  def substituteVariable(self, a, b):
+    return Apply(x = self.x.substituteVariable(a, b),
+        f = self.f.substituteVariable(a, b),
+        tmp = self.tmp.substituteVariable(a, b))
+  def freeVariables(self):
+    result = Set()
+    result.union_with(self.x.freeVariables())
+    result.union_with(self.f.freeVariables())
+    result.union_with(self.tmp.freeVariables())
+
+# v: either a variable or an Apply object
+# return: a function f taking (a function g taking a new "output" variable to a basic object)
+#                          to (a larger object that put the output variable in scope and
+#                              assumes the appropriate things about it)
+def _translate(v):
+  if isinstance(v, basic.Variable):
+    f = lambda g: g(v)
+  else:
+    assert(v.__class__ == Apply)
+    f = lambda g: _translate(v.x, lambda x: _translate(v.f, lambda f:
+      basic.Exists(variables = [v.tmp],
+        value = basic.And( basic.Relation(holding = f, held = [x, v.tmp])
+                         , g(v.tmp)))))
+  return f
+
+class FunctionallyEnrichedHolds(Enriched):
+  # enrichedHolding: a variable, or an Apply object
+  # enrichedHeld: a list of variables, or Apply objects
+  def __init__(self, enrichedHolding, enrichedHeld):
+    self.enrichedHolding = enrichedHolding
+    self.enrichedHeld = enrichedHeld
+
+  def __eq__(self, other):
+    return (other.__class__ == FunctionallyEnrichedHolds
+        and self.enrichedHolding == other.enrichedHolding
+        and self.enrichedHeld == other.enrichedHeld)
+  def __ne__(self, other):
+    return not(self == other)
+
+  def __repr__(self, other):
+    return (repr(self.enrichedHolding)
+        + "(" + ", ".join([repr(v) for v in self.enrichedHeld]) + ")")
+
+  def updateVariables(self):
+    return FunctionallyEnrichedHolds(enrichedHolding = self.enrichedHolding.updateVariables(),
+        enrichedHeld = [v.updateVariables() for v in self.enrichedHeld])
+  def substituteVariable(self, a, b):
+    return FunctionallyEnrichedHolds(enrichedHolding = self.enrichedHolding.substituteVariable(a, b),
+        enrichedHeld = [v.substituteVariable(a, b) for v in self.enrichedHeld])
+  def freeVariables(self):
+    result = Set()
+    result.union_with(self.enrichedHolding.freeVariables())
+    for v in self.enrichedHeld:
+      result.union_with(v.freeVariables())
+    return self
+
+  def translate(self):
+    def _s(vs, f):
+      if len(vs) == 0:
+        return f([])
+      else:
+        x = vs[0]
+        rest = vs[1:]
+        return _translate(x, lambda realX:
+            _s(rest, lambda realRest:
+              f(_listCons(realX, realRest))))
+    return _s(self.enrichedHeld, lambda held:
+        _translate(self.enrichedHolding, lambda holding:
+          basic.Relation(holding = holding, held = held)))
+
+
+def _listCons(x, xs):
+  result = [x]
+  result.extend(xs)
+  return result

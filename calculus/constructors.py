@@ -5,19 +5,13 @@ from lib import equivalence, common_vars
 
 multiple_conjunction = constructors.multiple_conjunction
 
-SymbolAnd = constructors.SymbolAnd
-SymbolOr = constructors.SymbolOr
 And = constructors.And
 Or = constructors.Or
 Implies = constructors.Implies
 Iff = constructors.Iff
 Exists = constructors.Exists
 Forall = constructors.Forall
-Intersect = constructors.Intersect
 Not = constructors.Not
-Project = constructors.Project
-Inject = constructors.Inject
-Coinject = constructors.Coinject
 StringVariable = constructors.StringVariable
 
 true = constructors.true
@@ -38,3 +32,8 @@ def VariableBinding(variable, equivalence, unique = False, alternate_variable = 
     equivalence = equivalence,
     unique = unique,
     alternate_variable = alternate_variable)
+
+Holds = constructors.Holds
+VariableProject = constructors.VariableProject
+VariableProduct = constructors.VariableProduct
+

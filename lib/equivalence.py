@@ -6,25 +6,19 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 
 equivalence = constructors.StringVariable('equivalence')
 
-reflexiveSymbol = symbol.StringSymbol('reflexive')
-symmetricSymbol = symbol.StringSymbol('symmetric')
-transitiveSymbol = symbol.StringSymbol('transitive')
+def InDomain(x, e):
+  return constructors.Holds(x, constructors.VariableProject(e, domainSymbol))
 
-def AreEquivalence(r, d):
-  return constructors.Intersect(
-      left = constructors.SymbolAnd([(relationSymbol, r), (domainSymbol, d)]),
-      right = equivalence)
-
-def EquivalentUnder(a, b, r):
-  return constructors.Intersect(
-      left = constructors.SymbolAnd([(leftSymbol, a), (rightSymbol, b)]),
-      right = r)
+def EqualUnder(a, b, e):
+  return constructors.Holds(
+      constructors.VariableProduct([(leftSymbol, a), (rightSymbol, b)]),
+      constructors.VariableProject(e, relationSymbol))
 
 x = common_vars.x()
 def reflexive(e):
   return constructors.Forall([x],
-      constructors.Implies(predicate = constructors.Intersect(x, constructors.Project(e, domainSymbol)),
-        consequent = EquivalentUnder(x, x, constructors.Project(e, relationSymbol))))
+      constructors.Implies(predicate = InDomain(x, e),
+        consequent = EqualUnder(x, x, e)))
 
 x = common_vars.x()
 y = common_vars.y()
@@ -32,10 +26,10 @@ def symmetric(e):
   return constructors.Forall([x, y],
       constructors.Implies(
         predicate = constructors.And(
-          [ constructors.Intersect(x, constructors.Project(e, domainSymbol))
-          , constructors.Intersect(y, constructors.Project(e, domainSymbol))
-          , EquivalentUnder(x, y, constructors.Project(e, relationSymbol)) ]),
-        consequent = EquivalentUnder(y, x, constructors.Project(e, relationSymbol))))
+          [ InDomain(x, e)
+          , InDomain(y, e)
+          , EqualUnder(x, y, e)]),
+        consequent = EqualUnder(y, x, e)))
 
 x = common_vars.x()
 y = common_vars.y()
@@ -44,20 +38,20 @@ def transitive(e):
   return constructors.Forall([x, y, z],
       constructors.Implies(
         predicate = constructors.And(
-          [ constructors.Intersect(x, constructors.Project(e, domainSymbol))
-          , constructors.Intersect(y, constructors.Project(e, domainSymbol))
-          , constructors.Intersect(z, constructors.Project(e, domainSymbol))
-          , EquivalentUnder(x, y, constructors.Project(e, relationSymbol))
-          , EquivalentUnder(y, z, constructors.Project(e, relationSymbol)) ]),
-        consequent = EquivalentUnder(x, z, constructors.Project(e, relationSymbol))))
+          [ InDomain(x, e)
+          , InDomain(y, e)
+          , InDomain(z, e)
+          , EqualUnder(x, y, e)
+          , EqualUnder(y, z, e) ]),
+        consequent = EqualUnder(x, z, e)))
 
 A = common_vars.A()
 claim = constructors.Forall([A],
     constructors.Iff(
-      left = constructors.SymbolAnd(
-        [ (reflexiveSymbol, reflexive(A))
-        , (symmetricSymbol, symmetric(A))
-        , (transitiveSymbol, transitive(A))]),
-      right = constructors.Intersect(left = A, right = equivalence)))
+      left = constructors.And(
+        [ reflexive(A)
+        , symmetric(A)
+        , transitive(A)]),
+      right = constructors.Holds(A, equivalence)))
 
 lib = library.Library(claims = [claim], variables = [equivalence])

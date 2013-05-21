@@ -27,3 +27,5 @@ z = lambda: StringVariable('z')
 R = lambda: StringVariable('R')
 
 less = lambda: StringVariable('<')
+
+tmp = lambda: StringVariable('tmp')

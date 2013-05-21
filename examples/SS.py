@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import constructors
-from lib import natural, library, common_vars
+from lib import natural, library, common_vars, equivalence
 
 # A proof that forall n : N . S (S n) > n
 n = common_vars.n()
@@ -18,11 +18,12 @@ b = common_vars.b()
 #            , natural.Successor(a, b)
 #            , natural.Less(n, b) ])))
 
-claim = constructors.EnrichedForall(
-    [constructors.VariableBinding(variable = n, equivalence = natural.natural, unique = True)],
-    natural.Less(n, constructors.Call(constructors.Call(n, natural.natural_successor),
-      natural.natural_successor)))
+# FIXME Reimplement.
+#claim = constructors.EnrichedForall(
+#    [constructors.VariableBinding(variable = n, equivalence = natural.natural, unique = True)],
+#    natural.Less(n, constructors.Call(constructors.Call(n, natural.natural_successor),
+#      natural.natural_successor)))
 
-proof = natural.lib.beginProof()
-proof = proof.forwardFollow(lambda x:
-          x.forwardAssume(claim))
+proof = equivalence.lib.beginProof()
+#proof = proof.forwardFollow(lambda x:
+#          x.forwardAssume(claim))
