@@ -36,9 +36,6 @@ def ExpandIff(left, right):
 def Not(a):
   return basic.Always(basic.Not(value = a, rendered = True))
 
-def unaryHolds(r):
-  return lambda x: basic.Always(basic.unaryHolds(r)(x))
-
 def Holds(x, r):
   return basic.Always(basic.Holds(x, r))
 
