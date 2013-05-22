@@ -47,7 +47,7 @@ zeroFirst = enriched.SimpleEnrichedForall([(n, natural)],
     enriched.Not(Equal(enriched.Apply(n, natural_successor_function), zero)))
 
 pre_lib = library.Library(
-    claims = [ successorIsGreater.translate()
+    claims = [ successorIsGreater
              , naturalIsEquivalence
              , zeroNatural
              , zeroFirst
