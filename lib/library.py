@@ -1,13 +1,13 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basicConstructors as constructors
+from calculus import enriched
 
 class Library:
   def __init__(self, claims, variables):
     self.variables = variables
     self.claims = claims
-    self.formula = constructors.Exists(variables,
-        constructors.And(claims))
+    self.formula = enriched.Always(enriched.BasicExists(variables,
+        enriched.And(claims)))
 
   def translate(self):
     return Library(claims = [claim.translate() for claim in self.claims],

@@ -51,8 +51,11 @@ class Object:
   def identity(self):
     return Id(src = self, tgt = self)
 
+class GeneralizedVariable:
+  pass
+
 n_variables = 0
-class Variable:
+class Variable(GeneralizedVariable):
   def __init__(self):
     self._generate_id()
 
@@ -100,7 +103,7 @@ class StringVariable(Variable):
   def updateVariables(self):
     return StringVariable(self.name())
 
-class InjectionVariable:
+class InjectionVariable(GeneralizedVariable):
   def __init__(self, variable, symbol):
     self.variable = variable
     self.symbol = symbol
@@ -119,7 +122,7 @@ class InjectionVariable:
   def freeVariables(self):
     return self.variable.freeVariables()
 
-class ProjectionVariable:
+class ProjectionVariable(GeneralizedVariable):
   def __init__(self, variable, symbol):
     self.variable = variable
     self.symbol = symbol
@@ -141,7 +144,7 @@ class ProjectionVariable:
 # A more elaborate syntax for VARIABLES!!! These construct are under no means
 # meant to be used for objects, nether have they any sort of computational manifestation.
 # They are ENTIRELY FOR BOOKEEPING.
-class ProductVariable:
+class ProductVariable(GeneralizedVariable):
   def __init__(self, symbol_variable_pairs):
     self.symbol_variable_pairs = symbol_variable_pairs
 

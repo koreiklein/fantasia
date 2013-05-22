@@ -17,37 +17,42 @@ def Natural(n):
   return equivalence.InDomain(n, natural)
 
 def Successor(a, b):
-  return enriched.Holds(enriched.ProductVariable([(before, a), (after, b)]), natural_successor)
+  return enriched.EnrichedHolds(enriched.ProductVariable([(before, a), (after, b)]), natural_successor)
 
 def Equal(a, b):
   return equivalence.EqualUnder(a, b, natural)
 
 def Less(a, b):
-  return enriched.Holds(enriched.ProductVariable([(smaller, a), (greater, b)]), natural_less)
+  return enriched.EnrichedHolds(
+      enriched.VariableProduct([(smaller, a), (greater, b)]), natural_less)
+
+naturalIsEquivalence = equivalence.IsEquivalence(natural)
 
 successorIsFunction = function.IsFunction(
     enriched.VariableProduct([ (common_symbols.functionPairsSymbol, natural_successor)
                              , (common_symbols.srcSymbol, natural)
                              , (common_symbols.tgtSymbol, natural)]))
 
-#a = common_vars.a()
-#successorIsGreater = enriched.EnrichedForall(
-#    [enriched.VariableBinding(variable = a, equivalence = natural, unique = True)],
-#    Less(a, enriched.Call(a, natural_successor)))
-#
-#zero = enriched.StringVariable('zero')
-#zeroNatural = enriched.Intersect(zero, enriched.Project(natural, equivalence.domainSymbol))
-#
-#n = common_vars.n()
-#m = common_vars.m()
-#zeroFirst = enriched.Forall([n, m],
-#    enriched.Implies(
-#      predicate = enriched.And(
-#        [ enriched.Intersect(n, enriched.Project(natural, equivalence.domainSymbol))
-#        , enriched.Intersect(m, enriched.Project(natural, equivalence.domainSymbol))
-#        , Successor(n, m) ]),
-#      consequent = enriched.Not(Equal(n, zero))))
-#lib = library.Library(claims = [isEquivalence, zeroNatural, zeroFirst, existsUniqueSuccessor, successorIsGreater],
-    #variables = [natural, zero, natural_less, natural_successor])
+a = common_vars.a()
+successorIsGreater = enriched.SimpleEnrichedForall([(a, natural)],
+    Less(a, enriched.Apply(a, natural_successor)))
 
-lib = library.Library(claims = [], variables = [])
+zero = enriched.StringVariable('zero')
+zeroNatural = Natural(zero)
+
+n = common_vars.n()
+zeroFirst = enriched.SimpleEnrichedForall([(n, natural)],
+    enriched.Not(Equal(enriched.Apply(n, natural_successor), zero)))
+
+print successorIsGreater.translate()
+pre_lib = library.Library(
+    # FIXME Remove .translate() s
+    claims = [ successorIsGreater.translate()
+             , naturalIsEquivalence
+             , zeroNatural
+             , zeroFirst
+             , successorIsFunction
+              ],
+    variables = [natural, zero, natural_less, natural_successor])
+
+lib = pre_lib.union(function.lib)

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import constructors
+from calculus import enriched
 from lib import natural, library, common_vars, equivalence, function
 
 # A proof that forall n : N . S (S n) > n
@@ -28,4 +28,4 @@ b = common_vars.b()
 #proof = proof.forwardFollow(lambda x:
 #          x.forwardAssume(claim))
 
-proof = function.lib.beginProof()
+proof = natural.lib.beginProof()

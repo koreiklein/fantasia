@@ -1,10 +1,13 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, symbol, basicConstructors as constructors
-from lib.common_symbols import relationSymbol, domainSymbol, leftSymbol, rightSymbol
+from calculus import basic, symbol
+from lib.common_symbols import relationSymbol, domainSymbol, leftSymbol, rightSymbol, inputSymbol, outputSymbol
 from lib import common_vars
 
 from sets import Set
+
+def Always(value):
+  return basic.Always(value)
 
 # Multiple conjunction will be represented (a | (b | (c | 1)))
 def multiple_conjunction(conjunction, values):
@@ -153,7 +156,6 @@ class Quantifier(Enriched):
       assert(self.underlying == BoundedForall)
       return Welldefinedly
 
-  # Always returns a "basic" object.
   def translate(self):
     value = self.value
     for binding in self.bindings:
@@ -202,6 +204,9 @@ def BoundedForall(variables, domains, value):
 def BasicForall(variables, value):
   return basic.Not(basic.Exists(variables = variables, value = basic.Not(value)))
 
+def BasicExists(variables, value):
+  return basic.Exists(variables = variables, value = value)
+
 class BoundedExists(Enriched):
   def __init__(self, variables, domains, value):
     assert(len(variables ) == len(domains))
@@ -213,9 +218,9 @@ class BoundedExists(Enriched):
   def translate(self):
     result = self.value.translate()
     for i in range(len(self.variables)):
-      result = And([ constructors.Holds(self.variables[i], self.domains[i])
-                                , result])
-    return constructors.Exists(self.variables, result)
+      result = basic.And( basic.Holds(self.variables[i], self.domains[i])
+                        , result)
+    return basic.Exists(self.variables, result)
 
   def updateVariables(self):
     return BoundedExists(
@@ -235,114 +240,117 @@ class BoundedExists(Enriched):
       result = result.union(self.domains[i].freeVariables()).difference(Set([self.variables[i]]))
     return result
 
-#class Apply:
-#  # x: a variable on an Apply object
-#  # f: a variable (the "function") or an Apply object
-#  # tmp: the temporary variable to use for the output (or None if a new one should be generated)
-#  def __init__(self, x, f, tmp = None):
-#    self.x = x
-#    self.f = f
-#    if tmp is None:
-#      self.tmp = common_vars.tmp()
-#    else:
-#      self.tmp = tmp
-#
-#  def __eq__(self, other):
-#    return (other.__class__ == Apply
-#        and self.x == other.x and self.f == other.f and self.tmp == other.tmp)
-#
-#  def __ne__(self, other):
-#    return not(self == other)
-#
-#  def __repr__(self, other):
-#    return "< " + repr(self.x) + " |> " + repr(self.f) + " >"
-#
-#  def updateVariables(self):
-#    return Apply(x = self.x.updateVariables(),
-#        f = self.f.updateVariables(),
-#        tmp = self.tmp.updateVariables())
-#  def substituteVariable(self, a, b):
-#    return Apply(x = self.x.substituteVariable(a, b),
-#        f = self.f.substituteVariable(a, b),
-#        tmp = self.tmp.substituteVariable(a, b))
-#  def freeVariables(self):
-#    result = Set()
-#    result.union_with(self.x.freeVariables())
-#    result.union_with(self.f.freeVariables())
-#    result.union_with(self.tmp.freeVariables())
-#
-## v: either a variable or an Apply object
-## return: a function f taking (a function g taking a new "output" variable to a basic object)
-##                          to (a larger object that put the output variable in scope and
-##                              assumes the appropriate things about it)
-#def _translate(v):
-#  if isinstance(v, basic.Variable):
-#    f = lambda g: g(v)
-#  else:
-#    assert(v.__class__ == Apply)
-#    f = lambda g: _translate(v.x, lambda x: _translate(v.f, lambda f:
-#      basic.Exists(variables = [v.tmp],
-#        value = basic.And( basic.Relation(holding = f, held = [x, v.tmp])
-#                         , g(v.tmp)))))
-#  return f
-#
-#class FunctionallyEnrichedHolds(Enriched):
-#  # enrichedHolding: a variable, or an Apply object
-#  # enrichedHeld: a list of variables, or Apply objects
-#  def __init__(self, enrichedHolding, enrichedHeld):
-#    self.enrichedHolding = enrichedHolding
-#    self.enrichedHeld = enrichedHeld
-#
-#  def __eq__(self, other):
-#    return (other.__class__ == FunctionallyEnrichedHolds
-#        and self.enrichedHolding == other.enrichedHolding
-#        and self.enrichedHeld == other.enrichedHeld)
-#  def __ne__(self, other):
-#    return not(self == other)
-#
-#  def __repr__(self, other):
-#    return (repr(self.enrichedHolding)
-#        + "(" + ", ".join([repr(v) for v in self.enrichedHeld]) + ")")
-#
-#  def updateVariables(self):
-#    return FunctionallyEnrichedHolds(enrichedHolding = self.enrichedHolding.updateVariables(),
-#        enrichedHeld = [v.updateVariables() for v in self.enrichedHeld])
-#  def substituteVariable(self, a, b):
-#    return FunctionallyEnrichedHolds(enrichedHolding = self.enrichedHolding.substituteVariable(a, b),
-#        enrichedHeld = [v.substituteVariable(a, b) for v in self.enrichedHeld])
-#  def freeVariables(self):
-#    result = Set()
-#    result.union_with(self.enrichedHolding.freeVariables())
-#    for v in self.enrichedHeld:
-#      result.union_with(v.freeVariables())
-#    return self
-#
-#  def translate(self):
-#    def _s(vs, f):
-#      if len(vs) == 0:
-#        return f([])
-#      else:
-#        x = vs[0]
-#        rest = vs[1:]
-#        return _translate(x, lambda realX:
-#            _s(rest, lambda realRest:
-#              f(_listCons(realX, realRest))))
-#    return _s(self.enrichedHeld, lambda held:
-#        _translate(self.enrichedHolding, lambda holding:
-#          basic.Relation(holding = holding, held = held)))
-#
-#
-#def _listCons(x, xs):
-#  result = [x]
-#  result.extend(xs)
-#  return result
+class Apply:
+  # x: a variable on an Apply object
+  # f: a variable (the "function") or an Apply object
+  # tmp: the temporary variable to use for the output (or None if a new one should be generated)
+  def __init__(self, x, f, tmp = None):
+    self.x = x
+    self.f = f
+    if tmp is None:
+      self.tmp = common_vars.tmp()
+    else:
+      self.tmp = tmp
+
+  def __eq__(self, other):
+    return (other.__class__ == Apply
+        and self.x == other.x and self.f == other.f and self.tmp == other.tmp)
+
+  def __ne__(self, other):
+    return not(self == other)
+
+  def __repr__(self):
+    return "< " + repr(self.x) + " |> " + repr(self.f) + " >"
+
+  def updateVariables(self):
+    return Apply(x = self.x.updateVariables(),
+        f = self.f.updateVariables(),
+        tmp = self.tmp.updateVariables())
+  def substituteVariable(self, a, b):
+    return Apply(x = self.x.substituteVariable(a, b),
+        f = self.f.substituteVariable(a, b),
+        tmp = self.tmp.substituteVariable(a, b))
+  def freeVariables(self):
+    result = Set()
+    result.union_with(self.x.freeVariables())
+    result.union_with(self.f.freeVariables())
+    result.union_with(self.tmp.freeVariables())
+
+# v: either a variable or an Apply object
+# return: a function f taking (a function g taking a new "output" variable to a basic object)
+#                          to (a larger object that put the output variable in scope and
+#                              assumes the appropriate things about it)
+def _translate(v, g):
+  if isinstance(v, basic.Variable):
+    return g(v)
+  elif v.__class__  == basic.ProductVariable:
+    def _s(pairs, f):
+      if len(pairs) == 0:
+        return f([])
+      else:
+        (firstS, firstV) = pairs[0]
+        rest = pairs[1:]
+        return _translate(firstV, lambda basicFirstV:
+            _s(rest, lambda basicRest:
+              f(_listCons((firstS, basicFirstV), basicRest))))
+    return _s(v.symbol_variable_pairs, lambda basic_symbol_variable_pairs:
+        g(basic.ProductVariable(basic_symbol_variable_pairs)))
+  elif v.__class__ == basic.ProjectionVariable:
+    return _translate(v.variable, lambda variable:
+        g(basic.ProjectionVariable(variable = variable, symbol = v.symbol)))
+  elif v.__class__ == basic.InjectionVariable:
+    return _translate(v.variable, lambda variable:
+        g(basic.InjectionVariable(variable = variable, symbol = v.symbol)))
+  else:
+    assert(v.__class__ == Apply)
+    return _translate(v.x, lambda x: _translate(v.f, lambda f:
+      basic.Exists(variables = [v.tmp],
+        value = basic.And(basic.Holds(
+          held = basic.ProductVariable([ (inputSymbol, x)
+                                       , (outputSymbol, v.tmp)]),
+          holding = f),
+          g(v.tmp)))))
+
+def _listCons(x, xs):
+  result = [x]
+  result.extend(xs)
+  return result
+
+class EnrichedHolds(Enriched):
+  def __init__(self, held, holding):
+    self.held = held
+    self.holding = holding
+
+  def __eq__(self, other):
+    return (other.__class__ == EnrichedHolds
+        and self.held == other.held
+        and self.holding == other.holding)
+  def __ne__(self, other):
+    return not(self == other)
+
+  def __repr__(self):
+    return repr(self.held) + " : " + repr(self.holding)
+
+  def updateVariables(self):
+    return EnrichedHolds(held = self.held.updateVariables(),
+        holding = self.holding.updateVariables())
+  def substituteVariable(self, a, b):
+    return EnrichedHolds(held = self.held.substituteVariable(a, b),
+        holding = self.holding.substituteVariable(a, b))
+  def freeVariables(self):
+    return self.held.freeVariables().union(self.holding.freeVariables())
+
+  def translate(self):
+    return _translate(self.held, lambda held:
+        _translate(self.holding, lambda holding:
+          basic.Holds(held = held, holding = holding)))
 
 class Iff(Enriched):
   def __init__(self, left, right):
     self.left = left
     self.right = right
   def translate(self):
-    return constructors.Iff(self.left, self.right)
+    return ExpandIff(self.left, self.right)
   def updateVariables(self):
     return Iff(left = self.left.updateVariables(),
         right = self.right.updateVariables())

@@ -7,10 +7,10 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 equivalence = enriched.StringVariable('equivalence')
 
 def InDomain(x, e):
-  return enriched.Holds(x, enriched.VariableProject(e, domainSymbol))
+  return enriched.EnrichedHolds(x, enriched.VariableProject(e, domainSymbol))
 
 def EqualUnder(a, b, e):
-  return enriched.Holds(
+  return enriched.EnrichedHolds(
       enriched.VariableProduct([(leftSymbol, a), (rightSymbol, b)]),
       enriched.VariableProject(e, relationSymbol))
 
@@ -46,7 +46,7 @@ def transitive(e):
         consequent = EqualUnder(x, z, e)))
 
 def IsEquivalence(e):
-  return enriched.Holds(e, equivalence)
+  return enriched.EnrichedHolds(e, equivalence)
 
 A = common_vars.A()
 claim = enriched.BasicForall([A],
