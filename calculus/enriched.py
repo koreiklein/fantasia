@@ -53,24 +53,6 @@ StringVariable = basic.StringVariable
 true = basic.Always(basic.true)
 false = basic.Always(basic.false)
 
-def EnrichedExists(bindings, value):
-  return basic.Always(Exists(bindings = bindings, value = value))
-
-def EnrichedForall(bindings, value):
-  return basic.Always(Forall(bindings = bindings, value = value))
-
-def SimpleEnrichedForall(variableEquivalencePairs, value):
-  return EnrichedForall(
-      bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
-                  for (v,e) in variableEquivalencePairs],
-      value = value)
-
-def SimpleEnrichedExists(variableEquivalencePairs, value):
-  return EnrichedExists(
-      bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
-                  for (v,e) in variableEquivalencePairs],
-      value = value)
-
 class VariableBinding:
   # variable: a basic.Variable
   # equivalence: an Object whose representation is an equivalence in the sense of lib.equivalence
@@ -123,18 +105,24 @@ class VariableBinding:
 class Enriched(basic.Object):
   pass
 
-def Forall(bindings, value):
-  return basic.Always(Quantifier(bindings = bindings, value = value,
-    underlying = BoundedForall))
+def Forall(variableEquivalencePairs, value):
+  return basic.Always(Quantifier(
+    bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
+                for (v,e) in variableEquivalencePairs],
+    value = value,
+    underlying = _BoundedForall))
 
-def Exists(bindings, value):
-  return basic.Always(Quantifier(bindings = bindings, value = value,
-    underlying = BoundedExists))
+def Exists(variableEquivalencePairs, value):
+  return basic.Always(Quantifier(
+    bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
+                for (v,e) in variableEquivalencePairs],
+    value = value,
+    underlying = _BoundedExists))
 
 class Quantifier(Enriched):
   # bindings: a list of VariableBinding
   # value: an Object
-  # underlying: BoundedExists or BoundedForall
+  # underlying: _BoundedExists or _BoundedForall
   def  __init__(self, bindings, value, underlying):
     self.bindings = bindings
     self.value = value
@@ -150,10 +138,10 @@ class Quantifier(Enriched):
     return not(self == other)
 
   def uniquenessCombinator(self):
-    if self.underlying == BoundedExists:
+    if self.underlying == _BoundedExists:
       return Uniquely
     else:
-      assert(self.underlying == BoundedForall)
+      assert(self.underlying == _BoundedForall)
       return Welldefinedly
 
   def translate(self):
@@ -172,10 +160,10 @@ class Quantifier(Enriched):
         value = value).translate()
 
   def isForall(self):
-    return self.underlying == BoundedForall
+    return self.underlying == _BoundedForall
 
   def isExists(self):
-    return self.underlying == BoundedExists
+    return self.underlying == _BoundedExists
 
   def updateVariables(self):
     return Quantifier(
@@ -195,8 +183,8 @@ class Quantifier(Enriched):
       result = result.union(binding.domain().freeVariables()).difference(Set([binding.variable]))
     return result
 
-def BoundedForall(variables, domains, value):
-  return basic.Not(BoundedExists(
+def _BoundedForall(variables, domains, value):
+  return basic.Not(_BoundedExists(
     variables = variables,
     domains = domains,
     value = basic.Not(value)))
@@ -207,7 +195,7 @@ def BasicForall(variables, value):
 def BasicExists(variables, value):
   return basic.Exists(variables = variables, value = value)
 
-class BoundedExists(Enriched):
+class _BoundedExists(Enriched):
   def __init__(self, variables, domains, value):
     assert(len(variables ) == len(domains))
     self.variables = variables
@@ -223,13 +211,13 @@ class BoundedExists(Enriched):
     return basic.Exists(self.variables, result)
 
   def updateVariables(self):
-    return BoundedExists(
+    return _BoundedExists(
         variables = [variable.updateVariables() for variable in self.variables],
         domains = [domain.updateVariables() for domain in self.domains],
         value = self.value.updateVariables())
 
   def substituteVariable(self, a, b):
-    return BoundedExists(
+    return _BoundedExists(
         variables = [variable.substituteVariable(a, b) for variable in self.variables],
         domains = [domain.substituteVariable(a, b) for domain in self.domains],
         value = self.value.substituteVariable(a, b))

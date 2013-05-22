@@ -24,8 +24,8 @@ def projectRelation(e):
 a = common_vars.a()
 b = common_vars.b()
 def defined(f):
-  return enriched.SimpleEnrichedForall([(a, projectSrc(f))],
-      enriched.SimpleEnrichedExists([(b, projectTgt(f))],
+  return enriched.Forall([(a, projectSrc(f))],
+      enriched.Exists([(b, projectTgt(f))],
         Maps(a, b, f)))
 
 a = common_vars.a()
@@ -33,7 +33,7 @@ b = common_vars.b()
 aprime = common_vars.aprime()
 bprime = common_vars.bprime()
 def wellDefined(f):
-  return enriched.SimpleEnrichedForall(
+  return enriched.Forall(
       [ (a, projectSrc(f))
       , (aprime, projectSrc(f))
       , (b, projectTgt(f))
@@ -49,7 +49,7 @@ b = common_vars.b()
 aprime = common_vars.aprime()
 bprime = common_vars.bprime()
 def unique(f):
-  return enriched.SimpleEnrichedForall(
+  return enriched.Forall(
       [ (a, projectSrc(f))
       , (aprime, projectSrc(f))
       , (b, projectTgt(f))

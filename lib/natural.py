@@ -36,14 +36,14 @@ natural_successor_function = enriched.VariableProduct(
 successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
-successorIsGreater = enriched.SimpleEnrichedForall([(a, natural)],
+successorIsGreater = enriched.Forall([(a, natural)],
     Less(a, enriched.Apply(a, natural_successor_function)))
 
 zero = enriched.StringVariable('zero')
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
-zeroFirst = enriched.SimpleEnrichedForall([(n, natural)],
+zeroFirst = enriched.Forall([(n, natural)],
     enriched.Not(Equal(enriched.Apply(n, natural_successor_function), zero)))
 
 pre_lib = library.Library(
