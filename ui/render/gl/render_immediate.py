@@ -8,19 +8,31 @@ def render(x, covariant = True):
   if isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
-    return renderBasicExists(x, covariant = covariant)
+    return renderExists(valueStack = render(x.value, covariant),
+        variablesList = [renderVariable(variable, covariant) for variable in x.variables],
+        covariant = covariant)
   elif x.__class__ == enriched.Iff:
     return renderEnrichedIff(x, covariant = covariant)
   elif x.__class__ == enriched.Hidden:
     return renderEnrichedHidden(x, covariant = covariant)
   elif x.__class__ == enriched._Quantifier:
-    return renderEnrichedQuantifier(x, covariant = covariant)
+    return renderExists(valueStack = render(x.value, covariant),
+        variablesList = [renderVariableBinding(
+          variable = renderVariable(binding.variable, covariant),
+          unique = binding.unique,
+          equivalence = renderVariable(binding.equivalence, covariant),
+          covariant = covariant)
+          for binding in x.bindings],
+        covariant = covariant if x.isExists() else not covariant)
   elif x.__class__ == enriched.EnrichedHolds:
     return renderEnrichedHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
-    return renderNot(x, covariant = covariant)
+    if x.rendered:
+      return renderNotWithSymbol(render(x.value, covariant))
+    else:
+      return render(x.value, not covariant)
   elif x.__class__ == basic.Always:
-    return renderAlways(x, covariant = covariant)
+    return renderAlways(render(x.value, covariant), covariant)
   elif x.__class__ == basic.AndUnit:
     return renderAndUnit(x, covariant = covariant)
   elif x.__class__ == basic.OrUnit:
@@ -43,12 +55,19 @@ def renderVariable(x, covariant = True):
     raise Exception("Unrecognized logic object %s"%(x,))
 
 def renderConjunction(x, covariant = True):
-  if x.__class__ == basic.And:
-    return renderAnd(x, covariant = covariant)
-  elif x.__class__ == basic.Or:
-    return renderOr(x, covariant = covariant)
+  left = render(x.left, covariant)
+  right = render(x.right, covariant)
+  if x.right == basic.unit_for_conjunction(x.__class__):
+    return left
+  elif x.left == basic.unit_for_conjunction(x.__class__):
+    return right
   else:
-    raise Exception("Unrecognized logic object %s"%(x,))
+    if x.__class__ == basic.And:
+      return renderAnd(left, right, covariant)
+    elif x.__class__ == basic.Or:
+      return renderOr(left, right, covariant)
+    else:
+      raise Exception("Unrecognized logic object %s"%(x,))
 
 def _dimension_for_variance(covariant):
   if covariant:
@@ -84,25 +103,20 @@ def renderIntersect(x, covariant = True):
   else:
     return renderNotWithSymbol(res)
 
-def renderAnd(x, covariant = True):
-  if x.right == basic.unit_for_conjunction(x.__class__):
-    return render(x.left, covariant)
+def renderAnd(left, right, covariant):
   return renderTriple(dimension = _dimension_for_variance(covariant),
-      left = render(x.left, covariant),
+      left = left,
       middle = primitives.andDivider(covariant),
-      right = render(x.right, covariant))
+      right = right)
 
-def renderOr(x, covariant = True):
+def renderOr(left, right, covariant):
   return renderTriple(dimension = _dimension_for_variance(covariant),
-      left = render(x.left, covariant),
+      left = left,
       middle = primitives.orDivider(covariant),
-      right = render(x.right, covariant))
+      right = right)
 
-def renderNot(x, covariant = True):
-  if x.rendered:
-    return renderNotWithSymbol(render(x.value, covariant))
-  else:
-    return render(x.value, not covariant)
+def renderNot(value, covariant):
+  return render(value, not variant)
 
 def renderNotWithSymbol(value):
   return primitives.notSymbol(value.widths()[:2]).below(
@@ -127,17 +141,20 @@ def renderExists(valueStack, variablesList, covariant):
       quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
 
-def renderBasicExists(quantifier, covariant = True):
-  return renderExists(valueStack = render(quantifier.value, covariant),
-      variablesList = [renderVariable(variable, covariant) for variable in quantifier.variables],
-      covariant = covariant)
+def renderVariableBinding(variable, unique, equivalence, covariant):
+  dimension = 0
+  if unique:
+    c = '!'
+  else:
+    c = ':'
+  middleStack = gl.newTextualGLStack(colors.variableColor, c)
+  return variable.stack(dimension,
+      middleStack,
+      spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
+          equivalence,
+          spacing = distances.enriched_variable_binding_spacing)
 
-def renderEnrichedQuantifier(quantifier, covariant = True):
-  return renderExists(valueStack = render(quantifier.value, covariant),
-      variablesList = [renderVariableBinding(binding, covariant) for binding in quantifier.bindings],
-      covariant = covariant if quantifier.isExists() else not covariant)
-
-def renderVariableBinding(binding, covariant = True):
+def _renderVariableBinding(binding, covariant = True):
   dimension = 0
   if binding.unique:
     c = '!'
@@ -150,8 +167,7 @@ def renderVariableBinding(binding, covariant = True):
           renderVariable(binding.equivalence, covariant),
           spacing = distances.enriched_variable_binding_spacing)
 
-def renderAlways(x, covariant = True):
-  value = render(x.value, covariant)
+def renderAlways(value, covariant):
   widths = [x + 2 * distances.exponential_border_width for x in value.widths()]
   widths[2] = 0.0
   return primitives.exponentialBox(covariant, widths).stackCentered(2, value,
