@@ -24,11 +24,11 @@ def Equal(a, b):
 
 def Less(a, b):
   return enriched.EnrichedHolds(
-      enriched.VariableProduct([(smaller, a), (greater, b)]), natural_less)
+      enriched.ProductVariable([(smaller, a), (greater, b)]), natural_less)
 
 naturalIsEquivalence = equivalence.IsEquivalence(natural)
 
-natural_successor_function = enriched.VariableProduct(
+natural_successor_function = enriched.ProductVariable(
     [ (common_symbols.functionPairsSymbol, natural_successor)
     , (common_symbols.srcSymbol, natural)
     , (common_symbols.tgtSymbol, natural)])

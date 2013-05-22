@@ -7,18 +7,18 @@ function = enriched.StringVariable('function')
 
 def Maps(a, b, f):
   return enriched.Holds(
-      enriched.VariableProduct([ (common_symbols.inputSymbol, a)
+      enriched.ProductVariable([ (common_symbols.inputSymbol, a)
                                    , (common_symbols.outputSymbol, b)]),
-      enriched.VariableProject(f, common_symbols.functionPairsSymbol))
+      enriched.ProjectionVariable(f, common_symbols.functionPairsSymbol))
 
 def projectSrc(f):
-  return enriched.VariableProject(f, common_symbols.srcSymbol)
+  return enriched.ProjectionVariable(f, common_symbols.srcSymbol)
 def projectTgt(f):
-  return enriched.VariableProject(f, common_symbols.tgtSymbol)
+  return enriched.ProjectionVariable(f, common_symbols.tgtSymbol)
 def projectDomain(e):
-  return enriched.VariableProject(e, common_symbols.domainSymbol)
+  return enriched.ProjectionVariable(e, common_symbols.domainSymbol)
 def projectRelation(e):
-  return enriched.VariableProject(e, common_symbols.relationSymbol)
+  return enriched.ProjectionVariable(e, common_symbols.relationSymbol)
 
 
 a = common_vars.a()

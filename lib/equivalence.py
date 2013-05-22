@@ -7,12 +7,12 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 equivalence = enriched.StringVariable('equivalence')
 
 def InDomain(x, e):
-  return enriched.EnrichedHolds(x, enriched.VariableProject(e, domainSymbol))
+  return enriched.EnrichedHolds(x, enriched.ProjectionVariable(e, domainSymbol))
 
 def EqualUnder(a, b, e):
   return enriched.EnrichedHolds(
-      enriched.VariableProduct([(leftSymbol, a), (rightSymbol, b)]),
-      enriched.VariableProject(e, relationSymbol))
+      enriched.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      enriched.ProjectionVariable(e, relationSymbol))
 
 x = common_vars.x()
 def reflexive(e):

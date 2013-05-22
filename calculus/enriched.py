@@ -42,10 +42,10 @@ def unaryHolds(r):
 def Holds(x, r):
   return basic.Always(basic.Holds(x, r))
 
-def VariableProject(v, s):
+def ProjectionVariable(v, s):
   return basic.ProjectionVariable(variable = v, symbol = s)
 
-def VariableProduct(symbol_variable_pairs):
+def ProductVariable(symbol_variable_pairs):
   return basic.ProductVariable(symbol_variable_pairs)
 
 StringVariable = basic.StringVariable
@@ -366,12 +366,12 @@ class Hidden(Enriched):
 def Uniquely(variable, value, domain, relation, x):
   return And([value, BasicForall([x], Implies(
     predicate = And([Holds(x, domain), value.substituteVariable(variable, x)]),
-    consequent = Holds(VariableProduct([(leftSymbol, x), (rightSymbol, variable)]), relation)))])
+    consequent = Holds(ProductVariable([(leftSymbol, x), (rightSymbol, variable)]), relation)))])
 
 def Welldefinedly(variable, value, domain, x):
   return And([value, BasicForall([x], Implies(
     predicate = And([ Holds(x, domain)
-                    , Holds( VariableProduct([(leftSymbol, x), (rightSymbol, variable)])
+                    , Holds( ProductVariable([(leftSymbol, x), (rightSymbol, variable)])
                            , relation) ]),
     consequent = value.substituteVariable(variable, x)))])
 
