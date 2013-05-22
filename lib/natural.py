@@ -44,10 +44,8 @@ n = common_vars.n()
 zeroFirst = enriched.SimpleEnrichedForall([(n, natural)],
     enriched.Not(Equal(enriched.Apply(n, natural_successor), zero)))
 
-print successorIsGreater.translate()
 pre_lib = library.Library(
-    # FIXME Remove .translate() s
-    claims = [ successorIsGreater.translate()
+    claims = [ successorIsGreater
              , naturalIsEquivalence
              , zeroNatural
              , zeroFirst
