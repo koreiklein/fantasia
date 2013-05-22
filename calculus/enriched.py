@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic, symbol
-from lib.common_symbols import relationSymbol, domainSymbol, leftSymbol, rightSymbol, inputSymbol, outputSymbol
+from lib.common_symbols import relationSymbol, domainSymbol, leftSymbol, rightSymbol, inputSymbol, outputSymbol, functionPairsSymbol, tgtSymbol
 from lib import common_vars
 
 from sets import Set
@@ -305,10 +305,11 @@ def _translate(v, g):
     assert(v.__class__ == Apply)
     return _translate(v.x, lambda x: _translate(v.f, lambda f:
       basic.Exists(variables = [v.tmp],
-        value = basic.And(basic.Holds(
-          held = basic.ProductVariable([ (inputSymbol, x)
-                                       , (outputSymbol, v.tmp)]),
-          holding = f),
+        value = basic.And(basic.And(basic.Holds(v.tmp, basic.ProjectionVariable(f, tgtSymbol)),
+          basic.Holds(
+            held = basic.ProductVariable([ (inputSymbol, x)
+                                         , (outputSymbol, v.tmp)]),
+            holding = basic.ProjectionVariable(f, functionPairsSymbol))),
           g(v.tmp)))))
 
 def _listCons(x, xs):

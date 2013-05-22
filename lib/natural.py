@@ -28,24 +28,26 @@ def Less(a, b):
 
 naturalIsEquivalence = equivalence.IsEquivalence(natural)
 
-successorIsFunction = function.IsFunction(
-    enriched.VariableProduct([ (common_symbols.functionPairsSymbol, natural_successor)
-                             , (common_symbols.srcSymbol, natural)
-                             , (common_symbols.tgtSymbol, natural)]))
+natural_successor_function = enriched.VariableProduct(
+    [ (common_symbols.functionPairsSymbol, natural_successor)
+    , (common_symbols.srcSymbol, natural)
+    , (common_symbols.tgtSymbol, natural)])
+
+successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
 successorIsGreater = enriched.SimpleEnrichedForall([(a, natural)],
-    Less(a, enriched.Apply(a, natural_successor)))
+    Less(a, enriched.Apply(a, natural_successor_function)))
 
 zero = enriched.StringVariable('zero')
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
 zeroFirst = enriched.SimpleEnrichedForall([(n, natural)],
-    enriched.Not(Equal(enriched.Apply(n, natural_successor), zero)))
+    enriched.Not(Equal(enriched.Apply(n, natural_successor_function), zero)))
 
 pre_lib = library.Library(
-    claims = [ successorIsGreater
+    claims = [ successorIsGreater.translate()
              , naturalIsEquivalence
              , zeroNatural
              , zeroFirst
