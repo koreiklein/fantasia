@@ -52,7 +52,9 @@ class Object:
     return Id(src = self, tgt = self)
 
 class GeneralizedVariable:
-  pass
+  # Return an equivalent variable that is possibly simpler.
+  def simplify(self):
+    return self
 
 n_variables = 0
 class Variable(GeneralizedVariable):
@@ -140,6 +142,15 @@ class ProjectionVariable(GeneralizedVariable):
     return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
   def freeVariables(self):
     return self.variable.freeVariables()
+  def simplify(self):
+    if self.variable.__class__ == ProductVariable:
+      for (symbol, variable) in self.variable.symbol_variable_pairs:
+        if symbol == self.symbol:
+          return variable
+      raise Exception(("Failed to simplify %s because the product variable " +
+          "did not contain the component projected upon.")%(self,))
+    else:
+      return ProjectionVariable(variable = self.variable.simplify(), symbol = self.symbol)
 
 # A more elaborate syntax for VARIABLES!!! These construct are under no means
 # meant to be used for objects, nether have they any sort of computational manifestation.

@@ -305,11 +305,12 @@ def _translate(v, g):
     assert(v.__class__ == Apply)
     return _translate(v.x, lambda x: _translate(v.f, lambda f:
       basic.Exists(variables = [v.tmp],
-        value = basic.And(basic.And(basic.Holds(v.tmp, basic.ProjectionVariable(f, tgtSymbol)),
+        value = basic.And(basic.And(basic.Holds( v.tmp,
+            basic.ProjectionVariable(basic.ProjectionVariable(f, tgtSymbol), domainSymbol).simplify()),
           basic.Holds(
             held = basic.ProductVariable([ (inputSymbol, x)
                                          , (outputSymbol, v.tmp)]),
-            holding = basic.ProjectionVariable(f, functionPairsSymbol))),
+            holding = basic.ProjectionVariable(f, functionPairsSymbol).simplify())),
           g(v.tmp)))))
 
 def _listCons(x, xs):
