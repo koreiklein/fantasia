@@ -49,7 +49,7 @@ def renderVariable(x):
   elif x.__class__ == basic.ProjectionVariable:
     return renderProjectionVariable(x)
   elif x.__class__ == basic.InjectionVariable:
-    return renderProjectionVariable(x)
+    return renderInjectionVariable(x)
   elif x.__class__ == basic.ProductVariable:
     return renderProductVariable(x)
   elif x.__class__ == enriched.Apply:
@@ -266,7 +266,9 @@ def renderProjectionVariable(v):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
 
 def renderInjectionVariable(v):
-  return gl.newTextualGLStack(colors.variableColor, repr(v))
+  return renderSymbolVariablePair(renderSymbol(v.symbol), renderVariable(v.variable),
+      colors.injectionSymbolBackgroundColor,
+      colors.injectionVariableBackgroundColor)
 
 def borderStack(dimension, color, a, b, borderWidth):
   return renderWithBackground(a.stack(dimension, b, spacing = borderWidth), borderWidth, color)

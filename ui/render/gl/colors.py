@@ -26,6 +26,9 @@ hiddenColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
 symbolVariablePairBorderColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
+injectionSymbolBackgroundColor = Color(r = 0.4, g = 0.4, b = 0.7, a = 1.0)
+injectionVariableBackgroundColor = Color(r = 0.2, g = 0.2, b = 0.9, a = 1.0)
+
 _colorPairs = [ ( Color(r = 1.0, g = 0.3, b = 0.3, a = 1.0)
                 , Color(r = 0.8, g = 0.5, b = 0.5, a = 1.0))
 
