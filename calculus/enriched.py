@@ -225,6 +225,7 @@ class _BoundedExists(Enriched):
       result = result.union(self.domains[i].freeVariables()).difference(Set([self.variables[i]]))
     return result
 
+# Instances of this class may only be used within an EnrichedHolds.
 class Apply:
   # x: a variable on an Apply object
   # f: a variable (the "function") or an Apply object
@@ -303,6 +304,7 @@ def _listCons(x, xs):
   result.extend(xs)
   return result
 
+# This class differs from Holds in that you may use Apply objects for the contained variables.
 class EnrichedHolds(Enriched):
   def __init__(self, held, holding):
     self.held = held
