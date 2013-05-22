@@ -106,20 +106,20 @@ class Enriched(basic.Object):
   pass
 
 def Forall(variableEquivalencePairs, value):
-  return basic.Always(Quantifier(
+  return basic.Always(_Quantifier(
     bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
                 for (v,e) in variableEquivalencePairs],
     value = value,
     underlying = _BoundedForall))
 
 def Exists(variableEquivalencePairs, value):
-  return basic.Always(Quantifier(
+  return basic.Always(_Quantifier(
     bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
                 for (v,e) in variableEquivalencePairs],
     value = value,
     underlying = _BoundedExists))
 
-class Quantifier(Enriched):
+class _Quantifier(Enriched):
   # bindings: a list of VariableBinding
   # value: an Object
   # underlying: _BoundedExists or _BoundedForall
@@ -166,13 +166,13 @@ class Quantifier(Enriched):
     return self.underlying == _BoundedExists
 
   def updateVariables(self):
-    return Quantifier(
+    return _Quantifier(
         bindings = [binding.updateVariables() for binding in self.bindings],
         value = self.value.updateVariables(),
         underlying = self.underlying)
 
   def substituteVariable(self, a, b):
-    return Quantifier(
+    return _Quantifier(
         bindings = [binding.substituteVariable(a, b) for binding in self.bindings],
         value = self.value.substituteVariable(a, b),
         underlying = self.underlying)
