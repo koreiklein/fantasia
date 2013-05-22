@@ -18,8 +18,16 @@ enriched_variable_binding_spacing = 20.0
 quantifier_before_divider_spacing = 10.0
 quantifier_after_divider_spacing = 55.0
 
-callWidth = 18.0
-callSpacing = 25.0
+infixSpacing = 88.0
+applySpacing = 16.0
+
+productVariableHorizontalSpacing = 0.0
+productVariableBorder = 10.0
+
+symbolBackgroundBorderWidth = 30.0
+variableBackgroundBorderWidth = 30.0
+
+holdsSpacing = 60.0
 
 iffSpacing = 35.0
 

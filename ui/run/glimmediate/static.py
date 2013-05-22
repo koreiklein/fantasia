@@ -31,7 +31,7 @@ def run(proof):
   glutDisplayFunc(display)
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA)
   glEnable(GL_BLEND)
-  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA)
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
   glClearColor(1.0,1.0,1.0,0.0)
   glColor3f(0.0,0.0, 0.0)
   glMatrixMode(GL_PROJECTION)

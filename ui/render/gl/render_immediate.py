@@ -3,13 +3,14 @@
 from calculus import basic, enriched, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
+from ui.stack import stack
 
 def render(x, covariant = True):
   if isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
     return renderExists(valueStack = render(x.value, covariant),
-        variablesList = [renderVariable(variable, covariant) for variable in x.variables],
+        variablesList = [renderVariable(variable) for variable in x.variables],
         covariant = covariant)
   elif x.__class__ == enriched.Iff:
     return renderEnrichedIff(x, covariant = covariant)
@@ -18,14 +19,14 @@ def render(x, covariant = True):
   elif x.__class__ == enriched._Quantifier:
     return renderExists(valueStack = render(x.value, covariant),
         variablesList = [renderVariableBinding(
-          variable = renderVariable(binding.variable, covariant),
+          variable = renderVariable(binding.variable),
           unique = binding.unique,
-          equivalence = renderVariable(binding.equivalence, covariant),
+          equivalence = renderVariable(binding.equivalence),
           covariant = covariant)
           for binding in x.bindings],
         covariant = covariant if x.isExists() else not covariant)
   elif x.__class__ == enriched.EnrichedHolds:
-    return renderEnrichedHolds(x, covariant = covariant)
+    return renderHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     if x.rendered:
       return renderNotWithSymbol(render(x.value, covariant))
@@ -42,17 +43,22 @@ def render(x, covariant = True):
   else:
     raise Exception("Unrecognized logic object %s of class %s"%(x,x.__class__))
 
-def renderVariable(x, covariant = True):
+def renderVariable(x):
   if x.__class__ == basic.StringVariable:
-    return renderStringVariable(x, covariant = covariant)
+    return renderStringVariable(x)
   elif x.__class__ == basic.ProjectionVariable:
-    return renderProjectionVariable(x, covariant = covariant)
+    return renderProjectionVariable(x)
   elif x.__class__ == basic.InjectionVariable:
-    return renderProjectionVariable(x, covariant = covariant)
+    return renderProjectionVariable(x)
   elif x.__class__ == basic.ProductVariable:
-    return renderProjectionVariable(x, covariant = covariant)
+    return renderProductVariable(x)
+  elif x.__class__ == enriched.Apply:
+    return renderApply(renderVariable(x.x), renderVariable(x.f))
   else:
     raise Exception("Unrecognized logic object %s"%(x,))
+
+def renderApply(x, f):
+  return stack.stackAll(0, [x, primitives.apply(), f], spacing = distances.applySpacing)
 
 def renderConjunction(x, covariant = True):
   left = render(x.left, covariant)
@@ -161,16 +167,21 @@ def _renderVariableBinding(binding, covariant = True):
   else:
     c = ':'
   middleStack = gl.newTextualGLStack(colors.variableColor, c)
-  return renderVariable(binding.variable, covariant).stack(dimension,
+  return renderVariable(binding.variable).stack(dimension,
       middleStack,
       spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
-          renderVariable(binding.equivalence, covariant),
+          renderVariable(binding.equivalence),
           spacing = distances.enriched_variable_binding_spacing)
 
 def renderAlways(value, covariant):
-  widths = [x + 2 * distances.exponential_border_width for x in value.widths()]
+  return renderWithBackground( value
+                             , distances.exponential_border_width
+                             , colors.exponentialColor(covariant))
+
+def renderWithBackground(s, border_width, color):
+  widths = [x + 2 * border_width for x in s.widths()]
   widths[2] = 0.0
-  return primitives.exponentialBox(covariant, widths).stackCentered(2, value,
+  return primitives.solidSquare(color, widths).stackCentered(2, s,
       spacing = distances.epsilon )
 
 def renderAndUnit(x, covariant = True):
@@ -179,7 +190,7 @@ def renderAndUnit(x, covariant = True):
 def renderOrUnit(x, covariant = True):
   return primitives.falseDivider(distances.min_unit_divider_length)
 
-def renderStringVariable(x, covariant = True):
+def renderStringVariable(x):
   return gl.newTextualGLStack(colors.variableColor, repr(x))
 
 def _renderDot(left, dot, s):
@@ -218,25 +229,65 @@ def renderEnrichedIff(x, covariant):
   else:
     return renderNotWithSymbol(res)
 
-def renderEnrichedHolds(x, covariant):
-  return gl.newTextualGLStack(colors.relationColor, repr(x))
-
 def renderEnrichedHidden(x, covariant):
   return gl.newTextualGLStack(colors.hiddenColor, "<<" + x.name + ">>")
 
 def renderHolds(x, covariant):
-  holds =  gl.newTextualGLStack(colors.relationColor, repr(x))
+  if (x.holding.__class__ == basic.StringVariable
+      and x.holding.infix is not None
+      and x.held.__class__ == basic.ProductVariable):
+    (firstSymbol, secondSymbol) = x.holding.infix
+    assert(len(x.held.symbol_variable_pairs) == 2)
+    (aSymbol, aVariable) = x.held.symbol_variable_pairs[0]
+    (bSymbol, bVariable) = x.held.symbol_variable_pairs[1]
+    if aSymbol == secondSymbol:
+      assert(bSymbol == firstSymbol)
+      (firstSymbol, secondSymbol) = (secondSymbol, firstSymbol)
+    else:
+      assert(aSymbol == firstSymbol)
+      assert(bSymbol == secondSymbol)
+    # Now aSymbol == firstSymbol and bSymbol == secondSymbol
+    return stack.stackAll(0, [ renderVariable(aVariable)
+                             , renderVariable(x.holding)
+                             , renderVariable(bVariable)],
+                             spacing = distances.infixSpacing)
+  else:
+    holds = stack.stackAll(0, [ renderVariable(x.held)
+                              , primitives.holds()
+                              , renderVariable(x.holding)],
+                              spacing = distances.holdsSpacing)
+
   if covariant:
     return holds
   else:
     return renderNotWithSymbol(holds)
 
-def renderProjectionVariable(v, covariant):
+def renderProjectionVariable(v):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
 
-def renderInjectionVariable(v, covariant):
+def renderInjectionVariable(v):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
 
-def renderProductVariable(v, covariant):
-  return gl.newTextualGLStack(colors.variableColor, repr(v))
+def borderStack(dimension, color, a, b, borderWidth):
+  return renderWithBackground(a.stack(dimension, b, spacing = borderWidth), borderWidth, color)
+
+def renderSymbolVariablePair(s, v, c0, c1):
+  widths = [max(s.widths()[0], v.widths()[0]) , 0.0, 0.0]
+  return borderStack(1
+                    , colors.symbolVariablePairBorderColor
+                    , renderWithBackground(s.atLeast(widths),
+                        distances.symbolBackgroundBorderWidth, c0)
+                    , renderWithBackground(v.atLeast(widths),
+                        distances.variableBackgroundBorderWidth, c1)
+                    , distances.productVariableBorder)
+
+def renderProductVariable(productVariable):
+  symbolVariablePairs = []
+  for i in range(len(productVariable.symbol_variable_pairs)):
+    (s,v) = productVariable.symbol_variable_pairs[i]
+    (c0, c1) = colors.productPairsColor(i)
+    symbolVariablePairs.append(renderSymbolVariablePair(renderSymbol(s),
+      renderVariable(v), c0, c1))
+  return stack.stackAll(0, symbolVariablePairs,
+      spacing = distances.productVariableHorizontalSpacing)
 

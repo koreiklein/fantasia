@@ -23,9 +23,6 @@ def _dual_dimension(dimension):
 # |                |
 # d----------------a
 #
-def exponentialBox(always, widths):
-  return solidSquare(colors.exponentialColor(always), widths)
-
 def empty():
   return newGLStack([0.0, 0.0, 0.0], lambda: None)
 
@@ -106,9 +103,6 @@ projectDot = solidSquare(colors.projectDotColor,
 injectDot = solidSquare(colors.injectDotColor,
     [distances.dotWidth, distances.dotWidth, 0.0])
 
-callDot = solidSquare(colors.callColor,
-    [distances.callWidth, distances.callWidth, 0.0])
-
 def notSymbol(widths):
   upper = [distances.notThickness, widths[1], 0.0]
   lower = [widths[0], distances.notThickness, 0.0]
@@ -117,4 +111,9 @@ def notSymbol(widths):
 def iff():
   return newTextualGLStack(colors.iffColor, "<==>")
 
+def apply():
+  return newTextualGLStack(colors.applyColor, "-->")
+
+def holds():
+  return newTextualGLStack(colors.applyColor, ":")
 

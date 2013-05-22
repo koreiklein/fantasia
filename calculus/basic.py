@@ -92,9 +92,12 @@ class Variable(GeneralizedVariable):
     return Set([self])
 
 class StringVariable(Variable):
-  def __init__(self, name):
+  # infix: either None, or a pair of symbols (a, b) such that when this variable holds
+  #        of a variable v, v is a product variable over symbols a and b.
+  def __init__(self, name, infix = None):
     self._generate_id()
     self._name = name
+    self.infix = infix
 
   def name(self):
     return self._name

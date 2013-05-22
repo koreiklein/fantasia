@@ -21,7 +21,23 @@ maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.2)
 relationColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
 iffColor = Color(r = 1.0, g = 1.0, b = 1.0, a = 1.0)
+applyColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 hiddenColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
+
+symbolVariablePairBorderColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
+
+_colorPairs = [ ( Color(r = 1.0, g = 0.3, b = 0.3, a = 1.0)
+                , Color(r = 0.8, g = 0.5, b = 0.5, a = 1.0))
+
+              , ( Color(r = 0.3, g = 1.0, b = 0.3, a = 1.0)
+                , Color(r = 0.5, g = 0.8, b = 0.5, a = 1.0))
+
+              , ( Color(r = 0.3, g = 0.3, b = 1.0, a = 1.0)
+                , Color(r = 0.5, g = 0.5, b = 0.8, a = 1.0))
+              ]
+
+def productPairsColor(i):
+  return _colorPairs[i % len(_colorPairs)]
 
 def exponentialColor(isAlways):
   if isAlways:

@@ -5,9 +5,9 @@ from lib import equivalence, library, common_vars, common_symbols, function
 
 natural = enriched.StringVariable('N')
 
-natural_less = enriched.StringVariable('<')
 smaller = symbol.StringSymbol('smaller')
 greater = symbol.StringSymbol('greater')
+natural_less = enriched.StringVariable('<', infix = (smaller, greater))
 
 natural_successor = enriched.StringVariable('S')
 before = symbol.StringSymbol('before')

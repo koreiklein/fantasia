@@ -16,11 +16,11 @@ class Backend:
   def null():
     raise Exception("Abstract superclass.")
 
-def stackAll(dimension, xs):
+def stackAll(dimension, xs, spacing = 0.0):
   assert(len(xs) > 0)
   res = xs[0]
   for x in xs[1:]:
-    res = res.stack(dimension, x)
+    res = res.stack(dimension, x, spacing = spacing)
   return res
 
 def stackAllX(xs):
@@ -54,6 +54,10 @@ class Stack:
     assert(self.dimension() == other.dimension())
     return Stack([max(self.widths()[i], other.widths()[i]) for i in range(self.dimension())],
         self._backend.below(other._backend))
+
+  def atLeast(self, widths):
+    return Stack([max(self.widths()[i], widths[i]) for i in range(self.dimension())],
+        self._backend)
 
   # Return a new stack with other drawn just dimension of self.
   def stack(self, dimension, other, spacing = 0.0):
