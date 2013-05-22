@@ -13,7 +13,7 @@ def render(x, covariant = True):
     return renderEnrichedIff(x, covariant = covariant)
   elif x.__class__ == enriched.Hidden:
     return renderEnrichedHidden(x, covariant = covariant)
-  elif x.__class__ == enriched.Quantifier:
+  elif x.__class__ == enriched._Quantifier:
     return renderEnrichedQuantifier(x, covariant = covariant)
   elif x.__class__ == enriched.EnrichedHolds:
     return renderEnrichedHolds(x, covariant = covariant)
