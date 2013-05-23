@@ -51,10 +51,10 @@ class Path:
       return Path(endofunctor = Exists(variables = self.object.variables).compose(self.endofunctor),
           object = self.object.value)
   def advanceLeft(self):
-    return self.advanceSide(left)
+    return self.advanceToSide(left)
   def advanceRight(self):
-    return self.advanceSide(right)
-  def advanceSide(self, side):
+    return self.advanceToSide(right)
+  def advanceToSide(self, side):
     object = _getSide(side, self.object)
     other = _getSide(_swapSide(side), self.object)
     if self.object.__class__ == basic.And:
