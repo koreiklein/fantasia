@@ -8,10 +8,10 @@ epsilon = 0.0001
 
 divider_spacing = 15.0
 
-notThickness = 12.0
-notShiftThickness = notThickness + 11.0
+notThickness = 22.0
+notShiftThickness = notThickness + 21.0
 # Amount by which to shift the value contained inside a Not.
-notShiftOffset = [notShiftThickness, notShiftThickness, 0.0]
+notShiftOffset = [notShiftThickness + 5, notShiftThickness, 0.0]
 
 quantifier_variables_spacing = 100.0
 enriched_variable_binding_spacing = 20.0
