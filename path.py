@@ -1,64 +1,93 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import types
-import inspect
+from calculus import basic
 
-class Path():
-  # first is some object
-  # rest may be none, or a pair consisting of: (a symbol, another path object)
-  #   a symbol may be either:
-  #     a string: the name of a method taking no arguments and return a child object
-  #     a tuple (name, i): where name is the string name of a method taking no
-  #                        arguments and returning a list of children,
-  #                        and where i is an index into that list.
-  def __init__(self, first, rest = None):
-    self._first = first
-    self._rest = rest
-    def g(name, method):
-      if not isinstance(method, types.MethodType):
-        return
-      else:
-        def f(self):
-          res = method()
-          if res.__class__ == list:
-            return [self.follows((name, i), res[i]) for i in range(len(res))]
-          else:
-            return self.follows(name, res)
-        assert(not self.__dict__.has_key(name))
-        self.__dict__[name] = types.MethodType(f, self)
-    for (name, method) in inspect.getmembers(first):
-      g(name, method)
+class Endofunctor:
+  def onObject(self, object):
+    raise Exception("Abstract superclass.")
+  def onArrow(self, arrow):
+    raise Exception("Abstract superclass.")
+  def negations(self):
+    raise Exception("Abstract superclass.")
+  def covariant(self):
+    return 0 == (self.negations() % 2)
 
-  def path_first(self):
-    return self._first
-  def path_singleton(self):
-    return self._rest is None
-  def path_last(self):
-    if self.path_singleton():
-      return self.path_first()
+class Path:
+  def __init_(self, endofunctor, object):
+    self.endofunctor = endofunctor
+    self.object = object
+
+  def top(self):
+    return self.endofunctor.onObject(self.object)
+  def bottom(self):
+    return self.object
+
+left = 'left'
+right = 'right'
+
+class Always(Endofunctor):
+  def onObject(self, object):
+    return basic.Always(object)
+  def onArrow(self, arrow):
+    return basic.OnAlways(arrow)
+  def negations(self):
+    return 0
+
+class Not(Endofunctor):
+  def onObject(self, object):
+    return basic.Not(object)
+  def onArrow(self, arrow):
+    return basic.OnNot(arrow)
+  def negations(self):
+    return 1
+
+class Composite(Endofunctor):
+  # if second is covariant, self will represent (first o second)
+  # otherwise secod is contravariant, and self will represent (oppositeFunctor(first) o second)
+  def __init__(self, first, second):
+    self.first = first
+    self.second = second
+
+  def onObject(self, object):
+    return self.second.onObject(self.first.onObject(object))
+  def onArrow(self, arrow):
+    return self.second.onArrow(self.first.onArrow(object))
+  def negations(self):
+    return self.first.negations() + self.second.negations()
+
+class Conjunction(Endofunctor):
+  def __init__(self, side, other):
+    self.side = side
+    self.other = other
+
+  def createObject(self, left, right):
+    raise Exception("Abstract superclass.")
+  def createArrow(self, leftArrow, rightArrow):
+    return basic.OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+        src = self.createObject(left = leftArrow.src, right = rightArrow.src),
+        tgt = self.createObject(left = leftArrow.tgt, right = rightArrow.tgt),
+
+  def onObject(self, object):
+    if self.side == left:
+      return self.createObject(left = object, right = self.other)
     else:
-      return self.path_rest().path_last()
-  def path_corest(self):
-    if self.path_singleton():
-      return None
+      assert(self.side == right)
+      return self.createObject(left = self.other, right = object)
+
+  def onArrow(self, arrow):
+    if self.side == left:
+      return self.createArrow(left = arrow, right = self.other.identity())
     else:
-      rec = self.path_rest().path_corest()
-      if rec is None:
-        return Path(first = self.first(), rest = None)
-      else:
-        return Path(first = self.first(), rest = (self.path_symbol(), rec))
-  def path_rest(self):
-    if self._rest == None:
-      raise Exception("Singleton path has no rest.")
-    else:
-      return self._rest[1]
-  def path_symbol(self):
-    if self._rest == None:
-      raise Exception("Singleton path has no symbol.")
-    else:
-      return self._rest[0]
-  def follow(self, symbol, value):
-    return Path(first = value, rest = (symbol, self))
-  def follows(self, symbol, value):
-    return Path(first = value, rest = (symbol, self))
+      assert(self.side == right)
+      return self.createArrow(left = self.other.identity(), right = arrow)
+
+  def negations(self):
+    return 0
+
+class And(Conjunction):
+  def createObject(self, left, right):
+    return basic.And(left = left, right = right)
+class Or(Conjunction):
+  def createObject(self, left, right):
+    return basic.Or(left = left, right = right)
 
