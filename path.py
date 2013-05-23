@@ -23,6 +23,9 @@ class Endofunctor:
     else:
       return Composite(left = self, right = other)
 
+def new_path(object):
+  return Path(identity_endofunctor, object)
+
 class Path:
   def __init_(self, endofunctor, object):
     self.endofunctor = endofunctor
