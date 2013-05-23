@@ -15,8 +15,8 @@ callColor = Color(r = 1.0, g = 0.0, b = 0.0)
 quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.3)
 notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.3)
 
-alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 0.2)
-maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.2)
+alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 1.0)
+maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 1.0)
 
 relationColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
