@@ -11,6 +11,17 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
   def covariant(self):
     return 0 == (self.negations() % 2)
+  # Return a pair of functors (F, G) such that self == F.compose(G), F is non-trivial,
+  # and F is "as simple as possible".
+  def pop(self):
+    return (self, identity_endofunctor)
+  def compose(self, other):
+    if self.__class__ == Id:
+      return other
+    elif other.__class__ == Id:
+      return self
+    else:
+      return Composite(left = self, right = other)
 
 class Path:
   def __init_(self, endofunctor, object):
@@ -21,9 +32,63 @@ class Path:
     return self.endofunctor.onObject(self.object)
   def bottom(self):
     return self.object
+  def functor(self):
+    return self.endofunctor
+
+  def retreat(self):
+    assert(self.endofunctor.__class__ == Composite)
+    (a, b) = self.endofunctor.pop()
+    return Path(endofunctor = b, object = a.onObject(self.object))
+
+  def advance(self):
+    if self.object.__class__ == basic.Always:
+      return Path(endofunctor = always_endofunctor.compose(self.endofunctor),
+          object = self.object.value)
+    elif self.object.__class__ == basic.Not:
+      return Path(endofunctor = not_endofunctor.compose(self.endofunctor),
+          object = self.object.value)
+    elif self.object.__class__ == basic.Exists:
+      return Path(endofunctor = Exists(variables = self.object.variables).compose(self.endofunctor),
+          object = self.object.value)
+  def advanceLeft(self):
+    return self.advanceSide(left)
+  def advanceRight(self):
+    return self.advanceSide(right)
+  def advanceSide(self, side):
+    object = _getSide(side, self.object)
+    other = _getSide(_swapSide(side), self.object)
+    if self.object.__class__ == basic.And:
+      return Path(endofunctor = And(side = side, other = other), object = object)
+    else:
+      assert(self.object.__class__ == basic.Or)
+      return Path(endofunctor = Or(side = side, other = other), object = object)
 
 left = 'left'
 right = 'right'
+
+def _swapSide(side):
+  if side == left:
+    return right
+  else:
+    assert(side == right)
+    return left
+
+def _getSide(side, object):
+  if side == left:
+    return object.left
+  else:
+    assert(side == right)
+    return object.right
+
+class Exists(Endofunctor):
+  def __init__(self, variables):
+    self.variables = variables
+  def onObject(self, object):
+    return basic.Exists(variables = self.variables, value = object)
+  def onArrow(self, arrow):
+    return basic.OnBody(variables = self.variables, arrow = arrow)
+  def negations(self):
+    return 0
 
 class Always(Endofunctor):
   def onObject(self, object):
@@ -33,6 +98,8 @@ class Always(Endofunctor):
   def negations(self):
     return 0
 
+always_endofunctor = Always()
+
 class Not(Endofunctor):
   def onObject(self, object):
     return basic.Not(object)
@@ -41,19 +108,36 @@ class Not(Endofunctor):
   def negations(self):
     return 1
 
-class Composite(Endofunctor):
-  # if second is covariant, self will represent (first o second)
-  # otherwise secod is contravariant, and self will represent (oppositeFunctor(first) o second)
-  def __init__(self, first, second):
-    self.first = first
-    self.second = second
+not_endofunctor = Not()
 
+class Id(Endofunctor):
+  def pop(self):
+    raise Exception("Can't pop the identity endofunctor.")
   def onObject(self, object):
-    return self.second.onObject(self.first.onObject(object))
+    return object
   def onArrow(self, arrow):
-    return self.second.onArrow(self.first.onArrow(object))
+    return arrow
   def negations(self):
-    return self.first.negations() + self.second.negations()
+    return 0
+
+identity_endofunctor = Id()
+
+class Composite(Endofunctor):
+  # if right is covariant, self will represent (left o right)
+  # otherwise secod is contravariant, and self will represent (oppositeFunctor(left) o right)
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+  def pop(self):
+    (a, b) = self.left.pop()
+    return (a, b.compose(self.right))
+  def onObject(self, object):
+    return self.right.onObject(self.left.onObject(object))
+  def onArrow(self, arrow):
+    return self.right.onArrow(self.left.onArrow(object))
+  def negations(self):
+    return self.left.negations() + self.right.negations()
 
 class Conjunction(Endofunctor):
   def __init__(self, side, other):
