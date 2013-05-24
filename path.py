@@ -1,8 +1,11 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic
+from lib import common_vars
 
 class Endofunctor:
+  def variables(self):
+    raise Exception("Abstract superclass.")
   def onObject(self, object):
     raise Exception("Abstract superclass.")
   def onArrow(self, arrow):
@@ -31,6 +34,8 @@ class Path:
     self.endofunctor = endofunctor
     self.object = object
 
+  def variables(self):
+    return self.endofunctor.variables()
   def top(self):
     return self.endofunctor.onObject(self.object)
   def bottom(self):
@@ -86,6 +91,8 @@ def _getSide(side, object):
 class Exists(Endofunctor):
   def __init__(self, variables):
     self.variables = variables
+  def variables(self):
+    return self.variables
   def onObject(self, object):
     return basic.Exists(variables = self.variables, value = object)
   def onArrow(self, arrow):
@@ -94,6 +101,8 @@ class Exists(Endofunctor):
     return 0
 
 class Always(Endofunctor):
+  def variables(self):
+    return []
   def onObject(self, object):
     return basic.Always(object)
   def onArrow(self, arrow):
@@ -104,6 +113,8 @@ class Always(Endofunctor):
 always_endofunctor = Always()
 
 class Not(Endofunctor):
+  def variables(self):
+    return []
   def onObject(self, object):
     return basic.Not(object)
   def onArrow(self, arrow):
@@ -114,6 +125,8 @@ class Not(Endofunctor):
 not_endofunctor = Not()
 
 class Id(Endofunctor):
+  def variables(self):
+    return []
   def pop(self):
     raise Exception("Can't pop the identity endofunctor.")
   def onObject(self, object):
@@ -132,6 +145,10 @@ class Composite(Endofunctor):
     self.left = left
     self.right = right
 
+  def variables(self):
+    result = list(self.left.variables())
+    result.extend(self.right.variables())
+    return result
   def pop(self):
     (a, b) = self.left.pop()
     return (a, b.compose(self.right))
@@ -147,6 +164,8 @@ class Conjunction(Endofunctor):
     self.side = side
     self.other = other
 
+  def variables(self):
+    return []
   def createObject(self, left, right):
     raise Exception("Abstract superclass.")
   def createArrow(self, leftArrow, rightArrow):
