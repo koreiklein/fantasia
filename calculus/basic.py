@@ -9,6 +9,11 @@ class Object:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  # return an arrow self --> B|self such that f(B), and for some C, B == Always(C)
+  # or return None if no such arrow can be found.
+  def produceFiltered(self, f):
+    raise Exception("Abstract superclass.")
+
   # Replace all bound variables with new variables.
   def updateVariables(self):
     raise Exception("Abstract superclass.")
@@ -229,6 +234,20 @@ class Exists(Object):
     return Exists(variables = [variable.translate() for variable in self.variables],
         value = self.value.translate())
 
+  def produceFiltered(self, f):
+    x = self.value.produceFiltered(f)
+    if a is None:
+      return None
+    else:
+      B = a.tgt.left
+      free = B.freeVariables()
+      for variable in self.variables:
+        if variable in free:
+          return None
+      # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
+      return self.forwardOnBody(a).forwardFollow(lambda x:
+          AndPastExists(src = And(left = B, right = self), tgt = x).invert())
+
   def forwardOnBody(self, arrow):
     assert(arrow.src == self.value)
     return OnBody(variables = self.variables, arrow = arrow)
@@ -364,10 +383,42 @@ class Conjunction(Object):
     return self.forwardAssociate().invert()
 
 class And(Conjunction):
+  def produceFiltered(self, f):
+    a = self.left.produceFiltered(f)
+    if a is None:
+      b = self.right.produceFiltered(f)
+      if b is None:
+        return None
+      else:
+        B = b.tgt.left
+        # (X|Y) --> (X|(B|Y)) --> (X|(Y|B)) --> ((X|Y)|B) --> (B|(X|Y))
+        return self.forwardOnRight(b.forwardFollow(lambda x:
+          x.forwardCommute())).forwardFollow(lambda x:
+              x.forwardAssociateOther().forwardFollow(lambda x:
+                x.forwardCommute()))
+    else:
+      B = a.tgt.left
+      # (X|Y) --> ((B|X)|Y) --> (B|(X|Y))
+      return self.forwardOnLeft(a).forwardFollow(lambda x:
+          x.forwardAssociate())
+
   def forwardApply(self):
     assert(self.right.__class__ == Not)
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
+
+  def forwardZip(self):
+    # !A | !B --> !(A|B)
+    assert(self.left.__class__ == Always)
+    assert(self.right.__class__ == Always)
+    return Zip(src = self, tgt = Always(And(left = self.left.value, right = self.right.value)))
+
+  def forwardAndPastExists(self):
+    # (A|Exists xs. B) --> Exists xs. (A|B)
+    assert(self.right.__class__ == Exists)
+    return AndPastExists(src = self,
+        tgt = Exists(variables = self.right.variables,
+          value = And(left = self.left, right = self.right.value)))
 
   def forwardDistibute(self):
     # A | (B - C) --> (A | B) - (A | C)
@@ -405,6 +456,8 @@ class And(Conjunction):
     return "(%s AND %s)"%(self.left, self.right)
 
 class Or(Conjunction):
+  def produceFiltered(self, f):
+    return None
   def __repr__(self):
     return "(%s OR %s)"%(self.left, self.right)
 
@@ -417,6 +470,9 @@ class Not(Object):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
+
+  def produceFiltered(self, f):
+    return None
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
@@ -464,6 +520,20 @@ class Always(Object):
   def __init__(self, value):
     self.value = value
 
+  def produceFiltered(self, f):
+    if f(self):
+      return self.forwardCopy()
+    else:
+      a = self.value.produceFiltered(f)
+      if a is None:
+        return None
+      else:
+        # !A --> !(B|A) --> !B | !A --> B | !A
+        return self.forwardOnAlways(a).forwardFollow(lambda x:
+            x.forwardDistributeAlways().forwardFollow(lambda x:
+              x.forwardOnLeftFollow(lambda x:
+                x.forwardUnalways())))
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
@@ -489,6 +559,16 @@ class Always(Object):
   def forwardCopy(self):
     return Copy(src = self, tgt = And(self, self))
 
+  # !(A|B) --> !A | !B
+  def forwardDistributeAlways(self):
+    # !(A|B) --> !(A|B) | !(A|B) --> !A | !(A|B) --> !A | !B
+    return self.forwardCopy().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x: x.forwardForgetRight()).forwardFollow(lambda x:
+          x.forwardOnRightFollow(lambda x: x.forwardForgetLeft())))
+
+  def forwardCojoin(self):
+    return Cojoin(src = self, tgt = Always(self))
+
   def translate(self):
     return Always(value = self.value.translate())
 
@@ -506,6 +586,9 @@ class Unit(Object):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
+
+  def produceFiltered(self, f):
+    return None
 
   def translate(self):
     return self
@@ -536,38 +619,6 @@ def unit_for_conjunction(conjunction):
   else:
     assert(conjunction == Or)
     return false
-
-
-class Destructor(Object):
-  def __init__(self, value, symbol):
-    self.value = value
-    self.symbol = symbol
-    self.validate()
-
-  def validate(self):
-    return
-
-  def translate(self):
-    return self.__class__(value = self.value.translate(), symbol = self.symbol)
-
-  def __eq__(self, other):
-    return (self.__class__ == other.__class__
-        and self.symbol == other.symbol
-        and self.value == other.value)
-
-  def __ne__(self, other):
-    return not(self == other)
-
-  def updateVariables(self):
-    return self.__class__(value = self.value.updateVariables(),
-        symbol = self.symbol.updateVariables())
-
-  def substituteVariable(self, a, b):
-    return self.__class__(value = self.value.substituteVariable(a, b),
-        symbol = self.symbol)
-
-  def freeVariables(self):
-    return self.value.freeVariables()
 
 class Arrow:
   def __init__(self, src, tgt):
@@ -722,6 +773,13 @@ class Apply(Arrow):
     assert(self.src.left == self.src.right.value.left)
     assert(self.src.right.value.right == self.tgt.value)
 
+# !A --> !!A
+class Cojoin(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == Always)
+    assert(self.tgt.__class__ == Always)
+    assert(self.src == self.tgt.value)
+
 # !A --> !A | !A
 class Copy(Arrow):
   def validate(self):
@@ -729,6 +787,17 @@ class Copy(Arrow):
     assert(self.tgt.__class__ == And)
     assert(self.tgt.left == self.src)
     assert(self.tgt.right == self.src)
+
+# !A | !B --> !(A|B)
+class Zip(Arrow):
+  def validate(self):
+    assert(self.src.__class__ == And)
+    assert(self.src.left.__class__ == Always)
+    assert(self.src.right.__class__ == Always)
+    assert(self.tgt.__class__ == Always)
+    assert(self.tgt.value.__class__ == And)
+    assert(self.src.left.value == self.tgt.value.left)
+    assert(self.src.right.value == self.tgt.value.right)
 
 # !A --> A
 class Unalways(Arrow):
@@ -741,6 +810,16 @@ class IntroExists(Arrow):
   def validate(self):
     assert(self.tgt.__class__ == Exists)
     assert(self.src == self.tgt.value)
+
+# (A|Exists xs. B) --> Exists xs. (A|B)
+class AndPastExists(Isomorphism):
+  def validate(self):
+    assert(self.src.__class__ == And)
+    assert(self.tgt.right.__class__ == Exists)
+    assert(self.tgt.__class__ == Exists)
+    assert(self.tgt.value.__class__ == And)
+    assert(self.src.left == self.tgt.value.left)
+    assert(self.src.right.variables == self.tgt.variables)
 
 # Exists x . A --> A
 class RemoveExists(Arrow):
