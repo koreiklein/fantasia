@@ -108,6 +108,41 @@ class Path:
       assert(self.object.__class__ == basic.Or)
       return Path(endofunctor = Or(side = side, other = other), object = object)
 
+  def forwardOnPath(self, arrow):
+    if self.covariant():
+      assert(self.object == arrow.src)
+      x = arrow.tgt
+    else:
+      assert(self.object == arrow.tgt)
+      x = arrow.src
+    return Path(src = self,
+        tgt = Path(endofunctor = self.functor(), object = self.functor().onObject(x)),
+        arrow = self.functor().onArrow(arrow))
+  def forwardOnPathFollow(self, f):
+    return self.forwardOnPath(f(self.bottom()))
+
+class Arrow:
+  # src, tgt: paths
+  # arrow: an arrow : src.top() --> tgt.top()
+  def __init__(self, src, tgt, arrow):
+    assert(src.top() == arrow.src)
+    assert(tgt.top() == arrow.tgt)
+    self.src = src
+    self.tgt = tgt
+    self._arrow = arrow
+
+  def arrow(self):
+    return self._arrow
+
+  def forwardCompose(self, other):
+    return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow.forwardCompose(other.arrow))
+  def backwardCompose(self, other):
+    return other.forwardCompose(self)
+  def forwardFollow(self, f):
+    return self.forwardCompose(f(self.tgt))
+  def backwardFollow(self, f):
+    return self.backwardCompose(f(self.src))
+
 left = 'left'
 right = 'right'
 
