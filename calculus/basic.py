@@ -506,12 +506,12 @@ class Always(Object):
 
   def produceFiltered(self, f):
     result = []
-    if f(self):
-      result.append(self.forwardCopy())
     result.extend([self.forwardOnAlways(a).forwardFollow(lambda x:
       x.forwardDistributeAlways().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
           x.forwardUnalways()))) for a in self.value.produceFiltered(f)])
+    if f(self):
+      result.append(self.forwardCopy())
     return result
 
   def __eq__(self, other):
