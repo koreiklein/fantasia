@@ -2,6 +2,8 @@
 
 from calculus import enriched
 
+import path
+
 class Library:
   def __init__(self, claims, variables):
     self.variables = variables
@@ -27,15 +29,18 @@ class Library:
     return Proof(library = self)
 
 class Proof:
+  # library: the starting library
+  # arrow: a path arrow such that arrow.src.top() == library.formula
   def __init__(self, library, arrow = None):
     self.library = library
     if arrow is None:
-      self.arrow = library.formula.forwardOnAlwaysFollow(lambda x:
-          x.forwardOnBodyFollow(lambda x:
-            x.forwardOnAlwaysFollow(lambda x:
-              x.forwardAndTrue())))
+      self.arrow = path.new_path(library.formula).advance().forwardFollow(lambda x:
+          x.advance().forwardFollow(lambda x:
+            x.advance().forwardFollow(lambda x:
+              x.forwardOnPathFollow(lambda x:
+                x.forwardAndTrue()))))
     else:
-      assert(arrow.src == library.formula)
+      assert(arrow.src.top() == library.formula)
       self.arrow = arrow
     self.tgt = self.arrow.tgt
 
@@ -44,10 +49,5 @@ class Proof:
         arrow = self.arrow.translate())
 
   def forwardFollow(self, f):
-    return Proof(library = self.library, arrow = self.arrow.forwardFollow(lambda x:
-      x.forwardOnAlwaysFollow(lambda x:
-        x.forwardOnBodyFollow(lambda x:
-          x.forwardOnAlwaysFollow(lambda x:
-            x.forwardOnLeftFollow(lambda x:
-              f(x)))))))
+    return Proof(library = self.library, arrow = self.arrow.forwardFollow(f))
 

@@ -4,6 +4,9 @@ from calculus import basic
 from lib import common_vars
 
 class Endofunctor:
+  # Return a basic endofunctor
+  def translate(self):
+    return self
   def variables(self):
     raise Exception("Abstract superclass.")
   # self must be covariant()
@@ -18,11 +21,11 @@ class Endofunctor:
     return []
   # self must be covariant()
   # return a function representing a natural transform: F o (B|.) --> (B|.) o F
-  def import(self, B):
+  def _import(self, B):
     raise Exception("Abstract superclass.")
   # self must not be covariant()
   # return a function representing some natural transform: (B|.) o F o (B|.) --> F
-  def export(self, B):
+  def _export(self, B):
     raise Exception("Abstract superclass.")
 
   def onObject(self, object):
@@ -49,9 +52,12 @@ def new_path(object):
   return Path(identity_functor, object)
 
 class Path:
-  def __init_(self, functor, object):
+  def __init__(self, functor, object):
     self.functor = functor
     self.object = object
+
+  def __repr__(self):
+    return "%s --> %s"%(self.object, self.functor)
 
   def variables(self):
     return self.functor.variables()
@@ -59,6 +65,12 @@ class Path:
     return self.functor.onObject(self.object)
   def bottom(self):
     return self.object
+
+  def covariant(self):
+    return self.functor.covariant()
+
+  def translate(self):
+    return Path(functor = self.functor.translate(), object = self.object.translate())
 
   def importFiltered(self, f):
     return self.functor.importFiltered(f)
@@ -149,8 +161,8 @@ class Path:
     else:
       assert(self.object == arrow.tgt)
       x = arrow.src
-    return Path(src = self,
-        tgt = Path(functor = self.functor, object = self.functor.onObject(x)),
+    return Arrow(src = self,
+        tgt = Path(functor = self.functor, object = x),
         arrow = self.functor.onArrow(arrow))
   def forwardOnPathFollow(self, f):
     return self.forwardOnPath(f(self.bottom()))
@@ -160,16 +172,24 @@ class Arrow:
   # arrow: an arrow : src.top() --> tgt.top()
   def __init__(self, src, tgt, arrow):
     assert(src.top() == arrow.src)
+    # FIXME Remove this
+    if not(tgt.top() == arrow.tgt):
+      raise Exception("Unequal\n%s\n!=\n%s\nin\n%s"%(tgt.top(), arrow.tgt, tgt))
     assert(tgt.top() == arrow.tgt)
     self.src = src
     self.tgt = tgt
     self._arrow = arrow
 
+  def translate(self):
+    return Arrow(src = self.src.translate(),
+        tgt = self.tgt.tranlate(),
+        arrow = self.arrow().translate())
   def arrow(self):
     return self._arrow
 
   def forwardCompose(self, other):
-    return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow.forwardCompose(other.arrow))
+    assert(self.tgt.top() == other.src.top())
+    return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow().forwardCompose(other.arrow()))
   def backwardCompose(self, other):
     return other.forwardCompose(self)
   def forwardFollow(self, f):
@@ -197,7 +217,9 @@ def _getSide(side, object):
 class Exists(Endofunctor):
   def __init__(self, variables):
     self.variables = variables
-  def import(self, B):
+  def __repr__(self):
+    return "Exists(%s)"%(self.variables,)
+  def _import(self, B):
     freeInB = B.freeVariables()
     for variable in self.variables:
       assert(variable not in freeInB)
@@ -213,7 +235,9 @@ class Exists(Endofunctor):
     return 0
 
 class Always(Endofunctor):
-  def import(self, B):
+  def __repr__(self):
+    return "!"
+  def _import(self, B):
     # B|!X --> !(B|X) (not always possible!)
     # but when   B == !C
     # !C | !X --> !!C | !X --> ! (!C | X)
@@ -238,9 +262,11 @@ class Always(Endofunctor):
 always_functor = Always()
 
 class Not(Endofunctor):
+  def __repr__(self):
+    return "~"
   # self must not be covariant()
   # return a function representing some natural transform: (B|.) o F o (B|.) --> F
-  def export(self, b):
+  def _export(self, b):
     bAnd = lambda x: basic.And(left = b, right = x)
     return (lambda x:
         # B|(~(B|x)) --> ~x
@@ -257,7 +283,9 @@ class Not(Endofunctor):
 not_functor = Not()
 
 class Id(Endofunctor):
-  def import(self, B):
+  def __repr__(self):
+    return "ID"
+  def _import(self, B):
     # Id o (B|.) --> (B|.) o Id
     # (B|x) --> (B|x)
     return (lambda x:
@@ -282,13 +310,15 @@ class Composite(Endofunctor):
     self.left = left
     self.right = right
 
-  def import(self, B):
+  def __repr__(self):
+    return "%s o %s"%(self.left, self.right)
+  def _import(self, B):
     if self.right.covariant():
       assert(self.left.covariant())
       # F o G o (B|.) --> F o (B|.) o G --> (B|.) o F o G
       return (lambda x:
-          self.right.import(B)(self.left.onObject(x)).forwardCompose(
-            self.right.onArrow(self.left.import(B)(x))))
+          self.right._import(B)(self.left.onObject(x)).forwardCompose(
+            self.right.onArrow(self.left._import(B)(x))))
     else:
       assert(not self.right.covariant())
       assert(not self.left.covariant())
@@ -296,24 +326,24 @@ class Composite(Endofunctor):
       bAnd = And(side = right, other = B)
       G_o_BAnd = self.right.compose(bAnd)
       return (lambda x:
-          G_o_BAnd.onArrow(self.left.export(B)(x)).forwardCompose(
-            self.right.export(B)(self.left.onObject(bAnd.onObject(x)))))
+          G_o_BAnd.onArrow(self.left._export(B)(x)).forwardCompose(
+            self.right._export(B)(self.left.onObject(bAnd.onObject(x)))))
 
-  def export(self, B):
+  def _export(self, B):
     bAnd = And(side = right, other = B)
     if self.right.covariant():
       assert(not self.left.covariant())
       # (B|.) o F o G o (B|.) --> (B|.) o F o (B|.) o G --> F o G
       return (lambda x:
-          self.right.import(B)(self.left.onObject(bAnd.onObject(x))).forwardCompose(
-            self.right.onArrow(self.left.export(B)(x))))
+          self.right._import(B)(self.left.onObject(bAnd.onObject(x))).forwardCompose(
+            self.right.onArrow(self.left._export(B)(x))))
     else:
       assert(not self.right.covariant())
       assert(self.left.covariant())
       # (B|.) o F o G o (B|.) --> F o (B|.) o G o (B|.) --> F o G
       return (lambda x:
-          bAnd.onArrow(self.right.onArrow(self.left.import(B)(x))).forwardCompose(
-            self.right.export(B)(self.left.onObject(x))))
+          bAnd.onArrow(self.right.onArrow(self.left._import(B)(x))).forwardCompose(
+            self.right._export(B)(self.left.onObject(x))))
 
   def importFilteredCovariantCovariant(self, f):
     assert(self.left.covariant())
@@ -325,7 +355,7 @@ class Composite(Endofunctor):
     # F o G --> F o ((B|.) o G) --> (B|.) o F o G
     result.extend([(B_nt[0], lambda x:
       B_nt[1](self.left.onObject(x)).forwardCompose(
-        self.right.onArrow(self.left.import(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
+        self.right.onArrow(self.left._import(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
     return result
 
   def importFilteredContravariantContravariant(self, f):
@@ -337,7 +367,7 @@ class Composite(Endofunctor):
       self.right.onArrow(B_nt[1](x))) for B_nt in self.left.exportFiltered(f)])
     # F o G --> ((B|.) o F o (B|.)) o G = ((B|.) o F) o ((B|.) o G) --> ((B|.) o F) o G
     result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left.export(B_nt[0])(x)).forwardCompose(
+      self.right.onArrow(self.left._export(B_nt[0])(x)).forwardCompose(
         B_nt[1](self.left.onObject(basic.And(B_nt[0], x))))) for B_nt in self.right.exportFiltered(f)])
     return result
 
@@ -358,7 +388,7 @@ class Composite(Endofunctor):
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
     result.extend([(B_nt[0], lambda x:
       B_nt[1](self.left.onObject(basic.And(B_nt[0], x))).forwardCompose(
-        self.right.onArrow(self.left.export(B_nt[0])))) for B_nt in self.right.importFiltered(f)])
+        self.right.onArrow(self.left._export(B_nt[0])))) for B_nt in self.right.importFiltered(f)])
     return result
 
   def exportFilteredCovariantContravariant(self, f):
@@ -370,7 +400,7 @@ class Composite(Endofunctor):
       self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
     # (B|.) o F o G --> F o (B|.) o G --> F o G
     result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left.import(B_nt[0])(x)).forwardCompose(
+      self.right.onArrow(self.left._import(B_nt[0])(x)).forwardCompose(
         B_nt[1](self.left.onObject(x)))) for B_nt in self.right.exportFiltered(f)])
     return result
 
@@ -394,7 +424,7 @@ class Composite(Endofunctor):
   def onObject(self, object):
     return self.right.onObject(self.left.onObject(object))
   def onArrow(self, arrow):
-    return self.right.onArrow(self.left.onArrow(object))
+    return self.right.onArrow(self.left.onArrow(arrow))
   def negations(self):
     return self.left.negations() + self.right.negations()
 
@@ -402,6 +432,13 @@ class Conjunction(Endofunctor):
   def __init__(self, side, other):
     self.side = side
     self.other = other
+
+  def __repr__(self):
+    if side == left:
+      return "(.%s%s"%(self.stringDivider(), self.other,)
+    else:
+      assert(side == right)
+      return '(%s%s.)'%(self.other, self.stringDivider())
 
   def variables(self):
     return []
@@ -433,7 +470,10 @@ class And(Conjunction):
   def createObject(self, left, right):
     return basic.And(left = left, right = right)
 
-  def import(self, B):
+  def stringDivider(self):
+    return "|"
+
+  def _import(self, B):
     bAnd = And(side = right, other = B)
     if self.side == left:
       # B|(X|OTHER) --> (B|X) | OTHER
@@ -461,10 +501,12 @@ class And(Conjunction):
       return [(a.tgt.left, lambda x:
         self.onObject(x).forwardOnLeft(a.forwardFollow(lambda x:
           x.forwardCommute())).forwardFollow(lambda x:
-            x.forwardAssociate())) for a in self.other.produceFiltered(f))]
+            x.forwardAssociate())) for a in self.other.produceFiltered(f)]
 
 class Or(Conjunction):
-  def import(self, B):
+  def stringDivider(self):
+    return "-"
+  def _import(self, B):
     bAnd = And(side = right, other = B)
     if self.side == left:
       # B|(X-OTHER) --> (B|X)-OTHER
