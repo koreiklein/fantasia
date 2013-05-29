@@ -9,10 +9,9 @@ class Object:
   def translate(self):
     raise Exception("Abstract superclass.")
 
-  # return an arrow self --> B|self such that f(B), and for some C, B == Always(C)
-  # or return None if no such arrow can be found.
+  # return a list of arrows self --> B|self such that f(B), and for some C, B == Always(C)
   def produceFiltered(self, f):
-    raise Exception("Abstract superclass.")
+    return []
 
   # Replace all bound variables with new variables.
   def updateVariables(self):
@@ -235,18 +234,15 @@ class Exists(Object):
         value = self.value.translate())
 
   def produceFiltered(self, f):
-    x = self.value.produceFiltered(f)
-    if a is None:
-      return None
-    else:
+    result = []
+    for a in self.value.produceFiltered(f):
       B = a.tgt.left
       free = B.freeVariables()
-      for variable in self.variables:
-        if variable in free:
-          return None
-      # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
-      return self.forwardOnBody(a).forwardFollow(lambda x:
-          AndPastExists(src = And(left = B, right = self), tgt = x).invert())
+      if all([variable not in free for variable in self.variables]):
+        # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
+        result.append(self.forwardOnBody(a).forwardFollow(lambda x:
+          AndPastExists(src = And(left = B, right = self), tgt = x).invert()))
+    return result
 
   def forwardOnBody(self, arrow):
     assert(arrow.src == self.value)
@@ -384,23 +380,16 @@ class Conjunction(Object):
 
 class And(Conjunction):
   def produceFiltered(self, f):
-    a = self.left.produceFiltered(f)
-    if a is None:
-      b = self.right.produceFiltered(f)
-      if b is None:
-        return None
-      else:
-        B = b.tgt.left
-        # (X|Y) --> (X|(B|Y)) --> (X|(Y|B)) --> ((X|Y)|B) --> (B|(X|Y))
-        return self.forwardOnRight(b.forwardFollow(lambda x:
-          x.forwardCommute())).forwardFollow(lambda x:
-              x.forwardAssociateOther().forwardFollow(lambda x:
-                x.forwardCommute()))
-    else:
-      B = a.tgt.left
-      # (X|Y) --> ((B|X)|Y) --> (B|(X|Y))
-      return self.forwardOnLeft(a).forwardFollow(lambda x:
-          x.forwardAssociate())
+    result = []
+    # (X|Y) --> (X|(B|Y)) --> (X|(Y|B)) --> ((X|Y)|B) --> (B|(X|Y))
+    result.extend([self.forwardOnRight(a.forwardFollow(lambda x:
+      x.forwardCommute())).forwardFollow(lambda x:
+        x.forwardAssociateOther().forwardFollow(lambda x:
+          x.forwardCommute())) for a in self.right.produceFiltered(f)])
+    # (X|Y) --> ((B|X)|Y) --> (B|(X|Y))
+    result.extend([self.forwardOnLeft(a).forwardFollow(lambda x:
+          x.forwardAssociate()) for a in self.left.produceFiltered(f)])
+    return result
 
   def forwardApply(self):
     assert(self.right.__class__ == Not)
@@ -456,8 +445,6 @@ class And(Conjunction):
     return "(%s AND %s)"%(self.left, self.right)
 
 class Or(Conjunction):
-  def produceFiltered(self, f):
-    return None
   def __repr__(self):
     return "(%s OR %s)"%(self.left, self.right)
 
@@ -470,9 +457,6 @@ class Not(Object):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
-
-  def produceFiltered(self, f):
-    return None
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
@@ -521,18 +505,14 @@ class Always(Object):
     self.value = value
 
   def produceFiltered(self, f):
+    result = []
     if f(self):
-      return self.forwardCopy()
-    else:
-      a = self.value.produceFiltered(f)
-      if a is None:
-        return None
-      else:
-        # !A --> !(B|A) --> !B | !A --> B | !A
-        return self.forwardOnAlways(a).forwardFollow(lambda x:
-            x.forwardDistributeAlways().forwardFollow(lambda x:
-              x.forwardOnLeftFollow(lambda x:
-                x.forwardUnalways())))
+      result.append(self.forwardCopy())
+    result.extend([self.forwardOnAlways(a).forwardFollow(lambda x:
+      x.forwardDistributeAlways().forwardFollow(lambda x:
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardUnalways()))) for a in self.value.produceFiltered(f)])
+    return result
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
@@ -586,9 +566,6 @@ class Unit(Object):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
-
-  def produceFiltered(self, f):
-    return None
 
   def translate(self):
     return self
