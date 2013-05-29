@@ -36,7 +36,7 @@ class Endofunctor:
   # Return a pair of functors (F, G) such that self == F.compose(G), F is non-trivial,
   # and F is "as simple as possible".
   def pop(self):
-    return (self, identity_endofunctor)
+    return (self, identity_functor)
   def compose(self, other):
     if self.__class__ == Id:
       return other
@@ -46,57 +46,84 @@ class Endofunctor:
       return Composite(left = self, right = other)
 
 def new_path(object):
-  return Path(identity_endofunctor, object)
+  return Path(identity_functor, object)
 
 class Path:
-  def __init_(self, endofunctor, object):
-    self.endofunctor = endofunctor
+  def __init_(self, functor, object):
+    self.functor = functor
     self.object = object
 
   def variables(self):
-    return self.endofunctor.variables()
+    return self.functor.variables()
   def top(self):
-    return self.endofunctor.onObject(self.object)
+    return self.functor.onObject(self.object)
   def bottom(self):
     return self.object
-  def functor(self):
-    return self.endofunctor
 
   def importFiltered(self, f):
-    return self.endofunctor.importFiltered(f)
+    return self.functor.importFiltered(f)
 
   # self must be contravariant
-  # return: an arrow a such that a.src == self.top and a.tgt == self.functor().onObject(basic.true)
+  # return: a path arrow : self --> self.functor.onObject(basic.true)
   #         or None if no such arrow exists.
   def exportBottom(self):
-    assert(not self.endofunctor.covariant())
+    assert(not self.functor.covariant())
     # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
-    exports = self.endofunctor.exportFiltered(lambda x: self.object == x)
+    exports = self.functor.exportFiltered(lambda x: self.object == x)
     if len(exports) == 0:
       return None
     else:
       (B, nt) = exports[0]
       assert(self.object == B)
-      return self.endofunctor.onArrow(self.object.backwardForgetRight(basic.true)).forwardCompose(
-          nt(basic.true))
+      return Arrow(
+          src = self,
+          tgt = Path(functor = self.functor, object = basic.true),
+          arrow = self.functor.onArrow(
+            self.object.backwardForgetRight(basic.true)).forwardCompose(
+              nt(basic.true)))
+
+  # self must be contravariant.
+  # return a path arrow "which exports as much as possible from nested Ands at the bottom".
+  def exportConjunctively(self):
+    assert(not self.functor.covariant())
+    trial = self.exportBottom()
+    if trial is not None:
+      return trial
+    else:
+      def maybeBackwardIntroduceUnit(x):
+        if x.__class__ == And:
+          if x.left == basic.true:
+            return x.right.forwardAndTrue()
+          elif x.right == basic.true:
+            return x.left.forwardAndTrue().forwardFollow(lambda x:
+                x.forwardCommute())
+        return x.identity()
+      return self.advanceLeft().forwardFollow(lambda x:
+          x.exportConjunctively().forwardFollow(lambda x:
+            x.retreat().forwardFollow(lambda x:
+              x.advanceRight().forwardFollow(lambda x:
+                x.exportConjunctively().forwardFollow(lambda x:
+                  x.retreat().forwardFollow(lambda x:
+                    x.forwardOnPathFollow(lambda x:
+                      maybeBackwardIntroduceUnit(x))))))))
 
   def _forwardIdentityArrow(self, tgt):
     return Arrow(src = self, tgt = tgt, arrow = self.top().identity())
 
   def retreat(self):
-    assert(self.endofunctor.__class__ == Composite)
-    (a, b) = self.endofunctor.pop()
-    return self._forwardIdentityArrow(Path(endofunctor = b, object = a.onObject(self.object)))
+    assert(self.functor.__class__ == Composite)
+    (a, b) = self.functor.pop()
+    return self._forwardIdentityArrow(Path(functor = b, object = a.onObject(self.object)))
 
   def advance(self):
     if self.object.__class__ == basic.Always:
-      p = Path(endofunctor = always_endofunctor.compose(self.endofunctor),
+      p = Path(functor = always_functor.compose(self.functor),
           object = self.object.value)
     elif self.object.__class__ == basic.Not:
-      p = Path(endofunctor = not_endofunctor.compose(self.endofunctor),
+      p = Path(functor = not_functor.compose(self.functor),
           object = self.object.value)
     elif self.object.__class__ == basic.Exists:
-      p = Path(endofunctor = Exists(variables = self.object.variables).compose(self.endofunctor),
+      p = Path(functor = Exists(variables = self.object.variables).compose(self.functor),
           object = self.object.value)
     else:
       raise Exception("Can't advance path: %s"%(self,))
@@ -109,10 +136,10 @@ class Path:
     object = _getSide(side, self.object)
     other = _getSide(_swapSide(side), self.object)
     if self.object.__class__ == basic.And:
-      p = Path(endofunctor = And(side = side, other = other), object = object)
+      p = Path(functor = And(side = side, other = other), object = object)
     else:
       assert(self.object.__class__ == basic.Or)
-      p = Path(endofunctor = Or(side = side, other = other), object = object)
+      p = Path(functor = Or(side = side, other = other), object = object)
     return self._forwardIdentityArrow(p)
 
   def forwardOnPath(self, arrow):
@@ -123,8 +150,8 @@ class Path:
       assert(self.object == arrow.tgt)
       x = arrow.src
     return Path(src = self,
-        tgt = Path(endofunctor = self.functor(), object = self.functor().onObject(x)),
-        arrow = self.functor().onArrow(arrow))
+        tgt = Path(functor = self.functor, object = self.functor.onObject(x)),
+        arrow = self.functor.onArrow(arrow))
   def forwardOnPathFollow(self, f):
     return self.forwardOnPath(f(self.bottom()))
 
@@ -208,7 +235,7 @@ class Always(Endofunctor):
   def negations(self):
     return 0
 
-always_endofunctor = Always()
+always_functor = Always()
 
 class Not(Endofunctor):
   # self must not be covariant()
@@ -227,7 +254,7 @@ class Not(Endofunctor):
   def negations(self):
     return 1
 
-not_endofunctor = Not()
+not_functor = Not()
 
 class Id(Endofunctor):
   def import(self, B):
@@ -238,7 +265,7 @@ class Id(Endofunctor):
   def variables(self):
     return []
   def pop(self):
-    raise Exception("Can't pop the identity endofunctor.")
+    raise Exception("Can't pop the identity functor.")
   def onObject(self, object):
     return object
   def onArrow(self, arrow):
@@ -246,7 +273,7 @@ class Id(Endofunctor):
   def negations(self):
     return 0
 
-identity_endofunctor = Id()
+identity_functor = Id()
 
 class Composite(Endofunctor):
   # if right is covariant, self will represent (left o right)
