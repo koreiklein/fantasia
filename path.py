@@ -80,21 +80,27 @@ class Path:
       return self.endofunctor.onArrow(self.object.backwardForgetRight(basic.true)).forwardCompose(
           nt(basic.true))
 
+  def _forwardIdentityArrow(self, tgt):
+    return Arrow(src = self, tgt = tgt, arrow = self.top().identity())
+
   def retreat(self):
     assert(self.endofunctor.__class__ == Composite)
     (a, b) = self.endofunctor.pop()
-    return Path(endofunctor = b, object = a.onObject(self.object))
+    return self._forwardIdentityArrow(Path(endofunctor = b, object = a.onObject(self.object)))
 
   def advance(self):
     if self.object.__class__ == basic.Always:
-      return Path(endofunctor = always_endofunctor.compose(self.endofunctor),
+      p = Path(endofunctor = always_endofunctor.compose(self.endofunctor),
           object = self.object.value)
     elif self.object.__class__ == basic.Not:
-      return Path(endofunctor = not_endofunctor.compose(self.endofunctor),
+      p = Path(endofunctor = not_endofunctor.compose(self.endofunctor),
           object = self.object.value)
     elif self.object.__class__ == basic.Exists:
-      return Path(endofunctor = Exists(variables = self.object.variables).compose(self.endofunctor),
+      p = Path(endofunctor = Exists(variables = self.object.variables).compose(self.endofunctor),
           object = self.object.value)
+    else:
+      raise Exception("Can't advance path: %s"%(self,))
+    return self._forwardIdentityArrow(p)
   def advanceLeft(self):
     return self.advanceToSide(left)
   def advanceRight(self):
@@ -103,10 +109,11 @@ class Path:
     object = _getSide(side, self.object)
     other = _getSide(_swapSide(side), self.object)
     if self.object.__class__ == basic.And:
-      return Path(endofunctor = And(side = side, other = other), object = object)
+      p = Path(endofunctor = And(side = side, other = other), object = object)
     else:
       assert(self.object.__class__ == basic.Or)
-      return Path(endofunctor = Or(side = side, other = other), object = object)
+      p = Path(endofunctor = Or(side = side, other = other), object = object)
+    return self._forwardIdentityArrow(p)
 
   def forwardOnPath(self, arrow):
     if self.covariant():
