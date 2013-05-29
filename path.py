@@ -8,12 +8,12 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
   # self must be covariant()
   # return a list of (B, a function representing some natural transform: F --> (B|.) o F)
-  # such that f(B) == True, or return None if no such natural transform exists.
+  # such that f(B) == True.
   def importFiltered(self, f):
     return []
   # self must not be covariant()
-  # return a list of (B, a function representing some natural transform: (B|.) o F (B|.) --> F)
-  # such that f(B) == True, or return None if no such natural transform exists.
+  # return a list of (B, a function representing some natural transform: (B|.) o F --> F)
+  # such that f(B) == True.
   def exportFiltered(self, f):
     return []
   # self must be covariant()
@@ -61,6 +61,24 @@ class Path:
     return self.object
   def functor(self):
     return self.endofunctor
+
+  def importFiltered(self, f):
+    return self.endofunctor.importFiltered(f)
+
+  # self must be contravariant
+  # return: an arrow a such that a.src == self.top and a.tgt == self.functor().onObject(basic.true)
+  #         or None if no such arrow exists.
+  def exportBottom(self):
+    assert(not self.endofunctor.covariant())
+    # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
+    exports = self.endofunctor.exportFiltered(lambda x: self.object == x)
+    if len(exports) == 0:
+      return None
+    else:
+      (B, nt) = exports[0]
+      assert(self.object == B)
+      return self.endofunctor.onArrow(self.object.backwardForgetRight(basic.true)).forwardCompose(
+          nt(basic.true))
 
   def retreat(self):
     assert(self.endofunctor.__class__ == Composite)
