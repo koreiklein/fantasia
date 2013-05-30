@@ -172,9 +172,6 @@ class Arrow:
   # arrow: an arrow : src.top() --> tgt.top()
   def __init__(self, src, tgt, arrow):
     assert(src.top() == arrow.src)
-    # FIXME Remove this
-    if not(tgt.top() == arrow.tgt):
-      raise Exception("Unequal\n%s\n!=\n%s\nin\n%s"%(tgt.top(), arrow.tgt, tgt))
     assert(tgt.top() == arrow.tgt)
     self.src = src
     self.tgt = tgt

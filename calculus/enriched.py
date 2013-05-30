@@ -116,6 +116,15 @@ def Exists(variableEquivalencePairs, value):
     value = value,
     underlying = _BoundedExists))
 
+class SimpleEnrichedArrow(basic.Arrow):
+  def __init__(self, src, tgt, basicArrow):
+    self.src = src
+    self.tgt = tgt
+    self.basicArrow = basicArrow
+
+  def translate(self):
+    return self.basicArrow
+
 class _Quantifier(Enriched):
   # bindings: a list of VariableBinding
   # value: an Object
@@ -124,6 +133,13 @@ class _Quantifier(Enriched):
     self.bindings = bindings
     self.value = value
     self.underlying = underlying
+
+  def produceFiltered(self, f):
+    if self.underlying == _BoundedForall:
+      return []
+    else:
+      return [SimpleEnrichedArrow(src = self, tgt = And(a.tgt.left, self), basicArrow = a)
+              for a in self._translate(self.value).produceFiltered(self, f)]
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
@@ -142,7 +158,9 @@ class _Quantifier(Enriched):
       return Welldefinedly
 
   def translate(self):
-    value = self.value
+    return self._translate(self.value.translate())
+
+  def _translate(self, value):
     for binding in self.bindings:
       if binding.unique:
         value = self.uniquenessCombinator()(
@@ -154,7 +172,7 @@ class _Quantifier(Enriched):
     return self.underlying(
         variables = [binding.variable for binding in self.bindings],
         domains = [binding.domain() for binding in self.bindings],
-        value = value).translate()
+        value = value).translate(value)
 
   def isForall(self):
     return self.underlying == _BoundedForall
@@ -201,11 +219,13 @@ class _BoundedExists(Enriched):
 
   # Always returns a "basic" object.
   def translate(self):
-    result = self.value.translate()
+    return self._translate(self.value.translate())
+
+  def _translate(self, value):
     for i in range(len(self.variables)):
-      result = basic.And( basic.Holds(self.variables[i], self.domains[i])
-                        , result)
-    return basic.Exists(self.variables, result)
+      value = basic.And( basic.Holds(self.variables[i], self.domains[i])
+                       , value)
+    return basic.Exists(self.variables, value)
 
   def updateVariables(self):
     return _BoundedExists(
@@ -353,6 +373,8 @@ class Hidden(Enriched):
   def __init__(self, base, name):
     self.base = base
     self.name = name
+  def produceFiltered(self, f):
+    return self.base.produceFiltered(f)
   def translate(self):
     return self.base.translate()
   def updateVariables(self):
