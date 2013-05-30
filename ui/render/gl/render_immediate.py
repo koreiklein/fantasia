@@ -16,15 +16,13 @@ def render(x, covariant = True):
     return renderEnrichedIff(x, covariant = covariant)
   elif x.__class__ == enriched.Hidden:
     return renderEnrichedHidden(x, covariant = covariant)
-  elif x.__class__ == enriched._Quantifier:
+  elif x.__class__ == enriched.BoundedExists:
     return renderExists(valueStack = render(x.value, covariant),
-        variablesList = [renderVariableBinding(
-          variable = renderVariable(binding.variable),
-          unique = binding.unique,
-          equivalence = renderVariable(binding.equivalence),
-          covariant = covariant)
-          for binding in x.bindings],
-        covariant = covariant if x.isExists() else not covariant)
+        variablesList = [renderVariableBinding(variable = renderVariable(x.variables[i]),
+          unique = False,
+          domain = renderVariable(x.domains[i]),
+        covariant = covariant) for i in range(len(x.variables))],
+        covariant = covariant)
   elif x.__class__ == enriched.EnrichedHolds:
     return renderHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
@@ -147,7 +145,7 @@ def renderExists(valueStack, variablesList, covariant):
       quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
 
-def renderVariableBinding(variable, unique, equivalence, covariant):
+def renderVariableBinding(variable, unique, domain, covariant):
   dimension = 0
   if unique:
     c = '!'
@@ -157,7 +155,7 @@ def renderVariableBinding(variable, unique, equivalence, covariant):
   return variable.stack(dimension,
       middleStack,
       spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
-          equivalence,
+          domain,
           spacing = distances.enriched_variable_binding_spacing)
 
 def _renderVariableBinding(binding, covariant = True):

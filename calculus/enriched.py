@@ -6,6 +6,15 @@ from lib import common_vars
 
 from sets import Set
 
+class SimpleEnrichedArrow(basic.Arrow):
+  def __init__(self, src, tgt, basicArrow):
+    self.src = src
+    self.tgt = tgt
+    self.basicArrow = basicArrow
+
+  def translate(self):
+    return self.basicArrow
+
 def Always(value):
   return basic.Always(value)
 
@@ -50,159 +59,19 @@ StringVariable = basic.StringVariable
 true = basic.Always(basic.true)
 false = basic.Always(basic.false)
 
-class VariableBinding:
-  # variable: a basic.Variable
-  # equivalence: an Object whose representation is an equivalence in the sense of lib.equivalence
-  # uinque: a boolean indicating whether or not this variable is quantified uniquely.
-  def __init__(self, variable, equivalence, unique, alternate_variable = None):
-    if alternate_variable is None:
-      self.alternate_variable = common_vars.x()
-    else:
-      self.alternate_variable = alternate_variable
-    self.variable = variable
-    self.equivalence = equivalence
-    self.unique = unique
-
-  def __eq__(self, other):
-    return (self.__class__ == other.__class__ and self.variable == other.variable
-        and self.equivalence == other.equivalence and self.unique == other.unique
-        and self.alternate_variable == other.alternate_variable)
-
-  def __ne__(self, other):
-    return not(self == other)
-
-  def relation(self):
-    return basic.ProjectionVariable(self.equivalence, relationSymbol)
-  def domain(self):
-    return basic.ProjectionVariable(self.equivalence, domainSymbol)
-
-  def updateVariables(self):
-    return VariableBinding(variable = self.variable.updateVariables(),
-        equivalence = self.equivalence.updateVariables(),
-        alternate_variable = self.alternate_variable.updateVariables(),
-        unique = self.unique)
-
-  def substituteVariable(self, a, b):
-    return VariableBinding(variable = self.variable.substituteVariable(a, b),
-        equivalence = self.equivalence.substituteVariable(a, b),
-        alternate_variable = self.alternate_variable.substituteVariable(a, b),
-        unique = self.unique)
-
-  def freeVariables(self):
-    return equivalence.freeVariables().difference(Set([self.variable]))
-
-  def __repr__(self):
-    if self.unique:
-      c = '!'
-    else:
-      c = ':'
-    return "%s c %s"%(self.variable, self.equivalence)
-
 # For enriched Objects.
 class Enriched(basic.Object):
   pass
 
 def Forall(variableEquivalencePairs, value):
-  return basic.Always(_Quantifier(
-    bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
-                for (v,e) in variableEquivalencePairs],
-    value = value,
-    underlying = _BoundedForall))
+  return BoundedForall(variables = [v for (v,e) in variableEquivalencePairs],
+      domains = [basic.ProjectionVariable(e, domainSymbol) for (v,e) in variableEquivalencePairs],
+      value = value)
 
 def Exists(variableEquivalencePairs, value):
-  return basic.Always(_Quantifier(
-    bindings = [VariableBinding(variable = v, equivalence = e, unique = False)
-                for (v,e) in variableEquivalencePairs],
-    value = value,
-    underlying = _BoundedExists))
-
-class SimpleEnrichedArrow(basic.Arrow):
-  def __init__(self, src, tgt, basicArrow):
-    self.src = src
-    self.tgt = tgt
-    self.basicArrow = basicArrow
-
-  def translate(self):
-    return self.basicArrow
-
-class _Quantifier(Enriched):
-  # bindings: a list of VariableBinding
-  # value: an Object
-  # underlying: _BoundedExists or _BoundedForall
-  def  __init__(self, bindings, value, underlying):
-    self.bindings = bindings
-    self.value = value
-    self.underlying = underlying
-
-  def produceFiltered(self, f):
-    if self.underlying == _BoundedForall:
-      return []
-    else:
-      return [SimpleEnrichedArrow(src = self, tgt = And(a.tgt.left, self), basicArrow = a)
-              for a in self._translate(self.value).produceFiltered(self, f)]
-
-  def __eq__(self, other):
-    return (self.__class__ == other.__class__
-        and self.bindings == other.bindings
-        and self.value == other.value
-        and self.underlying == other.underlying)
-
-  def __ne__(self, other):
-    return not(self == other)
-
-  def uniquenessCombinator(self):
-    if self.underlying == _BoundedExists:
-      return Uniquely
-    else:
-      assert(self.underlying == _BoundedForall)
-      return Welldefinedly
-
-  def translate(self):
-    return self._translate(self.value.translate())
-
-  def _translate(self, value):
-    for binding in self.bindings:
-      if binding.unique:
-        value = self.uniquenessCombinator()(
-            variable = binding.variable,
-            value = value,
-            domain = binding.domain(),
-            relation = binding.relation(),
-            x = binding.alternate_variable)
-    return self.underlying(
-        variables = [binding.variable for binding in self.bindings],
-        domains = [binding.domain() for binding in self.bindings],
-        value = value).translate(value)
-
-  def isForall(self):
-    return self.underlying == _BoundedForall
-
-  def isExists(self):
-    return self.underlying == _BoundedExists
-
-  def updateVariables(self):
-    return _Quantifier(
-        bindings = [binding.updateVariables() for binding in self.bindings],
-        value = self.value.updateVariables(),
-        underlying = self.underlying)
-
-  def substituteVariable(self, a, b):
-    return _Quantifier(
-        bindings = [binding.substituteVariable(a, b) for binding in self.bindings],
-        value = self.value.substituteVariable(a, b),
-        underlying = self.underlying)
-
-  def freeVariables(self):
-    result = self.value.freeVariables()
-    for binding in self.bindings:
-      result = result.union(binding.domain().freeVariables()).difference(Set([binding.variable]))
-    return result
-
-def _BoundedForall(variables, domains, value):
-  return basic.Not(_BoundedExists(
-    variables = variables,
-    domains = domains,
-    value = basic.Not(value)))
+  return BoundedExists(variables = [v for (v,e) in variableEquivalencePairs],
+      domains = [basic.ProjectionVariable(e, domainSymbol) for (v,e) in variableEquivalencePairs],
+      value = value)
 
 def BasicForall(variables, value):
   return basic.Not(basic.Exists(variables = variables, value = basic.Not(value)))
@@ -210,7 +79,13 @@ def BasicForall(variables, value):
 def BasicExists(variables, value):
   return basic.Exists(variables = variables, value = value)
 
-class _BoundedExists(Enriched):
+def BoundedForall(variables, domains, value):
+  return basic.Not(BoundedExists(
+    variables = variables,
+    domains = domains,
+    value = basic.Not(value)))
+
+class BoundedExists(Enriched):
   def __init__(self, variables, domains, value):
     assert(len(variables ) == len(domains))
     self.variables = variables
@@ -228,13 +103,13 @@ class _BoundedExists(Enriched):
     return basic.Exists(self.variables, value)
 
   def updateVariables(self):
-    return _BoundedExists(
+    return BoundedExists(
         variables = [variable.updateVariables() for variable in self.variables],
         domains = [domain.updateVariables() for domain in self.domains],
         value = self.value.updateVariables())
 
   def substituteVariable(self, a, b):
-    return _BoundedExists(
+    return BoundedExists(
         variables = [variable.substituteVariable(a, b) for variable in self.variables],
         domains = [domain.substituteVariable(a, b) for domain in self.domains],
         value = self.value.substituteVariable(a, b))
@@ -383,16 +258,4 @@ class Hidden(Enriched):
     return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
   def freeVariables(self):
     return self.base.freeVariables()
-
-def Uniquely(variable, value, domain, relation, x):
-  return And([value, BasicForall([x], Implies(
-    predicate = And([Holds(x, domain), value.substituteVariable(variable, x)]),
-    consequent = Holds(ProductVariable([(leftSymbol, x), (rightSymbol, variable)]), relation)))])
-
-def Welldefinedly(variable, value, domain, x):
-  return And([value, BasicForall([x], Implies(
-    predicate = And([ Holds(x, domain)
-                    , Holds( ProductVariable([(leftSymbol, x), (rightSymbol, variable)])
-                           , relation) ]),
-    consequent = value.substituteVariable(variable, x)))])
 

@@ -20,7 +20,6 @@ def projectDomain(e):
 def projectRelation(e):
   return enriched.ProjectionVariable(e, common_symbols.relationSymbol)
 
-
 a = common_vars.a()
 b = common_vars.b()
 def defined(f):
