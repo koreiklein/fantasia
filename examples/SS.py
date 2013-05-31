@@ -30,4 +30,12 @@ b = common_vars.b()
 
 proof = natural.lib.beginProof()
 
+x = proof.forwardFollow(lambda p:
+    p.advanceLeft())
+
+L = x.arrow.tgt.importFiltered(lambda x: True)
+for (B,f) in L:
+  print B
+
+print L[3][1](enriched.true)
 

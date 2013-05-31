@@ -245,6 +245,7 @@ class Exists(Object):
     return result
 
   def forwardOnBody(self, arrow):
+    assert(isinstance(arrow, Arrow))
     assert(arrow.src == self.value)
     return OnBody(variables = self.variables, arrow = arrow)
   def backwardOnBody(self, arrow):
@@ -296,6 +297,8 @@ class Conjunction(Object):
                           right = self.right.translate())
 
   def forwardOnConjunction(self, leftArrow, rightArrow):
+    assert(isinstance(leftArrow, Arrow))
+    assert(isinstance(rightArrow, Arrow))
     return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
         src = self,
         tgt = self.__class__(left = leftArrow.tgt,
@@ -306,12 +309,16 @@ class Conjunction(Object):
         src = self.__class__(left = leftArrow.src,
                              right = rightArrow.src))
   def forwardOnLeft(self, arrow):
+    assert(isinstance(arrow, Arrow))
     return self.forwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
   def forwardOnRight(self, arrow):
+    assert(isinstance(arrow, Arrow))
     return self.forwardOnConjunction(rightArrow = arrow, leftArrow = self.left.identity())
   def backwardOnLeft(self, arrow):
+    assert(isinstance(arrow, Arrow))
     return self.backwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
   def backwardOnRight(self, arrow):
+    assert(isinstance(arrow, Arrow))
     return self.backwardOnConjunction(rightArrow = arrow, leftArrow = self.left.identity())
 
   def forwardOnLeftFollow(self, f):
@@ -470,6 +477,7 @@ class Not(Object):
     return Not(value = self.value.translate(), rendered = self.rendered)
 
   def forwardOnNot(self, arrow):
+    assert(isinstance(arrow, Arrow))
     assert(arrow.tgt == self.value)
     return OnNot(arrow)
   def forwardOnNotFollow(self, f):
@@ -526,6 +534,7 @@ class Always(Object):
     return Unalways(src = self, tgt = self.value)
 
   def forwardOnAlways(self, arrow):
+    assert(isinstance(arrow, Arrow))
     assert(arrow.src == self.value)
     return OnAlways(arrow)
   def backwardOnAlways(self, arrow):
@@ -637,8 +646,8 @@ class Isomorphism(Arrow):
 class InverseArrow(Isomorphism):
   def __init__(self, arrow):
     self.arrow = arrow
-    self.src = arrow.src
-    self.tgt = arrow.tgt
+    self.src = arrow.tgt
+    self.tgt = arrow.src
 
   def invert(self):
     return self.arrow
@@ -666,7 +675,10 @@ class Composite(Arrow):
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
   def validate(self):
-    assert(self.left.tgt == self.right.src)
+    if not(self.left.tgt == self.right.src):
+      raise Exception(("Invalid composite."
+          "left.tgt (%s) != right.src (%s)\nleft.tgt =\n%s\nright.src =\n%s"
+          )%(self.left.__class__, self.right.__class__, self.left.tgt, self.right.src))
 
   # May throw an exception.
   def invert(self):
@@ -717,12 +729,11 @@ class Associate(Isomorphism):
   def validate(self):
     assert(isinstance(self.src, Conjunction))
     assert(self.tgt.__class__ == self.src.__class__)
-    assert(self.a() or self.b())
-    common_class == self.src.__class__
-    assert (self.src.left.__class__ == common_class
+    common_class = self.src.__class__
+    assert(self.src.left.__class__ == common_class
         and self.tgt.right.__class__ == common_class
 
-        and self.src.left.left == self.tgt.right
+        and self.src.left.left == self.tgt.left
         and self.src.left.right == self.tgt.right.left
         and self.src.right == self.tgt.right.right)
 

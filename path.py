@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
+from calculus import basic, enriched
 from lib import common_vars
 
 class Endofunctor:
@@ -57,7 +57,7 @@ class Path:
     self.object = object
 
   def __repr__(self):
-    return "%s --> %s"%(self.object, self.functor)
+    return "PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(self.object, self.functor)
 
   def variables(self):
     return self.functor.variables()
@@ -137,8 +137,12 @@ class Path:
     elif self.object.__class__ == basic.Exists:
       p = Path(functor = Exists(variables = self.object.variables).compose(self.functor),
           object = self.object.value)
+    elif self.object.__class__ == enriched.BoundedExists:
+      p = Path(functor = BoundedExists(variables = self.object.variable,
+        domains = self.object.domains).compose(self.functor),
+        object = self.object.value)
     else:
-      raise Exception("Can't advance path: %s"%(self,))
+      raise Exception("Can't advance path: %s\npast object: %s:"%(self,self.bottom()))
     return self._forwardIdentityArrow(p)
   def advanceLeft(self):
     return self.advanceToSide(left)
@@ -148,13 +152,16 @@ class Path:
     object = _getSide(side, self.object)
     other = _getSide(_swapSide(side), self.object)
     if self.object.__class__ == basic.And:
-      p = Path(functor = And(side = side, other = other), object = object)
+      p = Path(functor = And(side = side, other = other).compose(self.functor),
+          object = object)
     else:
       assert(self.object.__class__ == basic.Or)
-      p = Path(functor = Or(side = side, other = other), object = object)
+      p = Path(functor = Or(side = side, other = other).compose(self.functor),
+          object = object)
     return self._forwardIdentityArrow(p)
 
   def forwardOnPath(self, arrow):
+    assert(isinstance(arrow, basic.Arrow))
     if self.covariant():
       assert(self.object == arrow.src)
       x = arrow.tgt
@@ -210,6 +217,39 @@ def _getSide(side, object):
   else:
     assert(side == right)
     return object.right
+
+class BoundedExists(Endofunctor):
+  def __init__(self, variables, domains):
+    self.variables = variables
+    self.domains = domains
+    self.pairs = [(variables[i], domains[i]) for i in range(len(variables))]
+
+  def __repr__(self):
+    return "BoundedExists(%s)"%(self.pairs,)
+  def translate(self):
+    result = identity_functor
+    for (v, d) in self.pairs:
+      result = result.compose(And(side = right, other = basic.Holds(v, d)))
+    return result.compose(Exists(self.variables))
+  def _import(self, B):
+    freeInB = B.freeVariables()
+    for variable in self.variables:
+      assert(variable not in freeInB)
+    return (lambda x:
+        SimpleEnrichedArrow(src = basic.And(B, self.onObject(x)),
+          tgt = self.onObject(basic.And(B, x)),
+          basicArrow = self.translate()._import(B)))
+  def variables(self):
+    return self.variables
+  def onObject(self, object):
+    return enriched.BoundedExists(variables = self.variables,
+        domains = self.domains, value = object)
+  def onArrow(self, arrow):
+    return SimpleEnrichedArrow(src = self.onObject(arrow.src),
+        tgt = self.onObject(arrow.tgt),
+        basicArrow = self.translate().onArrow(arrow))
+  def negations(self):
+    return 0
 
 class Exists(Endofunctor):
   def __init__(self, variables):
@@ -308,7 +348,7 @@ class Composite(Endofunctor):
     self.right = right
 
   def __repr__(self):
-    return "%s o %s"%(self.left, self.right)
+    return "%s\no\n%s"%(self.left, self.right)
   def _import(self, B):
     if self.right.covariant():
       assert(self.left.covariant())
@@ -431,10 +471,10 @@ class Conjunction(Endofunctor):
     self.other = other
 
   def __repr__(self):
-    if side == left:
-      return "(.%s%s"%(self.stringDivider(), self.other,)
+    if self.side == left:
+      return "(.%s%s)"%(self.stringDivider(), self.other,)
     else:
-      assert(side == right)
+      assert(self.side == right)
       return '(%s%s.)'%(self.other, self.stringDivider())
 
   def variables(self):
@@ -490,7 +530,7 @@ class And(Conjunction):
       return [(a.tgt.left, lambda x:
         self.onObject(x).forwardOnRight(a).forwardFollow(lambda x:
           x.forwardAssociateOther().forwardFollow(lambda x:
-            x.forwardOnRight(lambda x:
+            x.forwardOnRightFollow(lambda x:
               x.forwardCommute())))) for a in self.other.produceFiltered(f)]
     else:
       # (A|X) --> ((B|A)|X) --> ((A|B)|X) --> (A|(B|X))

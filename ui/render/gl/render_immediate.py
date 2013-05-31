@@ -63,8 +63,8 @@ def renderConjunction(x, covariant = True):
   right = render(x.right, covariant)
   if x.right == basic.unit_for_conjunction(x.__class__):
     return left
-  elif x.left == basic.unit_for_conjunction(x.__class__):
-    return right
+  #elif x.left == basic.unit_for_conjunction(x.__class__):
+  #  return right
   else:
     if x.__class__ == basic.And:
       return renderAnd(left, right, covariant)

@@ -14,7 +14,7 @@ before = symbol.StringSymbol('before')
 after = symbol.StringSymbol('after')
 
 def Natural(n):
-  return equivalence.InDomain(n, natural)
+  return enriched.Always(equivalence.InDomain(n, natural))
 
 def Successor(a, b):
   return enriched.EnrichedHolds(enriched.ProductVariable([(before, a), (after, b)]), natural_successor)
@@ -26,7 +26,7 @@ def Less(a, b):
   return enriched.EnrichedHolds(
       enriched.ProductVariable([(smaller, a), (greater, b)]), natural_less)
 
-naturalIsEquivalence = equivalence.IsEquivalence(natural)
+naturalIsEquivalence = enriched.Always(equivalence.IsEquivalence(natural))
 
 natural_successor_function = enriched.ProductVariable(
     [ (common_symbols.functionPairsSymbol, natural_successor)

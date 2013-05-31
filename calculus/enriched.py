@@ -64,14 +64,14 @@ class Enriched(basic.Object):
   pass
 
 def Forall(variableEquivalencePairs, value):
-  return BoundedForall(variables = [v for (v,e) in variableEquivalencePairs],
+  return basic.Always(BoundedForall(variables = [v for (v,e) in variableEquivalencePairs],
       domains = [basic.ProjectionVariable(e, domainSymbol) for (v,e) in variableEquivalencePairs],
-      value = value)
+      value = value))
 
 def Exists(variableEquivalencePairs, value):
-  return BoundedExists(variables = [v for (v,e) in variableEquivalencePairs],
+  return basic.Always(BoundedExists(variables = [v for (v,e) in variableEquivalencePairs],
       domains = [basic.ProjectionVariable(e, domainSymbol) for (v,e) in variableEquivalencePairs],
-      value = value)
+      value = value))
 
 def BasicForall(variables, value):
   return basic.Not(basic.Exists(variables = variables, value = basic.Not(value)))
@@ -92,6 +92,10 @@ class BoundedExists(Enriched):
     self.domains = domains
     self.value = value
 
+  def produceFiltered(self, f):
+    return [SimpleEnrichedArrow(src = self, tgt = basic.And(a.tgt.left, self),
+      basicArrow = a) for a in self._translate(self.value).produceFiltered(f)]
+
   # Always returns a "basic" object.
   def translate(self):
     return self._translate(self.value.translate())
@@ -105,7 +109,7 @@ class BoundedExists(Enriched):
   def updateVariables(self):
     return BoundedExists(
         variables = [variable.updateVariables() for variable in self.variables],
-        domains = [domain.updateVariables() for domain in self.domains],
+        domains = self.domains,
         value = self.value.updateVariables())
 
   def substituteVariable(self, a, b):
