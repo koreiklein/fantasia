@@ -183,7 +183,7 @@ class ProductVariable(GeneralizedVariable):
   def freeVariables(self):
     result = Set()
     for (s, v) in self.symbol_variable_pairs:
-      result.union_with(v.freeVariables())
+      result.union_update(v.freeVariables())
     return result
 
 class Holds(Object):
@@ -209,8 +209,8 @@ class Holds(Object):
         holding = self.holding.substituteVariable(a, b))
   def freeVariables(self):
     result = Set()
-    result.union_with(self.holding.freeVariables())
-    result.union_with(self.held.freeVariables())
+    result.union_update(self.holding.freeVariables())
+    result.union_update(self.held.freeVariables())
     return result
 
 class Exists(Object):

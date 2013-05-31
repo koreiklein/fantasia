@@ -132,7 +132,7 @@ class BoundedExists(Enriched):
     return result
 
 # Instances of this class may only be used within an EnrichedHolds.
-class Apply:
+class Apply(basic.GeneralizedVariable):
   # x: a variable on an Apply object
   # f: a variable (the "function") or an Apply object
   # tmp: the temporary variable to use for the output (or None if a new one should be generated)
@@ -164,9 +164,10 @@ class Apply:
         tmp = self.tmp.substituteVariable(a, b))
   def freeVariables(self):
     result = Set()
-    result.union_with(self.x.freeVariables())
-    result.union_with(self.f.freeVariables())
-    result.union_with(self.tmp.freeVariables())
+    result.union_update(self.x.freeVariables())
+    result.union_update(self.f.freeVariables())
+    result.union_update(self.tmp.freeVariables())
+    return result
 
 # v: either a variable or an Apply object
 # return: a function f taking (a function g taking a new "output" variable to a basic object)
