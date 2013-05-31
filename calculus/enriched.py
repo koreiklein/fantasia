@@ -91,6 +91,13 @@ class BoundedExists(Enriched):
     self.variables = variables
     self.domains = domains
     self.value = value
+    self.pairs = [(self.variables[i], self.domains[i]) for i in range(len(self.variables))]
+
+  def __repr__(self):
+    s = []
+    for (v,d) in self.pairs:
+      s.append("%s : %s"%(v,d))
+    return "( BoundedExists " + ",".join(s) + " . %s )"%(self.value)
 
   def produceFiltered(self, f):
     return [SimpleEnrichedArrow(src = self, tgt = basic.And(a.tgt.left, self),
