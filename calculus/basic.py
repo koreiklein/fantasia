@@ -612,6 +612,9 @@ class Arrow:
     self.tgt = tgt
     self.validate()
 
+  def __repr__(self):
+    return "%s"%(self.arrowTitle())
+
   def translate(self):
     return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
 
@@ -649,6 +652,9 @@ class InverseArrow(Isomorphism):
     self.src = arrow.tgt
     self.tgt = arrow.src
 
+  def __repr__(self):
+    return "%s inverse"%(self.arrow,)
+
   def invert(self):
     return self.arrow
 
@@ -657,6 +663,8 @@ class InverseArrow(Isomorphism):
 
 # A <--> A
 class Id(Arrow):
+  def arrowTitle(self):
+    return "Id"
   def validate(self):
     assert(self.src == self.tgt)
 
@@ -671,6 +679,9 @@ class Composite(Arrow):
 
   def translate(self):
     return Composite(left = self.left.translate(), right = self.right.translate())
+
+  def __repr__(self):
+    return "%s o\n%s"%(self.left, self.right)
 
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
@@ -694,6 +705,8 @@ class Composite(Arrow):
 
 # A | (B - C) --> (A | B) - (A | C)
 class Distribute(Arrow):
+  def arrowTitle(self):
+    return "Distribute"
   def validate(self):
     assert(self.src.__class__ == And)
     assert(self.src.right.__class__ == Or)
@@ -707,17 +720,23 @@ class Distribute(Arrow):
 
 # A | B --> A,  A | B --> B
 class Forget(Arrow):
+  def arrowTitle(self):
+    return "Forget"
   def validate(self):
     assert(self.src.__class__ == And)
     assert(self.tgt in [self.src.left, self.src.right])
 
 # A - B <-- A,  A - B <-- B
 class Admit(Arrow):
+  def arrowTitle(self):
+    return "Admit"
   def validate(self):
     assert(self.src.__class__ == Or)
     assert(self.src in [self.tgt.left, self.tgt.right])
 
 class Commute(Isomorphism):
+  def arrowTitle(self):
+    return "Commute"
   def validate(self):
     assert(self.src.__class__ == self.tgt.__class__)
 
@@ -726,6 +745,8 @@ class Commute(Isomorphism):
 
 # (A % B) % C ---> A % (B % C)
 class Associate(Isomorphism):
+  def arrowTitle(self):
+    return "Associate[[..].]-->[.[..]]"
   def validate(self):
     assert(isinstance(self.src, Conjunction))
     assert(self.tgt.__class__ == self.src.__class__)
@@ -739,6 +760,8 @@ class Associate(Isomorphism):
 
 # A % 1 <-- A --> 1 % A
 class UnitIdentity(Isomorphism):
+  def arrowTitle(self):
+    return "UnitIdentity"
   def validate(self):
     unit = unit_for_conjunction(self.tgt.__class__)
     assert((self.tgt.right == unit and self.tgt.left == self.src)
@@ -746,6 +769,8 @@ class UnitIdentity(Isomorphism):
 
 # A <--> ~(~A)
 class DoubleDual(Isomorphism):
+  def arrowTitle(self):
+    return "DoubleDual"
   def validate(self):
     assert(self.tgt.__class__ == Not)
     assert(self.tgt.value.__class__ == Not)
@@ -753,6 +778,8 @@ class DoubleDual(Isomorphism):
 
 # A | ~(A | B) --> ~B
 class Apply(Arrow):
+  def arrowTitle(self):
+    return "Apply"
   def validate(self):
     assert(self.tgt.__class__ == Not)
     assert(self.src.__class__ == And)
@@ -763,6 +790,8 @@ class Apply(Arrow):
 
 # !A --> !!A
 class Cojoin(Arrow):
+  def arrowTitle(self):
+    return "Cojoin"
   def validate(self):
     assert(self.src.__class__ == Always)
     assert(self.tgt.__class__ == Always)
@@ -770,6 +799,8 @@ class Cojoin(Arrow):
 
 # !A --> !A | !A
 class Copy(Arrow):
+  def arrowTitle(self):
+    return "Copy"
   def validate(self):
     assert(self.src.__class__ == Always)
     assert(self.tgt.__class__ == And)
@@ -778,6 +809,8 @@ class Copy(Arrow):
 
 # !A | !B --> !(A|B)
 class Zip(Arrow):
+  def arrowTitle(self):
+    return "Zip"
   def validate(self):
     assert(self.src.__class__ == And)
     assert(self.src.left.__class__ == Always)
@@ -789,18 +822,24 @@ class Zip(Arrow):
 
 # !A --> A
 class Unalways(Arrow):
+  def arrowTitle(self):
+    return "Unalways"
   def validate(self):
     assert(self.src.__class__ == Always)
     assert(self.src.value == self.tgt)
 
 # A --> Exists x . A
 class IntroExists(Arrow):
+  def arrowTitle(self):
+    return "IntroExists"
   def validate(self):
     assert(self.tgt.__class__ == Exists)
     assert(self.src == self.tgt.value)
 
 # (A|Exists xs. B) --> Exists xs. (A|B)
 class AndPastExists(Isomorphism):
+  def arrowTitle(self):
+    return "AndPastExists"
   def validate(self):
     assert(self.src.__class__ == And)
     assert(self.tgt.right.__class__ == Exists)
@@ -811,6 +850,8 @@ class AndPastExists(Isomorphism):
 
 # Exists x . A --> A
 class RemoveExists(Arrow):
+  def arrowTitle(self):
+    return "RemoveExists"
   def validate(self):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
@@ -822,6 +863,11 @@ class RemoveExists(Arrow):
 class FunctorialArrow(Arrow):
   def translate(self):
     raise Exception("Abstract superclass.")
+  def __repr__(self):
+    return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
+
+  def reprAround(self, middle):
+    return "%s {\n%s\n} %s"%(self.arrowTitle(), middle, self.arrowTitle())
 
 class OnConjunction(FunctorialArrow):
   def __init__(self, leftArrow, rightArrow, src, tgt):
@@ -836,6 +882,16 @@ class OnConjunction(FunctorialArrow):
     self.src = src
     self.tgt = tgt
 
+  def __repr__(self):
+    return self.reprAround(_hconcat(repr(self.leftArrow), repr(self.rightArrow)))
+
+  def arrowTitle(self):
+    if self.src.__class__ == And:
+      return "OnAnd"
+    else:
+      assert(self.src.__class__ == Or)
+      return "OnOr"
+
   def translate(self):
     return OnConjunction(leftArrow = self.leftArrow.translate(),
         rightArrow = self.rightArrow.translate(),
@@ -848,6 +904,9 @@ class OnAlways(FunctorialArrow):
     self.src = Always(arrow.src)
     self.tgt = Always(arrow.tgt)
 
+  def arrowTitle(self):
+    return "OnAlways"
+
   def translate(self):
     return OnAlways(self.arrow.translate())
 
@@ -857,6 +916,9 @@ class OnBody(FunctorialArrow):
     self.variables = variables
     self.src = Exists(variables, arrow.src)
     self.tgt = Exists(variables, arrow.tgt)
+
+  def arrowTitle(self):
+    return "OnBody"
 
   def translate(self):
     return OnBody([variable.translate() for variable in self.variables],
@@ -868,6 +930,38 @@ class OnNot(FunctorialArrow):
     self.src = Not(arrow.tgt)
     self.tgt = Not(arrow.src)
 
+  def arrowTitle(self):
+    return "OnNot"
+
   def translate(self):
     return OnNot(arrow = self.arrow.translate())
 
+# The horizontal concatenation of two strings
+def _hconcat(left, right):
+  if len(left) == 0:
+    return right
+  elif len(right) == 0:
+    return left
+  else:
+    left = left.split('\n')
+    right = right.split('\n')
+    lHeight = len(left)
+    rHeight = len(right)
+    resultHeight = max(lHeight, rHeight)
+    lWidth = len(left[0])
+    for line in left:
+      lWidth = max(lWidth, len(line))
+    result = []
+    for i in range(resultHeight):
+      if i < len(left):
+        l = left[i]
+      else:
+        l = ''
+      while len(l) < lWidth:
+        l += ' '
+      if i < len(right):
+        r = right[i]
+      else:
+        r = ''
+      result.append('  ' + l + ' | ' + r)
+    return '\n'.join(result)

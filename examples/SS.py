@@ -30,11 +30,14 @@ b = common_vars.b()
 
 proof = natural.lib.beginProof()
 
-x = proof.forwardFollow(lambda p:
+proof = proof.forwardFollow(lambda p:
     p.advanceLeft())
 
-L = x.arrow.tgt.importFiltered(lambda x: natural.natural in x.freeVariables())
-for (B,f) in L:
-  print B
+L = proof.arrow.tgt.importFiltered(lambda x: natural.zero in x.freeVariables())
+#L = proof.arrow.tgt.importFiltered(lambda x: True)
+#for (B,f) in L:
+#  print B
 
-
+proof = proof.forwardFollow(lambda p:
+    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
+print proof.arrow.arrow.translate()

@@ -15,6 +15,9 @@ class SimpleEnrichedArrow(basic.Arrow):
   def translate(self):
     return self.basicArrow
 
+  def __repr__(self):
+    return "SimpleEnrichedArrow:\n%s"%(self.basicArrow)
+
 def Always(value):
   return basic.Always(value)
 
