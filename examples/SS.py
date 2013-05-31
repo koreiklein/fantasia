@@ -40,4 +40,4 @@ L = proof.arrow.tgt.importFiltered(lambda x: natural.zero in x.freeVariables())
 
 proof = proof.forwardFollow(lambda p:
     p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
-print proof.arrow.arrow.translate()
+print proof.arrow.arrow.translate().compress()

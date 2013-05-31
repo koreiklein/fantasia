@@ -612,6 +612,18 @@ class Arrow:
     self.tgt = tgt
     self.validate()
 
+  def leftAssociate(self):
+    return self
+  def _leftAssociate(self, f):
+    return f(self)
+  def rightAssociate(self):
+    return self
+  def _rightAssociate(self, f):
+    return f(self)
+
+  def compress(self):
+    return self
+
   def __repr__(self):
     return "%s"%(self.arrowTitle())
 
@@ -667,6 +679,41 @@ class Id(Arrow):
     return "Id"
   def validate(self):
     assert(self.src == self.tgt)
+  def compose(self, other):
+    return other
+
+# left, right: noncomposite arrows
+# compress the composite of arrows left o right
+def _compress2(left, right):
+  assert(left.__class__ != Composite)
+  assert(right.__class__ != Composite)
+  if left.__class__ == OnAlways and right.__class__ == OnAlways:
+    return OnAlways(left.arrow.forwardCompose(right.arrow)).compress()
+  elif left.__class__ == OnNot and right.__class__ == OnNot:
+    return OnNot(right.arrow.forwardCompose(left.arrow)).compress()
+  elif left.__class__ == OnBody and right.__class__ == OnBody and left.variables == right.variables:
+    return OnBody(variables = left.variables,
+        arrow = left.arrow.forwardCompose(right.arrow)).compress()
+  elif (left.__class__ == OnConjunction and right.__class__ == OnConjunction
+      and left.src.__class__ == right.src.__class__):
+    return OnConjunction(src = left.src, tgt = right.tgt,
+        leftArrow = left.leftArrow.forwardCompose(right.leftArrow),
+        rightArrow = left.rightArrow.forwardCompose(right.rightArrow)).compress()
+  elif left.__class__ == Id:
+    return right
+  elif right.__class__ == Id:
+    return left
+  elif _commutingArrow(left) and _commutingArrow(right):
+    return left.src.identity()
+  else:
+    # TODO Improve compression.
+    # There are many special cases of compressions.
+    # For example: compress copy arrows with forget arrows.
+    return Composite(left, right)
+
+def _commutingArrow(arrow):
+  return (arrow.__class__ == Commute or
+    (arrow.__class__ == InverseArrow and arrow.arrow.__class__ == Commute))
 
 # A --> B --> C
 class Composite(Arrow):
@@ -677,11 +724,51 @@ class Composite(Arrow):
     self.tgt = right.tgt
     self.validate()
 
+  def compress(self):
+    return self.rightAssociate()._compress_rightAssocitaed()
+
+  # self must be right associated
+  # return a right associated, compressed arrow equivalent to self.
+  def _compress_rightAssocitaed(self):
+    assert(self.left.__class__ != Composite)
+    if self.right.__class__ == Composite:
+      return Composite(self.left.compress(),
+          self.right._compress_rightAssocitaed())._compress_rightAssociatedCompressed()
+    else:
+      return _compress2(self.left, self.right)
+
+  # self must be right associated
+  # self.left must be compressed
+  # self.right must be compressed.
+  # return a right associated, compressed arrow equivalent to self.
+  def _compress_rightAssociatedCompressed(self):
+    if self.right.__class__ == Composite:
+      x = _compress2(self.left, self.right.left)
+      if x.__class__ == Composite:
+        # Can't compress further
+        return self
+      else:
+        return Composite(x, self.right.right)._compress_rightAssociatedCompressed()
+    else:
+      return _compress2(self.left, self.right)
+
+  def leftAssociate(self):
+    return self._leftAssociate(lambda x: x)
+  def _leftAssociate(self, f):
+    # (((f(x)*x)*x)*x)
+    return self.right._leftAssociate(lambda x: Composite(self.left._leftAssociate(f), x))
+
+  def rightAssociate(self):
+    return self._rightAssociate(lambda x: x)
+  def _rightAssociate(self, f):
+    # (x*(x*(x*f(x))))
+    return self.left._rightAssociate(lambda x: Composite(x, self.right._rightAssociate(f)))
+
   def translate(self):
     return Composite(left = self.left.translate(), right = self.right.translate())
 
   def __repr__(self):
-    return "%s o\n%s"%(self.left, self.right)
+    return "(%s o\n%s)"%(self.left, self.right)
 
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
@@ -866,6 +953,13 @@ class FunctorialArrow(Arrow):
   def __repr__(self):
     return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
 
+  def compress(self):
+    arrow = self.arrow.compress()
+    if arrow.__class__ == Id:
+      return self.src.identity()
+    else:
+      return self.__class__(arrow = arrow)
+
   def reprAround(self, middle):
     return "%s {\n%s\n} %s"%(self.arrowTitle(), middle, self.arrowTitle())
 
@@ -881,6 +975,14 @@ class OnConjunction(FunctorialArrow):
     self.rightArrow = rightArrow
     self.src = src
     self.tgt = tgt
+
+  def compress(self):
+    left = self.leftArrow.compress()
+    right = self.rightArrow.compress()
+    if left.__class__ == Id and right.__class__ == Id:
+      return self.src.identity()
+    else:
+      return self.__class__(leftArrow = left, rightArrow = right, src = self.src, tgt = self.tgt)
 
   def __repr__(self):
     return self.reprAround(_hconcat(repr(self.leftArrow), repr(self.rightArrow)))
@@ -916,6 +1018,13 @@ class OnBody(FunctorialArrow):
     self.variables = variables
     self.src = Exists(variables, arrow.src)
     self.tgt = Exists(variables, arrow.tgt)
+
+  def compress(self):
+    arrow = self.arrow.compress()
+    if arrow.__class__ == Id:
+      return self.src.identity()
+    else:
+      return OnBody(variables = self.variables, arrow = arrow)
 
   def arrowTitle(self):
     return "OnBody"
