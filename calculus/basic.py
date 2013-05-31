@@ -768,7 +768,7 @@ class Composite(Arrow):
     return Composite(left = self.left.translate(), right = self.right.translate())
 
   def __repr__(self):
-    return "(%s o\n%s)"%(self.left, self.right)
+    return "%s o\n%s"%(self.left, self.right)
 
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
