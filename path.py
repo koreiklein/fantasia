@@ -72,6 +72,22 @@ class Path:
   def translate(self):
     return Path(functor = self.functor.translate(), object = self.object.translate())
 
+  # return a path arrow that uses the indexth import available from self.importFiltered(f)
+  def doImportFiltered(self, f, index):
+    l = self.importFiltered(f)
+    if index < len(l):
+      (B, nt) = l[index]
+      bAnd = And(side = right, other = B)
+      a = nt(self.object)
+      return Arrow(src = self,
+          tgt = Path(functor = self.functor, object = basic.And(B, self.object)),
+          arrow = a)
+    else:
+      raise Exception("Failed to import because the index %s does not exist in %s"%(index, l))
+
+  # self must be covariant()
+  # return a list of (B, a function representing some natural transform: F --> (B|.) o F)
+  # such that f(B) == True.
   def importFiltered(self, f):
     return self.functor.importFiltered(f)
 
@@ -179,21 +195,21 @@ class Arrow:
   # arrow: an arrow : src.top() --> tgt.top()
   def __init__(self, src, tgt, arrow):
     assert(src.top() == arrow.src)
+    if not(tgt.top() == arrow.tgt):
+      raise Exception("Incorrect path arrow\ntgt.top() = %s\narrow.tgt = %s"%(tgt.top(), arrow.tgt))
     assert(tgt.top() == arrow.tgt)
     self.src = src
     self.tgt = tgt
-    self._arrow = arrow
+    self.arrow = arrow
 
   def translate(self):
     return Arrow(src = self.src.translate(),
         tgt = self.tgt.tranlate(),
-        arrow = self.arrow().translate())
-  def arrow(self):
-    return self._arrow
+        arrow = self.arrow.translate())
 
   def forwardCompose(self, other):
     assert(self.tgt.top() == other.src.top())
-    return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow().forwardCompose(other.arrow()))
+    return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow.forwardCompose(other.arrow))
   def backwardCompose(self, other):
     return other.forwardCompose(self)
   def forwardFollow(self, f):
@@ -389,6 +405,7 @@ class Composite(Endofunctor):
     # F o G --> ((B|.) o F) o G
     result.extend([(B_nt[0], lambda x:
       self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
+    a = len(result)
     # F o G --> F o ((B|.) o G) --> (B|.) o F o G
     result.extend([(B_nt[0], lambda x:
       B_nt[1](self.left.onObject(x)).forwardCompose(
@@ -530,7 +547,7 @@ class And(Conjunction):
       return [(a.tgt.left, lambda x:
         self.onObject(x).forwardOnRight(a).forwardFollow(lambda x:
           x.forwardAssociateOther().forwardFollow(lambda x:
-            x.forwardOnRightFollow(lambda x:
+            x.forwardOnLeftFollow(lambda x:
               x.forwardCommute())))) for a in self.other.produceFiltered(f)]
     else:
       # (A|X) --> ((B|A)|X) --> ((A|B)|X) --> (A|(B|X))
