@@ -512,10 +512,10 @@ class Conjunction(Endofunctor):
 
   def onArrow(self, arrow):
     if self.side == left:
-      return self.createArrow(left = arrow, right = self.other.identity())
+      return self.createArrow(leftArrow = arrow, rightArrow = self.other.identity())
     else:
       assert(self.side == right)
-      return self.createArrow(left = self.other.identity(), right = arrow)
+      return self.createArrow(leftArrow = self.other.identity(), rightArrow = arrow)
 
   def negations(self):
     return 0

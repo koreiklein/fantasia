@@ -245,10 +245,10 @@ def renderHolds(x, covariant):
       assert(aSymbol == firstSymbol)
       assert(bSymbol == secondSymbol)
     # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-    return stack.stackAll(0, [ renderVariable(aVariable)
-                             , renderVariable(x.holding)
-                             , renderVariable(bVariable)],
-                             spacing = distances.infixSpacing)
+    holds =  stack.stackAll(0, [ renderVariable(aVariable)
+                               , renderVariable(x.holding)
+                               , renderVariable(bVariable)],
+                               spacing = distances.infixSpacing)
   else:
     holds = stack.stackAll(0, [ renderVariable(x.held)
                               , primitives.holds()

@@ -28,16 +28,29 @@ b = common_vars.b()
 #proof = proof.forwardFollow(lambda x:
 #          x.forwardAssume(claim))
 
+
+
+
 proof = natural.lib.beginProof()
 
 proof = proof.forwardFollow(lambda p:
     p.advanceLeft())
 
-L = proof.arrow.tgt.importFiltered(lambda x: natural.zero in x.freeVariables())
+#L = proof.arrow.tgt.importFiltered(lambda x: natural.zero in x.freeVariables())
 #L = proof.arrow.tgt.importFiltered(lambda x: True)
 #for (B,f) in L:
 #  print B
 
+#proof = proof.forwardFollow(lambda p:
+#    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
+#compressedProof =  proof.arrow.arrow.translate().compress()
+
+n = common_vars.n()
 proof = proof.forwardFollow(lambda p:
-    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
-print proof.arrow.arrow.translate().compress()
+    p.forwardOnPathFollow(lambda x:
+      x.forwardAssume(enriched.Forall([(n, natural.natural)],
+        natural.Less(n,
+          enriched.Apply(enriched.Apply(n,
+            natural.natural_successor_function),
+            natural.natural_successor_function))))))
+
