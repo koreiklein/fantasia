@@ -88,6 +88,11 @@ def BoundedForall(variables, domains, value):
     domains = domains,
     value = basic.Not(value)))
 
+def isBoundedForall(forall):
+  return (forall.__class__ == basic.Not
+      and forall.value.__class__ == BoundedExists
+      and forall.value.value.__class__ == basic.Not)
+
 class BoundedExists(Enriched):
   def __init__(self, variables, domains, value):
     assert(len(variables ) == len(domains))
