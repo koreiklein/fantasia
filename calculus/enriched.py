@@ -88,6 +88,18 @@ def BoundedForall(variables, domains, value):
     domains = domains,
     value = basic.Not(value)))
 
+def isBoundedForall(forall):
+  return (forall.__class__ == basic.Not
+      and forall.value.__class__ == BoundedExists
+      and forall.value.value.__class__ == basic.Not)
+
+def boundedForallVariables(forall):
+  assert(isBoundedForall(forall))
+  return forall.value.variables
+def boundedForallValue(forall):
+  assert(isBoundedForall(forall))
+  return forall.value.value.value
+
 class BoundedExists(Enriched):
   def __init__(self, variables, domains, value):
     assert(len(variables ) == len(domains))
@@ -95,6 +107,17 @@ class BoundedExists(Enriched):
     self.domains = domains
     self.value = value
     self.pairs = [(self.variables[i], self.domains[i]) for i in range(len(self.variables))]
+
+  def forwardInstantiateFirst(self, variable):
+    newVariables = list(self.variables)
+    newDomains = list(self.domains)
+    removedVariable = newVariables.pop(0)
+    removedDomain = newDomains.pop(0)
+    newValue = basic.And( basic.Holds(variable, removedDomain)
+                        , self.value.substituteVariable(removedVariable, variable))
+    return SimpleEnrichedArrow(src = self,
+        tgt = BoundedExists(variables = newVariables, domains = newDomains, value = newValue),
+        basicArrow = self.translate().forwardInstantiateFirst(variable))
 
   def __repr__(self):
     s = []
