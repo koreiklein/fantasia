@@ -85,33 +85,46 @@ class Path:
     else:
       raise Exception("Failed to import because the index %s does not exist in %s"%(index, l))
 
-  # self must be covariant()
+  # self must be covariant
   # return a list of (B, a function representing some natural transform: F --> (B|.) o F)
   # such that f(B) == True.
   def importFiltered(self, f):
     return self.functor.importFiltered(f)
 
+  # self must be covariant
+  # return a list of (B, a path arrow to self.onObject((B|self.object)))
+  # such that f(B) == True
+  def importFilteredArrow(self, f):
+    return [(B, Arrow(src = self,
+      tgt = Path(functor = self.functor, object = basic.And(B, self.object)),
+      arrow = nt(self.object)))
+      for (B, nt) in self.importFiltered(f)]
+
   # self must be contravariant
-  # return: a path arrow : self --> self.functor.onObject(basic.true)
-  #         or None if no such arrow exists.
+  # return: a list of path arrows : self --> self.functor.onObject(basic.true)
   def exportBottom(self):
     assert(not self.functor.covariant())
     # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
-    exports = self.functor.exportFiltered(lambda x: self.object == x)
-    if len(exports) == 0:
-      return None
-    else:
-      (B, nt) = exports[0]
-      assert(self.object == B)
-      return Arrow(
-          src = self,
-          tgt = Path(functor = self.functor, object = basic.true),
-          arrow = self.functor.onArrow(
-            self.object.backwardForgetRight(basic.true)).forwardCompose(
-              nt(basic.true)))
+    return [Arrow(src = self, tgt = Path(functor = self.functor, object = basic.true),
+                  arrow = self.functor.onArrow(
+                    self.object.backwardForgetRight(basic.true)).forwardCompose(nt(basic.true)))
+            for (B, nt) in self.functor.exportFiltered(lambda x: self.object == x)]
+    #exports = self.functor.exportFiltered(lambda x: self.object == x)
+    #if len(exports) == 0:
+    #  return None
+    #else:
+    #  (B, nt) = exports[0]
+    #  assert(self.object == B)
+    #  return Arrow(
+    #      src = self,
+    #      tgt = Path(functor = self.functor, object = basic.true),
+    #      arrow = self.functor.onArrow(
+    #        self.object.backwardForgetRight(basic.true)).forwardCompose(
+    #          nt(basic.true)))
 
   # self must be contravariant.
   # return a path arrow "which exports as much as possible from nested Ands at the bottom".
+  # FIXME: exportBottom has changed, change this function accordingly.
   def exportConjunctively(self):
     assert(not self.functor.covariant())
     trial = self.exportBottom()
@@ -189,6 +202,47 @@ class Path:
         arrow = self.functor.onArrow(arrow))
   def forwardOnPathFollow(self, f):
     return self.forwardOnPath(f(self.bottom()))
+
+  # self must be covariant.
+  # variables: a list of variables that are in scope
+  # return: a list of pairs (B, a) such that B is the value of some importable bounded forall
+  #         into which variables have been substituted
+  #         and a is a path arrow leading to self.onObject((B|self.object)).
+  def universalIn(self, variables):
+    return [(S, Arrow(src = self,
+      tgt = Path(functor = self.functor, object = basic.And(S, self.object)),
+      arrow = toU.arrow.forwardCompose(toS.arrow)).forwardFollow(lambda p:
+        p.forwardOnPathFollow(lambda x: x.forwardUndoubleDual())))
+        # U is a bounded universal, S is the value of U with its variables substituted.
+        for (U, toU) in self.importFilteredArrow(lambda x:
+          enriched.isBoundedForall(x) and len(enriched.boundedForallVariables(x)) == len(variables))
+        for (S, toS) in toU.tgt.advanceLeft().tgt.advance().tgt.instantiate()]
+
+  # self must be contravariant.
+  # self.object must be a bounded existential of the same length as variables
+  # return a list of pairs (B, A) such that B is like self.object.value with substituted variables
+  #   and A is a path arrow to self.onObject(B)
+  def instantiate(self, variables):
+    assert(not self.covariant())
+    assert(self.object.__class__ == enirched.BoundedExists)
+    assert(len(self.object.variables) == len(variables))
+    if len(variables) == 0:
+      newPath = Path(functor = self.functor, object = self.object.value)
+      return [(self.object.value, self.forwardOnPathFollow(lambda x: x.backwardIntroExists()))]
+    else:
+      removedExists = enriched.BoundedExists(
+      return [ 
+          for (v, variables) in _functional_pops(variables)
+          for (B, A) in Path(functor = self.functor,
+            object = enriched.BoundedExists()).instantiate(variables)]
+
+def _functional_pop(i, l):
+  r = list(l)
+  x = r.pop(i)
+  return (x, r)
+
+def _functional_pops(l):
+  return [_functional_pop(i, l) for i in range(len(l))]
 
 class Arrow:
   # src, tgt: paths

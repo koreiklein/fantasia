@@ -244,6 +244,11 @@ class Exists(Object):
           AndPastExists(src = And(left = B, right = self), tgt = x).invert()))
     return result
 
+  def forwardInstantiateFirst(self, variable):
+    return InstantiateFirst(src = self,
+        tgt = Exists(variables = self.variables[1:],
+          value = self.value.substituteVariable(self.variables[0], variable)))
+
   def forwardOnBody(self, arrow):
     assert(isinstance(arrow, Arrow))
     assert(arrow.src == self.value)
@@ -492,6 +497,10 @@ class Not(Object):
   def backwardDoubleDual(self):
     assert(self.value.__class__ == Not)
     return self.value.value.forwardDoubleDual()
+
+  def forwardUndoubleDual(self):
+    assert(self.value.__class__ == Not)
+    return self.backwardDoubleDual().invert()
 
   def backwardApply(self, a):
     return Apply(src = And(left = a, right = Not(And(left = a, right = self.value))),
@@ -922,6 +931,13 @@ class IntroExists(Arrow):
   def validate(self):
     assert(self.tgt.__class__ == Exists)
     assert(self.src == self.tgt.value)
+
+# Exists [a, x0, x1, ...] . V --> Exists [x0, x1, ...] . V[a->v]
+class InstantiateFirst(Arrow):
+  assert(self.src.__class__ == Exists)
+  assert(self.tgt.__class__ == Exists)
+  assert(self.src.variables[1:] == self.tgt.variables)
+  # There's currently no good way to check self.tgt.value[a->v] == self.src
 
 # (A|Exists xs. B) --> Exists xs. (A|B)
 class AndPastExists(Isomorphism):
