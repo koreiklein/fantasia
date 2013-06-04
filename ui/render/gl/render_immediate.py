@@ -9,8 +9,31 @@ def render(x, covariant = True):
   if isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
-    return renderExists(valueStack = render(x.value, covariant),
-        variablesList = [renderVariable(variable) for variable in x.variables],
+    variables = []
+    while x.__class__ == basic.Exists:
+      variables.append(x.variable)
+      x = x.value
+    renderedVariables = []
+    while True:
+      if x.__class__ == basic.And:
+        if x.left.__class__ == basic.Always and x.left.value.__class__ == basic.Holds:
+          matched = False
+          for i in range(len(variables)):
+            v = variables[i]
+            if x.left.value.held == v:
+              renderedVariables.append(
+                  renderVariableBinding(renderVariable(v), renderVariable(x.left.value.holding)))
+              x = x.right
+              matched = True
+              variables.pop(i)
+              break
+          if matched:
+            continue
+      break
+    for v in variables:
+      renderedVariables.append(renderVariable(v))
+    return renderExists(valueStack = render(x, covariant),
+        variablesList = renderedVariables,
         covariant = covariant)
   elif x.__class__ == basic.Iff:
     return renderIff(x, covariant = covariant)
@@ -136,7 +159,13 @@ def renderExists(valueStack, variablesList, covariant):
       quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
 
-def renderVariableBinding(variable, unique, domain, covariant):
+def renderVariableBinding(variable, domain):
+  middleStack = gl.newTextualGLStack(colors.variableColor, ":")
+  return variable.stack(0, middleStack,
+      spacing = distances.variable_binding_spacing).stackCentered(0, domain,
+          spacing = distances.variable_binding_spacing)
+
+def _renderVariableBinding(variable, unique, domain, covariant):
   dimension = 0
   if unique:
     c = '!'

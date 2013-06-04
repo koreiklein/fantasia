@@ -37,15 +37,19 @@ natural_successor_function = basic.ProductVariable(
 successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
+b = common_vars.b()
 successorIsGreater = basic.MultiBoundedForall([(a, natural)],
-    Less(a, basic.Apply(a, natural_successor_function)))
+    basic.MultiBoundedExists([(b, natural)],
+      basic.MultiAnd([Successor(a, b), Less(a, b)])))
 
 zero = basic.StringVariable('zero')
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
-zeroFirst = basic.MultiBoundedForall([(n, natural)],
-    basic.Not(Equal(basic.Apply(n, natural_successor_function), zero)))
+m = common_vars.m()
+zeroFirst = basic.MultiBoundedForall([(n, natural), (m, natural)],
+    basic.Implies(predicate = Successor(n, m),
+      consequent = basic.Not(Equal(m, zero))))
 
 pre_lib = library.Library(
     claims = [ successorIsGreater

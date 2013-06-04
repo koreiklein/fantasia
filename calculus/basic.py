@@ -486,7 +486,7 @@ def multiple_conjunction(conjunction, values):
   result = unit_for_conjunction(conjunction)
   for value in values[::-1]:
     result = conjunction(left = value, right = result)
-  return Always(result)
+  return result
 
 def MultiAnd(values):
   return multiple_conjunction(And, values)

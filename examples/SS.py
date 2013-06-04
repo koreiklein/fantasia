@@ -45,12 +45,16 @@ proof = proof.forwardFollow(lambda p:
 #    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
 #compressedProof =  proof.arrow.arrow.translate().compress()
 
-n = common_vars.n()
+a = common_vars.a()
+b = common_vars.b()
+c = common_vars.c()
 proof = proof.forwardFollow(lambda p:
     p.forwardOnPathFollow(lambda x:
-      x.forwardAssume(basic.MultiBoundedForall([(n, natural.natural)],
-        natural.Less(n,
-          basic.Apply(basic.Apply(n,
-            natural.natural_successor_function),
-            natural.natural_successor_function))))))
+      x.forwardAssume(basic.MultiBoundedForall([ (a, natural.natural)
+                                               , (b, natural.natural)
+                                               , (c, natural.natural)],
+        basic.Implies(predicate = basic.MultiAnd(
+          [ natural.Successor(a, b)
+          , natural.Successor(b, c)]),
+          consequent = natural.Less(a, c))))))
 
