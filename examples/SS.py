@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import basic
 from lib import natural, library, common_vars, equivalence, function
 
 # A proof that forall n : N . S (S n) > n
@@ -48,9 +48,9 @@ proof = proof.forwardFollow(lambda p:
 n = common_vars.n()
 proof = proof.forwardFollow(lambda p:
     p.forwardOnPathFollow(lambda x:
-      x.forwardAssume(enriched.Forall([(n, natural.natural)],
+      x.forwardAssume(basic.MultiBoundedForall([(n, natural.natural)],
         natural.Less(n,
-          enriched.Apply(enriched.Apply(n,
+          basic.Apply(basic.Apply(n,
             natural.natural_successor_function),
             natural.natural_successor_function))))))
 

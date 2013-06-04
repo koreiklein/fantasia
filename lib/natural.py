@@ -1,34 +1,35 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, enriched
+from calculus import symbol, basic
 from lib import equivalence, library, common_vars, common_symbols, function
 
-natural = enriched.StringVariable('N')
+natural = basic.StringVariable('N')
 
 smaller = symbol.StringSymbol('smaller')
 greater = symbol.StringSymbol('greater')
-natural_less = enriched.StringVariable('<', infix = (smaller, greater))
+natural_less = basic.StringVariable('<', infix = (smaller, greater))
 
-natural_successor = enriched.StringVariable('S')
+natural_successor = basic.StringVariable('S')
 before = symbol.StringSymbol('before')
 after = symbol.StringSymbol('after')
 
 def Natural(n):
-  return enriched.Always(equivalence.InDomain(n, natural))
+  return basic.Always(equivalence.InDomain(n, natural))
 
 def Successor(a, b):
-  return enriched.EnrichedHolds(enriched.ProductVariable([(before, a), (after, b)]), natural_successor)
+  return basic.Always(
+      basic.Holds(basic.ProductVariable([(before, a), (after, b)]), natural_successor))
 
 def Equal(a, b):
   return equivalence.EqualUnder(a, b, natural)
 
 def Less(a, b):
-  return enriched.EnrichedHolds(
-      enriched.ProductVariable([(smaller, a), (greater, b)]), natural_less)
+  return basic.Always(basic.Holds(
+      basic.ProductVariable([(smaller, a), (greater, b)]), natural_less))
 
-naturalIsEquivalence = enriched.Always(equivalence.IsEquivalence(natural))
+naturalIsEquivalence = basic.Always(equivalence.IsEquivalence(natural))
 
-natural_successor_function = enriched.ProductVariable(
+natural_successor_function = basic.ProductVariable(
     [ (common_symbols.functionPairsSymbol, natural_successor)
     , (common_symbols.srcSymbol, natural)
     , (common_symbols.tgtSymbol, natural)])
@@ -36,15 +37,15 @@ natural_successor_function = enriched.ProductVariable(
 successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
-successorIsGreater = enriched.Forall([(a, natural)],
-    Less(a, enriched.Apply(a, natural_successor_function)))
+successorIsGreater = basic.MultiBoundedForall([(a, natural)],
+    Less(a, basic.Apply(a, natural_successor_function)))
 
-zero = enriched.StringVariable('zero')
+zero = basic.StringVariable('zero')
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
-zeroFirst = enriched.Forall([(n, natural)],
-    enriched.Not(Equal(enriched.Apply(n, natural_successor_function), zero)))
+zeroFirst = basic.MultiBoundedForall([(n, natural)],
+    basic.Not(Equal(basic.Apply(n, natural_successor_function), zero)))
 
 pre_lib = library.Library(
     claims = [ successorIsGreater

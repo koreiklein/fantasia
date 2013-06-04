@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import basic
 
 import path
 
@@ -8,8 +8,8 @@ class Library:
   def __init__(self, claims, variables):
     self.variables = variables
     self.claims = claims
-    self.formula = enriched.Always(enriched.BasicExists(variables,
-        enriched.And(claims)))
+    self.formula = basic.Always(basic.MultiExists(variables,
+        basic.MultiAnd(claims)))
 
   def translate(self):
     return Library(claims = [claim.translate() for claim in self.claims],

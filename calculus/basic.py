@@ -47,10 +47,11 @@ class Object:
   def backwardForgetRight(self, x):
     return Forget(tgt = self, src = And(x, self))
 
-  def forwardIntroExists(self, variables):
-    return IntroExists(src = self, tgt = Exists(variables = variables, value = self))
-  def backwardRemoveExists(self, variables):
-    return RemoveExists(src = Exists(variables = variables, value = self), tgt = self)
+  def forwardIntroExists(self, variable, oldVariable):
+    return IntroExists(src = self,
+        tgt = Exists(variable = variable, value = self.substituteVariable(oldVariable, variable)))
+  def backwardRemoveExists(self, variable):
+    return RemoveExists(src = Exists(variable = variable, value = self), tgt = self)
 
   def identity(self):
     return Id(src = self, tgt = self)
@@ -214,23 +215,23 @@ class Holds(Object):
     return result
 
 class Exists(Object):
-  def __init__(self, variables, value):
-    self.variables = variables
+  def __init__(self, variable, value):
+    self.variable = variable
     self.value = value
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
-        and self.variables == other.variables
+        and self.variable == other.variable
         and self.value == other.value)
 
   def __ne__(self, other):
     return not(self == other)
 
   def __repr__(self):
-    return "( Exists %s . %s )"%(self.variables, self.value)
+    return "( Exists %s . %s )"%(self.variable, self.value)
 
   def translate(self):
-    return Exists(variables = [variable.translate() for variable in self.variables],
+    return Exists(variable = self.variable.translate(),
         value = self.value.translate())
 
   def produceFiltered(self, f):
@@ -238,24 +239,19 @@ class Exists(Object):
     for a in self.value.produceFiltered(f):
       B = a.tgt.left
       free = B.freeVariables()
-      if all([variable not in free for variable in self.variables]):
+      if self.variable not in free:
         # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
         result.append(self.forwardOnBody(a).forwardFollow(lambda x:
           AndPastExists(src = And(left = B, right = self), tgt = x).invert()))
     return result
 
-  def forwardInstantiateFirst(self, variable):
-    return InstantiateFirst(src = self,
-        tgt = Exists(variables = self.variables[1:],
-          value = self.value.substituteVariable(self.variables[0], variable)))
-
   def forwardOnBody(self, arrow):
     assert(isinstance(arrow, Arrow))
     assert(arrow.src == self.value)
-    return OnBody(variables = self.variables, arrow = arrow)
+    return OnBody(variable = self.variable, arrow = arrow)
   def backwardOnBody(self, arrow):
     assert(arrow.tgt == self.value)
-    return OnBody(variables = self.variables, arrow = arrow)
+    return OnBody(variable = self.variable, arrow = arrow)
   def forwardOnBodyFollow(self, f):
     return self.forwardOnBody(f(self.value))
   def backwardOnBodyFollow(self, f):
@@ -263,23 +259,43 @@ class Exists(Object):
 
   def forwardRemoveExists(self):
     return RemoveExists(src = self, tgt = self.value)
-  def backwardIntroExists(self):
-    return IntroExists(src = self.value, tgt = self)
+  def backwardIntroExists(self, newVariable):
+    return IntroExists(src = self.value.substituteVariable(self.variable, newVariable), tgt = self)
 
   def updateVariables(self):
-    variables = [variable.updateVariables() for variable in self.variables]
-    return self.__class__(variables = variables,
+    variable = self.variable.updateVariables()
+    return Exists(variable = variable,
         value = self.value.substituteVariable(
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
-    assert(a not in self.variables)
-    assert(b not in self.variables)
-    return self.__class__(variables = self.variables,
+    assert(a != self.variable)
+    assert(b != self.variable)
+    return Exists(variable = self.variable,
         value = self.value.substituteVariable(a, b))
 
   def freeVariables(self):
-    return self.value.freeVariables().difference(Set(self.variables))
+    return self.value.freeVariables().difference(Set([self.variable]))
+
+def MultiExists(variables, value):
+  for variable in variables[::-1]:
+    value = Exists(variable, value)
+  return value
+
+def MultiBoundedExists(variable_domain_pairs, value):
+  values = []
+  variables = []
+  for (variable, domain) in variable_domain_pairs:
+    variables.append(variable)
+    values.append(Always(Holds(variable, domain)))
+  values.append(value)
+  return MultiExists(variables, MultiAnd(values))
+
+def MultiForall(variables, value):
+  return Not(MultiExists(variables, Not(value)))
+
+def MultiBoundedForall(variable_domain_pairs, value):
+  return Not(MultiBoundedExists(variable_domain_pairs, Not(value)))
 
 empty_symbol = symbol.StringSymbol('')
 
@@ -418,7 +434,7 @@ class And(Conjunction):
     # (A|Exists xs. B) --> Exists xs. (A|B)
     assert(self.right.__class__ == Exists)
     return AndPastExists(src = self,
-        tgt = Exists(variables = self.right.variables,
+        tgt = Exists(variable = self.right.variable,
           value = And(left = self.left, right = self.right.value)))
 
   def forwardDistibute(self):
@@ -464,6 +480,60 @@ class Or(Conjunction):
     return Admit(tgt = self, src = self.right)
   def backwardAdmitRight(self):
     return Admit(tgt = self, src = self.left)
+
+# Multiple conjunction will be represented (a | (b | (c | 1)))
+def multiple_conjunction(conjunction, values):
+  result = unit_for_conjunction(conjunction)
+  for value in values[::-1]:
+    result = conjunction(left = value, right = result)
+  return Always(result)
+
+def MultiAnd(values):
+  return multiple_conjunction(And, values)
+def MultiOr(values):
+  return multiple_conjunction(Or, values)
+
+# There are two reasonable ways to implement this function.
+def Implies(predicate, consequent):
+  return Always(Not(
+    value = And(left = predicate,
+                right = Not(consequent))))
+  #return Always(Not(
+  #  value = And(left = Not(Not(value = predicate, rendered = True)),
+  #                    right = Not(consequent))))
+
+def ExpandIff(left, right):
+  return And(Implies(left, right), Implies(right, left))
+
+class Iff(Object):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+  def translate(self):
+    return ExpandIff(self.left.translate(), self.right.translate())
+  def updateVariables(self):
+    return Iff(left = self.left.updateVariables(),
+        right = self.right.updateVariables())
+  def substituteVariable(self, a, b):
+    return Iff(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
+  def freeVariables(self):
+    return self.left.freeVariables().union(self.right.freeVariables())
+
+class Hidden(Object):
+  def __init__(self, base, name):
+    self.base = base
+    self.name = name
+  def produceFiltered(self, f):
+    return self.base.produceFiltered(f)
+  def translate(self):
+    return self.base.translate()
+  def updateVariables(self):
+    return Hidden(base = self.base.updateVariables(), name = self.name)
+  def substituteVariable(self, a, b):
+    return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
+  def freeVariables(self):
+    return self.base.freeVariables()
 
 class Not(Object):
   def __init__(self, value, rendered = False):
@@ -700,8 +770,8 @@ def _compress2(left, right):
     return OnAlways(left.arrow.forwardCompose(right.arrow)).compress()
   elif left.__class__ == OnNot and right.__class__ == OnNot:
     return OnNot(right.arrow.forwardCompose(left.arrow)).compress()
-  elif left.__class__ == OnBody and right.__class__ == OnBody and left.variables == right.variables:
-    return OnBody(variables = left.variables,
+  elif left.__class__ == OnBody and right.__class__ == OnBody and left.variable == right.variable:
+    return OnBody(variable = left.variable,
         arrow = left.arrow.forwardCompose(right.arrow)).compress()
   elif (left.__class__ == OnConjunction and right.__class__ == OnConjunction
       and left.src.__class__ == right.src.__class__):
@@ -924,22 +994,18 @@ class Unalways(Arrow):
     assert(self.src.__class__ == Always)
     assert(self.src.value == self.tgt)
 
-# A --> Exists x . A
+# A --> Exists x . A[v->x]
 class IntroExists(Arrow):
   def arrowTitle(self):
     return "IntroExists"
   def validate(self):
     assert(self.tgt.__class__ == Exists)
-    assert(self.src == self.tgt.value)
+    # There's no easy way to check that self.tgt.value.substituteVariable(v,x) == self.src
+    # because we don't know v.
 
-# Exists [a, x0, x1, ...] . V --> Exists [x0, x1, ...] . V[a->v]
-class InstantiateFirst(Arrow):
-  assert(self.src.__class__ == Exists)
-  assert(self.tgt.__class__ == Exists)
-  assert(self.src.variables[1:] == self.tgt.variables)
-  # There's currently no good way to check self.tgt.value[a->v] == self.src
-
-# (A|Exists xs. B) --> Exists xs. (A|B)
+# The existence of this arrow may follow from the fact that right adjoints (B|.) preserve
+# colimits (Exists x).  We just need a precise sense in which (Exists x) is a colimit.
+# (A|Exists x. B) --> Exists x. (A|B)
 class AndPastExists(Isomorphism):
   def arrowTitle(self):
     return "AndPastExists"
@@ -949,7 +1015,7 @@ class AndPastExists(Isomorphism):
     assert(self.tgt.__class__ == Exists)
     assert(self.tgt.value.__class__ == And)
     assert(self.src.left == self.tgt.value.left)
-    assert(self.src.right.variables == self.tgt.variables)
+    assert(self.src.right.variable == self.tgt.variable)
 
 # Exists x . A --> A
 class RemoveExists(Arrow):
@@ -958,9 +1024,7 @@ class RemoveExists(Arrow):
   def validate(self):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
-    free = self.tgt.freeVariables()
-    for variable in self.src.variables:
-      assert(variable not in free)
+    assert(self.variable not in self.tgt.freeVariables())
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
@@ -1029,24 +1093,24 @@ class OnAlways(FunctorialArrow):
     return OnAlways(self.arrow.translate())
 
 class OnBody(FunctorialArrow):
-  def __init__(self, variables, arrow):
+  def __init__(self, variable, arrow):
     self.arrow = arrow
-    self.variables = variables
-    self.src = Exists(variables, arrow.src)
-    self.tgt = Exists(variables, arrow.tgt)
+    self.variable = variable
+    self.src = Exists(variable, arrow.src)
+    self.tgt = Exists(variable, arrow.tgt)
 
   def compress(self):
     arrow = self.arrow.compress()
     if arrow.__class__ == Id:
       return self.src.identity()
     else:
-      return OnBody(variables = self.variables, arrow = arrow)
+      return OnBody(variable = self.variable, arrow = arrow)
 
   def arrowTitle(self):
     return "OnBody"
 
   def translate(self):
-    return OnBody([variable.translate() for variable in self.variables],
+    return OnBody(self.variable.translate(),
         self.arrow.translate())
 
 class OnNot(FunctorialArrow):

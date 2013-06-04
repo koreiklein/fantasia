@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched
+from calculus import basic
 from lib import common_vars
 
 class Endofunctor:
@@ -164,10 +164,10 @@ class Path:
       p = Path(functor = not_functor.compose(self.functor),
           object = self.object.value)
     elif self.object.__class__ == basic.Exists:
-      p = Path(functor = Exists(variables = self.object.variables).compose(self.functor),
+      p = Path(functor = Exists(variable = self.object.variable).compose(self.functor),
           object = self.object.value)
-    elif self.object.__class__ == enriched.BoundedExists:
-      p = Path(functor = BoundedExists(variables = self.object.variable,
+    elif self.object.__class__ == basic.Exists:
+      p = Path(functor = Exists(variable = self.object.variable,
         domains = self.object.domains).compose(self.functor),
         object = self.object.value)
     else:
@@ -209,32 +209,14 @@ class Path:
   #         into which variables have been substituted
   #         and a is a path arrow leading to self.onObject((B|self.object)).
   def universalIn(self, variables):
-    return [(S, Arrow(src = self,
-      tgt = Path(functor = self.functor, object = basic.And(S, self.object)),
-      arrow = toU.arrow.forwardCompose(toS.arrow)).forwardFollow(lambda p:
-        p.forwardOnPathFollow(lambda x: x.forwardUndoubleDual())))
-        # U is a bounded universal, S is the value of U with its variables substituted.
-        for (U, toU) in self.importFilteredArrow(lambda x:
-          enriched.isBoundedForall(x) and len(enriched.boundedForallVariables(x)) == len(variables))
-        for (S, toS) in toU.tgt.advanceLeft().tgt.advance().tgt.instantiate()]
+    raise Exception("Not Yet Implemented.") # FIXME Implement this.
 
   # self must be contravariant.
   # self.object must be a bounded existential of the same length as variables
   # return a list of pairs (B, A) such that B is like self.object.value with substituted variables
   #   and A is a path arrow to self.onObject(B)
   def instantiate(self, variables):
-    assert(not self.covariant())
-    assert(self.object.__class__ == enirched.BoundedExists)
-    assert(len(self.object.variables) == len(variables))
-    if len(variables) == 0:
-      newPath = Path(functor = self.functor, object = self.object.value)
-      return [(self.object.value, self.forwardOnPathFollow(lambda x: x.backwardIntroExists()))]
-    else:
-      removedExists = enriched.BoundedExists(
-      return [ 
-          for (v, variables) in _functional_pops(variables)
-          for (B, A) in Path(functor = self.functor,
-            object = enriched.BoundedExists()).instantiate(variables)]
+    raise Exception("Not Yet Implemented.") # FIXME Implement this.
 
 def _functional_pop(i, l):
   r = list(l)
@@ -288,56 +270,21 @@ def _getSide(side, object):
     assert(side == right)
     return object.right
 
-class BoundedExists(Endofunctor):
-  def __init__(self, variables, domains):
-    self.variables = variables
-    self.domains = domains
-    self.pairs = [(variables[i], domains[i]) for i in range(len(variables))]
-
-  def __repr__(self):
-    return "BoundedExists(%s)"%(self.pairs,)
-  def translate(self):
-    result = identity_functor
-    for (v, d) in self.pairs:
-      result = result.compose(And(side = right, other = basic.Holds(v, d)))
-    return result.compose(Exists(self.variables))
-  def _import(self, B):
-    freeInB = B.freeVariables()
-    for variable in self.variables:
-      assert(variable not in freeInB)
-    return (lambda x:
-        SimpleEnrichedArrow(src = basic.And(B, self.onObject(x)),
-          tgt = self.onObject(basic.And(B, x)),
-          basicArrow = self.translate()._import(B)))
-  def variables(self):
-    return self.variables
-  def onObject(self, object):
-    return enriched.BoundedExists(variables = self.variables,
-        domains = self.domains, value = object)
-  def onArrow(self, arrow):
-    return SimpleEnrichedArrow(src = self.onObject(arrow.src),
-        tgt = self.onObject(arrow.tgt),
-        basicArrow = self.translate().onArrow(arrow))
-  def negations(self):
-    return 0
-
 class Exists(Endofunctor):
-  def __init__(self, variables):
-    self.variables = variables
+  def __init__(self, variable):
+    self.variable = variable
   def __repr__(self):
-    return "Exists(%s)"%(self.variables,)
+    return "Exists(%s)"%(self.variable,)
   def _import(self, B):
-    freeInB = B.freeVariables()
-    for variable in self.variables:
-      assert(variable not in freeInB)
+    assert(self.variable not in B.freeVariables())
     return (lambda x:
         basic.And(left = B, right = self.onObject(x)).forwardAndPastExists())
   def variables(self):
-    return self.variables
+    return [self.variable]
   def onObject(self, object):
-    return basic.Exists(variables = self.variables, value = object)
+    return basic.Exists(variable = self.variable, value = object)
   def onArrow(self, arrow):
-    return basic.OnBody(variables = self.variables, arrow = arrow)
+    return basic.OnBody(variable = self.variable, arrow = arrow)
   def negations(self):
     return 0
 
