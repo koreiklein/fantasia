@@ -34,11 +34,12 @@ class Proof:
   def __init__(self, library, arrow = None):
     self.library = library
     if arrow is None:
-      self.arrow = path.new_path(library.formula).advance().forwardFollow(lambda x:
-          x.advance().forwardFollow(lambda x:
-            x.advance().forwardFollow(lambda x:
-              x.forwardOnPathFollow(lambda x:
-                x.forwardAndTrue()))))
+      self.arrow = path.new_path(library.formula).advance()
+      for v in self.library.variables:
+        self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
+      self.arrow = self.arrow.forwardFollow(lambda p:
+          p.forwardOnPathFollow(lambda x:
+            x.forwardAndTrue()))
     else:
       assert(arrow.src.top() == library.formula)
       self.arrow = arrow
