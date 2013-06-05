@@ -58,3 +58,13 @@ proof = proof.forwardFollow(lambda p:
           , natural.Successor(b, c)]),
           consequent = natural.Less(a, c))))))
 
+proof = proof.forwardFollow(lambda p:
+          p.advance().forwardFollow(lambda p:
+            p.advanceLeft().forwardFollow(lambda p:
+              p.advance().forwardFollow(lambda p:
+                p.advance().forwardFollow(lambda p:
+                    p.advance().forwardFollow(lambda p:
+                      p.advance().forwardFollow(lambda p:
+                        p.advance())))))))
+
+print [B for (B,A) in proof.arrow.tgt.universalIn([a, b])]

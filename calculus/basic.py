@@ -43,9 +43,9 @@ class Object:
     return Admit(src = self, tgt = Or(x, self))
 
   def backwardForgetLeft(self, x):
-    return Forget(tgt = self, src = And(self, x))
-  def backwardForgetRight(self, x):
     return Forget(tgt = self, src = And(x, self))
+  def backwardForgetRight(self, x):
+    return Forget(tgt = self, src = And(self, x))
 
   def forwardIntroExists(self, variable, oldVariable):
     return IntroExists(src = self,
@@ -292,10 +292,10 @@ def MultiBoundedExists(variable_domain_pairs, value):
   return MultiExists(variables, MultiAnd(values))
 
 def MultiForall(variables, value):
-  return Not(MultiExists(variables, Not(value)))
+  return Always(Not(MultiExists(variables, Not(value))))
 
 def MultiBoundedForall(variable_domain_pairs, value):
-  return Not(MultiBoundedExists(variable_domain_pairs, Not(value)))
+  return Always(Not(MultiBoundedExists(variable_domain_pairs, Not(value))))
 
 empty_symbol = symbol.StringSymbol('')
 
@@ -1011,7 +1011,7 @@ class AndPastExists(Isomorphism):
     return "AndPastExists"
   def validate(self):
     assert(self.src.__class__ == And)
-    assert(self.tgt.right.__class__ == Exists)
+    assert(self.src.right.__class__ == Exists)
     assert(self.tgt.__class__ == Exists)
     assert(self.tgt.value.__class__ == And)
     assert(self.src.left == self.tgt.value.left)
@@ -1024,7 +1024,7 @@ class RemoveExists(Arrow):
   def validate(self):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
-    assert(self.variable not in self.tgt.freeVariables())
+    assert(self.src.variable not in self.tgt.freeVariables())
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):

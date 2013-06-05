@@ -103,42 +103,34 @@ class Path:
   # self must be contravariant
   # return: a list of path arrows : self --> self.functor.onObject(basic.true)
   def exportBottom(self):
+    # FIXME Remove the cruft
     assert(not self.functor.covariant())
     # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
-    return [Arrow(src = self, tgt = Path(functor = self.functor, object = basic.true),
+    result =  [Arrow(src = self, tgt = Path(functor = self.functor, object = basic.true),
                   arrow = self.functor.onArrow(
                     self.object.backwardForgetRight(basic.true)).forwardCompose(nt(basic.true)))
             for (B, nt) in self.functor.exportFiltered(lambda x: self.object == x)]
-    #exports = self.functor.exportFiltered(lambda x: self.object == x)
-    #if len(exports) == 0:
-    #  return None
-    #else:
-    #  (B, nt) = exports[0]
-    #  assert(self.object == B)
-    #  return Arrow(
-    #      src = self,
-    #      tgt = Path(functor = self.functor, object = basic.true),
-    #      arrow = self.functor.onArrow(
-    #        self.object.backwardForgetRight(basic.true)).forwardCompose(
-    #          nt(basic.true)))
+    print "exportFiltered %s got %s results"%(self.bottom(), len(result),)
+    return result
 
   # self must be contravariant.
   # return a path arrow "which exports as much as possible from nested Ands at the bottom".
-  # FIXME: exportBottom has changed, change this function accordingly.
   def exportConjunctively(self):
+    # FIXME
+    print self.bottom()
     assert(not self.functor.covariant())
     trial = self.exportBottom()
-    if trial is not None:
-      return trial
-    else:
+    if len(trial) > 0:
+      return trial[0]
+    elif self.bottom().__class__ == basic.And:
       def maybeBackwardIntroduceUnit(x):
-        if x.__class__ == And:
-          if x.left == basic.true:
-            return x.right.forwardAndTrue()
-          elif x.right == basic.true:
-            return x.left.forwardAndTrue().forwardFollow(lambda x:
-                x.forwardCommute())
-        return x.identity()
+        if x.__class__ == basic.And and x.left == basic.true:
+          return x.right.forwardAndTrue()
+        elif x.__class__ == basic.And and x.right == basic.true:
+          return x.left.forwardAndTrue().forwardFollow(lambda x:
+              x.forwardCommute())
+        else:
+          return x.identity()
       return self.advanceLeft().forwardFollow(lambda x:
           x.exportConjunctively().forwardFollow(lambda x:
             x.retreat().forwardFollow(lambda x:
@@ -147,9 +139,14 @@ class Path:
                   x.retreat().forwardFollow(lambda x:
                     x.forwardOnPathFollow(lambda x:
                       maybeBackwardIntroduceUnit(x))))))))
+    else:
+      return self.identity()
 
   def _forwardIdentityArrow(self, tgt):
     return Arrow(src = self, tgt = tgt, arrow = self.top().identity())
+
+  def identity(self):
+    return self._forwardIdentityArrow(tgt = self)
 
   def retreat(self):
     assert(self.functor.__class__ == Composite)
@@ -203,20 +200,121 @@ class Path:
   def forwardOnPathFollow(self, f):
     return self.forwardOnPath(f(self.bottom()))
 
+  # return: A path arrow from self to a path p like self in which p.object == basic.true
+  def newUnit(self):
+    if self.object == basic.true:
+      a = self.identity()
+    else:
+      if self.covariant():
+        return self.forwardOnPathFollow(lambda x:
+            x.forwardAndTrue()).forwardFollow(lambda p:
+                p.advanceLeft())
+      else:
+        return self.forwardOnPathFollow(lambda x:
+            x.backwardForgetLeft(basic.true)).forwardFollow(lambda p:
+                p.advanceLeft())
+
   # self must be covariant.
   # variables: a list of variables that are in scope
   # return: a list of pairs (B, a) such that B is the value of some importable bounded forall
   #         into which variables have been substituted
   #         and a is a path arrow leading to self.onObject((B|self.object)).
   def universalIn(self, variables):
-    raise Exception("Not Yet Implemented.") # FIXME Implement this.
+    assert(self.covariant())
+    a = self.newUnit()
+    return [(B, a.forwardCompose(A)) for (B,A) in a.tgt._universalIn_unit(variables)]
+
+  # exactly like self.universalIn(variables), but in which self.object == basic.true
+  # TODO(koreiklein)  This function is large, ugly, and complicated.  Come up with a simpler
+  #                   way to do this.
+  def _universalIn_unit(self, variables):
+    # FIXME
+    print self
+    assert(self.covariant())
+    assert(self.object == basic.true)
+    # this list will be populated with triples (k, h, a) such that
+    # k is importable via self.importFilteredArrow(f)
+    # once k is imported, k can be instantiated via the path arrow a to get h
+    k_h_a = []
+    def f(k):
+      if k.__class__ != basic.Always:
+        return False
+      if k.value.__class__ != basic.Not:
+        return False
+      n_exists = 0
+      t = k.value.value
+      while t.__class__ == basic.Exists:
+        n_exists += 1
+        t = t.value
+      if n_exists != len(variables):
+        return False
+      else:
+        ys = Path(functor = self.functor, object = k).advance().tgt.advance().tgt.instantiate(variables)
+        print ys
+        if len(ys) == 0:
+          return False
+        else:
+          k_h_a.extend([(k, B, A) for (B,A) in ys])
+          return True
+    xs = self.importFilteredArrow(f) # This call populates k_h_a
+    results = []
+    for (B,A) in xs:
+      found = False
+      for (k, h, a) in k_h_a:
+        if k == B:
+          found = True
+          results.append((h, A.forwardCompose(a).forwardFollow(lambda p:
+            p.retreat().forwardFollow(lambda p:
+              p.forwardOnPathFollow(lambda x:
+                x.forwardUndoubleDual())))))
+      assert(found == True) # each B must show up as a k in k_h_a
+    return results
 
   # self must be contravariant.
   # self.object must be a bounded existential of the same length as variables
   # return a list of pairs (B, A) such that B is like self.object.value with substituted variables
   #   and A is a path arrow to self.onObject(B)
   def instantiate(self, variables):
-    raise Exception("Not Yet Implemented.") # FIXME Implement this.
+    assert(not self.functor.covariant())
+    if len(variables) > 4:
+      raise Exception("WARNING: Running instantiate on more than 4 variables may be inefficient.")
+    return [(B,A) for p in _perms(variables) for (B,A) in self.instantiate_ordered(p)]
+
+  # like instantiate, but only return instantiations that substitute the variables in order.
+  def instantiate_ordered(self, variables):
+    path = self
+    path_arrow = path.identity()
+    for v in variables:
+      if path.object.__class__ == basic.Exists:
+        path_arrow = path.forwardOnPathFollow(lambda x:
+            x.backwardIntroExists(v))
+        path = path_arrow.tgt
+      else:
+        return []
+    print "Tried to export Conjunctively the path ", path.bottom()
+    print ""
+    exportArrow = path.exportConjunctively()
+    if exportArrow.src != path:
+      raise Exception("Export arrow %s did not leave from path %s"%(exportArrow, path))
+    print "And got", exportArrow.tgt.bottom()
+    # FIXME Remove the silly asserts.
+    if exportArrow.tgt.bottom().__class__ == basic.Not:
+      return [(exportArrow.tgt.bottom(), path_arrow.forwardCompose(exportArrow))]
+    else:
+      return []
+
+def _perms(xs):
+  if len(xs) == 0:
+    return [[]]
+  else:
+    return [_functional_insert(ys, i, xs[0])
+        for ys in _perms(xs[1:])
+        for i in range(len(xs))]
+
+def _functional_insert(l, index, x):
+  result = list(l)
+  result.insert(index, x)
+  return result
 
 def _functional_pop(i, l):
   r = list(l)
@@ -244,6 +342,8 @@ class Arrow:
         arrow = self.arrow.translate())
 
   def forwardCompose(self, other):
+    if self.tgt.top() != other.src.top():
+      raise Exception("Incomposable path arrows"%(self, other))
     assert(self.tgt.top() == other.src.top())
     return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow.forwardCompose(other.arrow))
   def backwardCompose(self, other):
@@ -295,12 +395,12 @@ class Always(Endofunctor):
     # B|!X --> !(B|X) (not always possible!)
     # but when   B == !C
     # !C | !X --> !!C | !X --> ! (!C | X)
-    if B.__class__ != Always:
+    if B.__class__ != basic.Always:
       raise Exception("Unable to import B past Always when B is not also an Always.  B == %s"%(B,))
     else:
       C = B.value
       return (lambda x:
-          And(left = B, right = self.onObject(x)).forwardOnLeftFollow(lambda x:
+          basic.And(left = B, right = self.onObject(x)).forwardOnLeftFollow(lambda x:
             x.forwardCojoin()).forwardFollow(lambda x:
               x.forwardZip()))
 
@@ -343,7 +443,7 @@ class Id(Endofunctor):
     # Id o (B|.) --> (B|.) o Id
     # (B|x) --> (B|x)
     return (lambda x:
-        And(left = B, right = x).identity())
+        basic.And(left = B, right = x).identity())
   def variables(self):
     return []
   def pop(self):
@@ -443,7 +543,7 @@ class Composite(Endofunctor):
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
     result.extend([(B_nt[0], lambda x:
       B_nt[1](self.left.onObject(basic.And(B_nt[0], x))).forwardCompose(
-        self.right.onArrow(self.left._export(B_nt[0])))) for B_nt in self.right.importFiltered(f)])
+        self.right.onArrow(self.left._export(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
     return result
 
   def exportFilteredCovariantContravariant(self, f):
@@ -460,7 +560,7 @@ class Composite(Endofunctor):
     return result
 
   # self must not be covariant()
-  # return (B, a function representing some natural transform: (B|.) o F (B|.) --> F)
+  # return (B, a function representing some natural transform: (B|.) o F --> F)
   # such that f(B) == True, or return None if no such natural transform exists.
   def exportFiltered(self, f):
     if self.right.covariant():
