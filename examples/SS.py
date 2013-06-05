@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import basic
 from lib import natural, library, common_vars, equivalence, function
 
 # A proof that forall n : N . S (S n) > n
@@ -45,12 +45,26 @@ proof = proof.forwardFollow(lambda p:
 #    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
 #compressedProof =  proof.arrow.arrow.translate().compress()
 
-n = common_vars.n()
+a = common_vars.a()
+b = common_vars.b()
+c = common_vars.c()
 proof = proof.forwardFollow(lambda p:
     p.forwardOnPathFollow(lambda x:
-      x.forwardAssume(enriched.Forall([(n, natural.natural)],
-        natural.Less(n,
-          enriched.Apply(enriched.Apply(n,
-            natural.natural_successor_function),
-            natural.natural_successor_function))))))
+      x.forwardAssume(basic.MultiBoundedForall([ (a, natural.natural)
+                                               , (b, natural.natural)
+                                               , (c, natural.natural)],
+        basic.Implies(predicate = basic.MultiAnd(
+          [ natural.Successor(a, b)
+          , natural.Successor(b, c)]),
+          consequent = natural.Less(a, c))))))
 
+proof = proof.forwardFollow(lambda p:
+          p.advance().forwardFollow(lambda p:
+            p.advanceLeft().forwardFollow(lambda p:
+              p.advance().forwardFollow(lambda p:
+                p.advance().forwardFollow(lambda p:
+                    p.advance().forwardFollow(lambda p:
+                      p.advance().forwardFollow(lambda p:
+                        p.advance())))))))
+
+print [B for (B,A) in proof.arrow.tgt.universalIn([a, b])]

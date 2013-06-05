@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, enriched, symbol
+from calculus import basic, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 from ui.stack import stack
@@ -9,21 +9,37 @@ def render(x, covariant = True):
   if isinstance(x, basic.Conjunction):
     return renderConjunction(x, covariant = covariant)
   elif x.__class__ == basic.Exists:
-    return renderExists(valueStack = render(x.value, covariant),
-        variablesList = [renderVariable(variable) for variable in x.variables],
+    variables = []
+    while x.__class__ == basic.Exists:
+      variables.append(x.variable)
+      x = x.value
+    renderedVariables = []
+    while True:
+      if x.__class__ == basic.And:
+        if x.left.__class__ == basic.Always and x.left.value.__class__ == basic.Holds:
+          matched = False
+          for i in range(len(variables)):
+            v = variables[i]
+            if x.left.value.held == v:
+              renderedVariables.append(
+                  renderVariableBinding(renderVariable(v), renderVariable(x.left.value.holding)))
+              x = x.right
+              matched = True
+              variables.pop(i)
+              break
+          if matched:
+            continue
+      break
+    for v in variables:
+      renderedVariables.append(renderVariable(v))
+    return renderExists(valueStack = render(x, covariant),
+        variablesList = renderedVariables,
         covariant = covariant)
-  elif x.__class__ == enriched.Iff:
-    return renderEnrichedIff(x, covariant = covariant)
-  elif x.__class__ == enriched.Hidden:
-    return renderEnrichedHidden(x, covariant = covariant)
-  elif x.__class__ == enriched.BoundedExists:
-    return renderExists(valueStack = render(x.value, covariant),
-        variablesList = [renderVariableBinding(variable = renderVariable(x.variables[i]),
-          unique = False,
-          domain = renderVariable(x.domains[i]),
-        covariant = covariant) for i in range(len(x.variables))],
-        covariant = covariant)
-  elif x.__class__ == enriched.EnrichedHolds:
+  elif x.__class__ == basic.Iff:
+    return renderIff(x, covariant = covariant)
+  elif x.__class__ == basic.Hidden:
+    return renderHidden(x, covariant = covariant)
+  elif x.__class__ == basic.Holds:
     return renderHolds(x, covariant = covariant)
   elif x.__class__ == basic.Not:
     if x.rendered:
@@ -50,8 +66,6 @@ def renderVariable(x):
     return renderInjectionVariable(x)
   elif x.__class__ == basic.ProductVariable:
     return renderProductVariable(x)
-  elif x.__class__ == enriched.Apply:
-    return renderApply(renderVariable(x.x), renderVariable(x.f))
   else:
     raise Exception("Unrecognized logic object %s"%(x,))
 
@@ -145,7 +159,13 @@ def renderExists(valueStack, variablesList, covariant):
       quantifierStackingDimension, valueStack,
       spacing = distances.quantifier_after_divider_spacing)
 
-def renderVariableBinding(variable, unique, domain, covariant):
+def renderVariableBinding(variable, domain):
+  middleStack = gl.newTextualGLStack(colors.variableColor, ":")
+  return variable.stack(0, middleStack,
+      spacing = distances.variable_binding_spacing).stackCentered(0, domain,
+          spacing = distances.variable_binding_spacing)
+
+def _renderVariableBinding(variable, unique, domain, covariant):
   dimension = 0
   if unique:
     c = '!'
@@ -154,9 +174,9 @@ def renderVariableBinding(variable, unique, domain, covariant):
   middleStack = gl.newTextualGLStack(colors.variableColor, c)
   return variable.stack(dimension,
       middleStack,
-      spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
+      spacing = distances.variable_binding_spacing).stackCentered(dimension,
           domain,
-          spacing = distances.enriched_variable_binding_spacing)
+          spacing = distances.variable_binding_spacing)
 
 def _renderVariableBinding(binding, covariant = True):
   dimension = 0
@@ -167,9 +187,9 @@ def _renderVariableBinding(binding, covariant = True):
   middleStack = gl.newTextualGLStack(colors.variableColor, c)
   return renderVariable(binding.variable).stack(dimension,
       middleStack,
-      spacing = distances.enriched_variable_binding_spacing).stackCentered(dimension,
+      spacing = distances.variable_binding_spacing).stackCentered(dimension,
           renderVariable(binding.equivalence),
-          spacing = distances.enriched_variable_binding_spacing)
+          spacing = distances.variable_binding_spacing)
 
 def renderAlways(value, covariant):
   return renderWithBackground( value
@@ -216,7 +236,7 @@ def renderCall(x, covariant = True):
   else:
     return renderNotWithSymbol(res)
 
-def renderEnrichedIff(x, covariant):
+def renderIff(x, covariant):
   res = render(x.left, True).stack(0,
       primitives.iff(),
       spacing = distances.iffSpacing).stack(0,
@@ -227,7 +247,7 @@ def renderEnrichedIff(x, covariant):
   else:
     return renderNotWithSymbol(res)
 
-def renderEnrichedHidden(x, covariant):
+def renderHidden(x, covariant):
   return gl.newTextualGLStack(colors.hiddenColor, "<<" + x.name + ">>")
 
 def renderHolds(x, covariant):

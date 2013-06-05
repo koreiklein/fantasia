@@ -1,31 +1,31 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import basic
 from lib import library, common_vars
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
-equivalence = enriched.StringVariable('equivalence')
+equivalence = basic.StringVariable('equivalence')
 
 def InDomain(x, e):
-  return enriched.EnrichedHolds(x, enriched.ProjectionVariable(e, domainSymbol))
+  return basic.Holds(x, basic.ProjectionVariable(e, domainSymbol))
 
 def EqualUnder(a, b, e):
-  return enriched.EnrichedHolds(
-      enriched.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      enriched.ProjectionVariable(e, relationSymbol))
+  return basic.Holds(
+      basic.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      basic.ProjectionVariable(e, relationSymbol))
 
 x = common_vars.x()
 def reflexive(e):
-  return enriched.BasicForall([x],
-      enriched.Implies(predicate = InDomain(x, e),
+  return basic.MultiForall([x],
+      basic.Implies(predicate = InDomain(x, e),
         consequent = EqualUnder(x, x, e)))
 
 x = common_vars.x()
 y = common_vars.y()
 def symmetric(e):
-  return enriched.BasicForall([x, y],
-      enriched.Implies(
-        predicate = enriched.And(
+  return basic.MultiForall([x, y],
+      basic.Implies(
+        predicate = basic.MultiAnd(
           [ InDomain(x, e)
           , InDomain(y, e)
           , EqualUnder(x, y, e)]),
@@ -35,9 +35,9 @@ x = common_vars.x()
 y = common_vars.y()
 z = common_vars.z()
 def transitive(e):
-  return enriched.BasicForall([x, y, z],
-      enriched.Implies(
-        predicate = enriched.And(
+  return basic.MultiForall([x, y, z],
+      basic.Implies(
+        predicate = basic.MultiAnd(
           [ InDomain(x, e)
           , InDomain(y, e)
           , InDomain(z, e)
@@ -46,12 +46,12 @@ def transitive(e):
         consequent = EqualUnder(x, z, e)))
 
 def IsEquivalence(e):
-  return enriched.EnrichedHolds(e, equivalence)
+  return basic.Holds(e, equivalence)
 
 A = common_vars.A()
-claim = enriched.BasicForall([A],
-    enriched.Iff(
-      left = enriched.And(
+claim = basic.MultiForall([A],
+    basic.Iff(
+      left = basic.MultiAnd(
         [ reflexive(A)
         , symmetric(A)
         , transitive(A)]),

@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import enriched
+from calculus import basic
 
 import path
 
@@ -8,8 +8,8 @@ class Library:
   def __init__(self, claims, variables):
     self.variables = variables
     self.claims = claims
-    self.formula = enriched.Always(enriched.BasicExists(variables,
-        enriched.And(claims)))
+    self.formula = basic.Always(basic.MultiExists(variables,
+        basic.MultiAnd(claims)))
 
   def translate(self):
     return Library(claims = [claim.translate() for claim in self.claims],
@@ -34,11 +34,12 @@ class Proof:
   def __init__(self, library, arrow = None):
     self.library = library
     if arrow is None:
-      self.arrow = path.new_path(library.formula).advance().forwardFollow(lambda x:
-          x.advance().forwardFollow(lambda x:
-            x.advance().forwardFollow(lambda x:
-              x.forwardOnPathFollow(lambda x:
-                x.forwardAndTrue()))))
+      self.arrow = path.new_path(library.formula).advance()
+      for v in self.library.variables:
+        self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
+      self.arrow = self.arrow.forwardFollow(lambda p:
+          p.forwardOnPathFollow(lambda x:
+            x.forwardAndTrue()))
     else:
       assert(arrow.src.top() == library.formula)
       self.arrow = arrow
