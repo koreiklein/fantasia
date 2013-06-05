@@ -27,7 +27,7 @@ class ImportTest(unittest.TestCase):
     importedObject = basic.Always(basic.Holds(common_vars.x(), common_vars.y()))
     self.assert_exact_import_succeeds(functor.compose(path.And(side = path.left, other=importedObject)),
                                       importedObject)
-    
+
   def assert_exact_import_succeeds(self, functor, importedObject):
     path0 = path.Path(functor=functor, object=basic.true)
     pairs = path0.importFilteredArrow(lambda x: x == importedObject)
@@ -37,35 +37,35 @@ class ImportTest(unittest.TestCase):
     self.assertEqual(A.src, path0, "path.importFilteredArrow returned an arrow whose src was not path.")
     self.assertEqual(A.tgt, path.Path(functor=functor,
                                       object = basic.And(importedObject, basic.true)))
-      
+
 class ExactImportTests(ImportTest, CommonObjects):
   def setUp(self):
     self.add_common_objects()
     self.not_not_functor = path.not_functor.compose(path.not_functor)
     self.not_andBofA_not_functor = path.not_functor.compose(self.and_b_of_a_functor).compose(path.not_functor)
-    
+
   def test_import_through_id(self):
     self.assert_can_import_through_covariant_functor(path.identity_functor)
-    
+
   def test_import_through_or(self):
     self.assert_can_import_through_covariant_functor(self.or_d_of_c_functor)
-  
+
   def test_import_through_or_or(self):
     self.assert_can_import_through_covariant_functor(self.or_d_of_c_functor.compose(self.or_d_of_c_functor))
-  
+
   def test_import_through_or_and_or(self):
     self.assert_can_import_through_covariant_functor(self.or_d_of_c_functor.compose(
       self.and_b_of_a_functor).compose(self.or_d_of_c_functor))
-    
+
   def test_import_not_not(self):
     self.assert_can_import_through_covariant_functor(self.not_not_functor)
-  
+
   def test_import_not_not_not_not(self):
     self.assert_can_import_through_covariant_functor(self.not_not_functor.compose(self.not_not_functor))
-  
+
   def test_import_middle(self):
     functor = self.not_not_functor.compose(self.and_b_of_a_functor.compose(self.not_not_functor))
     self.assert_exact_import_succeeds(functor, self.b_of_a)
-    
+
   def test_import_not_andBofA_not(self):
     self.assert_can_import_through_covariant_functor(self.not_andBofA_not_functor)
