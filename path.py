@@ -58,6 +58,9 @@ class Path:
 
   def __repr__(self):
     return "PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(self.object, self.functor)
+  
+  def __eq__(self, other):
+    return self.bottom() == other.bottom() and self.top() == other.top()
 
   def variables(self):
     return self.functor.variables()
