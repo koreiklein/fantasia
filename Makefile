@@ -4,6 +4,8 @@
 all:
 	python main.py
 
+test:
+	python -c "import tests.test_path ; import unittest ; unittest.main(tests.test_path) ;"
 
 clean:
 	find . -name '*.pyc' | xargs rm -f
