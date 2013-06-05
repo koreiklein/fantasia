@@ -9,7 +9,11 @@ class Object:
   def translate(self):
     raise Exception("Abstract superclass.")
 
-  # return a list of arrows self --> B|self such that f(B), and for some C, B == Always(C)
+  # f is a function taking each object B to a list ys
+  # return a list of all pairs (a, X) such that
+  #   a is an arrow self -> B|self
+  #   X is in f(B)
+  #   B == Always(C) for some C
   def produceFiltered(self, f):
     return []
 
@@ -234,16 +238,18 @@ class Exists(Object):
     return Exists(variable = self.variable.translate(),
         value = self.value.translate())
 
+  # f is a function taking each object B to a list ys
+  # return a list of all pairs (a, X) such that
+  #   a is an arrow self -> B|self
+  #   X is in f(B)
+  #   B == Always(C) for some C
   def produceFiltered(self, f):
-    result = []
-    for a in self.value.produceFiltered(f):
-      B = a.tgt.left
-      free = B.freeVariables()
-      if self.variable not in free:
-        # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
-        result.append(self.forwardOnBody(a).forwardFollow(lambda x:
-          AndPastExists(src = And(left = B, right = self), tgt = x).invert()))
-    return result
+    # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
+    return [(self.forwardOnBody(a).forwardFollow(lambda x:
+                                   AndPastExists(src = And(B, self), tgt = x).invert()), X)
+            for a, X in self.value.produceFiltered(f)
+            for B in [a.tgt.left]
+            if self.variable not in B.freeVariables]
 
   def forwardOnBody(self, arrow):
     assert(isinstance(arrow, Arrow))
@@ -407,16 +413,21 @@ class Conjunction(Object):
     return self.forwardAssociate().invert()
 
 class And(Conjunction):
+  # f is a function taking each object B to a list ys
+  # return a list of all pairs (a, X) such that
+  #   a is an arrow self -> B|self
+  #   X is in f(B)
+  #   B == Always(C) for some C
   def produceFiltered(self, f):
     result = []
     # (X|Y) --> (X|(B|Y)) --> (X|(Y|B)) --> ((X|Y)|B) --> (B|(X|Y))
-    result.extend([self.forwardOnRight(a.forwardFollow(lambda x:
+    result.extend([(self.forwardOnRight(a.forwardFollow(lambda x:
       x.forwardCommute())).forwardFollow(lambda x:
         x.forwardAssociateOther().forwardFollow(lambda x:
-          x.forwardCommute())) for a in self.right.produceFiltered(f)])
+          x.forwardCommute())), X) for a, X in self.right.produceFiltered(f)])
     # (X|Y) --> ((B|X)|Y) --> (B|(X|Y))
-    result.extend([self.forwardOnLeft(a).forwardFollow(lambda x:
-          x.forwardAssociate()) for a in self.left.produceFiltered(f)])
+    result.extend([(self.forwardOnLeft(a).forwardFollow(lambda x:
+          x.forwardAssociate()), X) for a, X in self.left.produceFiltered(f)])
     return result
 
   def forwardApply(self):
@@ -524,6 +535,11 @@ class Hidden(Object):
   def __init__(self, base, name):
     self.base = base
     self.name = name
+  # f is a function taking each object B to a list ys
+  # return a list of all pairs (a, X) such that
+  #   a is an arrow self -> B|self
+  #   X is in f(B)
+  #   B == Always(C) for some C
   def produceFiltered(self, f):
     return self.base.produceFiltered(f)
   def translate(self):
@@ -591,14 +607,18 @@ class Always(Object):
   def __init__(self, value):
     self.value = value
 
+  # f is a function taking each object B to a list ys
+  # return a list of all pairs (a, X) such that
+  #   a is an arrow self -> B|self
+  #   X is in f(B)
+  #   B == Always(C) for some C
   def produceFiltered(self, f):
     result = []
-    result.extend([self.forwardOnAlways(a).forwardFollow(lambda x:
+    result.extend([(self.forwardOnAlways(a).forwardFollow(lambda x:
       x.forwardDistributeAlways().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
-          x.forwardUnalways()))) for a in self.value.produceFiltered(f)])
-    if f(self):
-      result.append(self.forwardCopy())
+          x.forwardUnalways()))), X) for a, X in self.value.produceFiltered(f)])
+    result.extend([(self.forwardCopy(), X) for X in f(self)])
     return result
 
   def __eq__(self, other):

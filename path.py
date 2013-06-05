@@ -10,13 +10,17 @@ class Endofunctor:
   def variables(self):
     raise Exception("Abstract superclass.")
   # self must be covariant()
-  # return a list of (B, a function representing some natural transform: F --> (B|.) o F)
-  # such that f(B) == True.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     return []
   # self must not be covariant()
-  # return a list of (B, a function representing some natural transform: (B|.) o F --> F)
-  # such that f(B) == True.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform (B|.) o self -> self
+  #   y is in f(B)
   def exportFiltered(self, f):
     return []
   # self must be covariant()
@@ -98,21 +102,31 @@ class Path:
   # return a list of (B, a path arrow to self.onObject((B|self.object)))
   # such that f(B) == True
   def importFilteredArrow(self, f):
+    def g(x):
+      if f(x):
+        return ['dummy']
+      else:
+        return []
     return [(B, Arrow(src = self,
       tgt = Path(functor = self.functor, object = basic.And(B, self.object)),
       arrow = nt(self.object)))
-      for (B, nt) in self.importFiltered(f)]
+      for B, nt, X in self.importFiltered(g)]
 
   # self must be contravariant
   # return: a list of path arrows : self --> self.functor.onObject(basic.true)
   def exportBottom(self):
+    def g(x):
+      if self.object == x:
+        return ['dummy']
+      else:
+        return []
     # FIXME Remove the cruft
     assert(not self.functor.covariant())
     # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
     result =  [Arrow(src = self, tgt = Path(functor = self.functor, object = basic.true),
                   arrow = self.functor.onArrow(
                     self.object.backwardForgetRight(basic.true)).forwardCompose(nt(basic.true)))
-            for (B, nt) in self.functor.exportFiltered(lambda x: self.object == x)]
+            for B, nt, X in self.functor.exportFiltered(g)]
     print "exportFiltered %s got %s results"%(self.bottom(), len(result),)
     return result
 
@@ -507,13 +521,13 @@ class Composite(Endofunctor):
     assert(self.right.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.importFiltered(f)])
     a = len(result)
     # F o G --> F o ((B|.) o G) --> (B|.) o F o G
-    result.extend([(B_nt[0], lambda x:
-      B_nt[1](self.left.onObject(x)).forwardCompose(
-        self.right.onArrow(self.left._import(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
+    result.extend([(B, lambda x: nt(self.left.onObject(x)).forwardCompose(
+                                 self.right.onArrow(self.left._import(B)(x))), X)
+                    for B, nt, X in self.right.importFiltered(f)])
     return result
 
   def importFilteredContravariantContravariant(self, f):
@@ -521,14 +535,19 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.exportFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.exportFiltered(f)])
     # F o G --> ((B|.) o F o (B|.)) o G = ((B|.) o F) o ((B|.) o G) --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left._export(B_nt[0])(x)).forwardCompose(
-        B_nt[1](self.left.onObject(basic.And(B_nt[0], x))))) for B_nt in self.right.exportFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(self.left._export(B)(x)).forwardCompose(
+                                nt(self.left.onObject(basic.And(B, x)))), X)
+                   for B, nt, X in self.right.exportFiltered(f)])
     return result
 
+  # self must be covariant()
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     assert(self.covariant())
     if self.right.covariant():
@@ -541,12 +560,12 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.exportFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.exportFiltered(f)])
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      B_nt[1](self.left.onObject(basic.And(B_nt[0], x))).forwardCompose(
-        self.right.onArrow(self.left._export(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
+    result.extend([(B, lambda x: nt(self.left.onObject(basic.And(B, x))).forwardCompose(
+                                 self.right.onArrow(self.left._export(B)(x))), X)
+                   for B, nt, X in self.right.importFiltered(f)])
     return result
 
   def exportFilteredCovariantContravariant(self, f):
@@ -554,17 +573,19 @@ class Composite(Endofunctor):
     assert(not self.right.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.importFiltered(f)])
     # (B|.) o F o G --> F o (B|.) o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left._import(B_nt[0])(x)).forwardCompose(
-        B_nt[1](self.left.onObject(x)))) for B_nt in self.right.exportFiltered(f)])
+    result.extend([(B, lambda x: self.right.onArrow(self.left._import(B)(x)).forwardCompose(
+                                 nt(self.left.onObject(x))), X)
+                   for B, nt, X in self.right.exportFiltered(f)])
     return result
 
   # self must not be covariant()
-  # return (B, a function representing some natural transform: (B|.) o F --> F)
-  # such that f(B) == True, or return None if no such natural transform exists.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform (B|.) o self -> self
+  #   y is in f(B)
   def exportFiltered(self, f):
     if self.right.covariant():
       return self.exportFilteredContravariantCovariant(f)
@@ -645,6 +666,11 @@ class And(Conjunction):
               x.forwardOnRightFollow(lambda x:
                 x.forwardCommute()))))
 
+  # self must be covariant()
+  # f takes each object x to a list f(x)
+  # return a list of triples all [(B, nt, y) such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     if self.side == left:
       # (X|A) --> (X|(B|A)) --> ((X|B)|A) --> ((B|X)|A)
@@ -652,14 +678,14 @@ class And(Conjunction):
         self.onObject(x).forwardOnRight(a).forwardFollow(lambda x:
           x.forwardAssociateOther().forwardFollow(lambda x:
             x.forwardOnLeftFollow(lambda x:
-              x.forwardCommute())))) for a in self.other.produceFiltered(f)]
+              x.forwardCommute()))), X) for a, X in self.other.produceFiltered(f)]
     else:
       # (A|X) --> ((B|A)|X) --> ((A|B)|X) --> (A|(B|X))
       assert(self.side == right)
       return [(a.tgt.left, lambda x:
         self.onObject(x).forwardOnLeft(a.forwardFollow(lambda x:
           x.forwardCommute())).forwardFollow(lambda x:
-            x.forwardAssociate())) for a in self.other.produceFiltered(f)]
+            x.forwardAssociate()), X) for a, X in self.other.produceFiltered(f)]
 
 class Or(Conjunction):
   def stringDivider(self):
