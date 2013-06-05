@@ -218,6 +218,13 @@ class Holds(Object):
     result.union_update(self.held.freeVariables())
     return result
 
+def isExistentialOfLength(n, existential):
+  for i in range(n):
+    if existential.__class__ != Exists:
+      return False
+    existential = existential.value
+  return True
+
 class Exists(Object):
   def __init__(self, variable, value):
     self.variable = variable
