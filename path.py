@@ -10,13 +10,17 @@ class Endofunctor:
   def variables(self):
     raise Exception("Abstract superclass.")
   # self must be covariant()
-  # return a list of (B, a function representing some natural transform: F --> (B|.) o F)
-  # such that f(B) == True.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     return []
   # self must not be covariant()
-  # return a list of (B, a function representing some natural transform: (B|.) o F --> F)
-  # such that f(B) == True.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform (B|.) o self -> self
+  #   y is in f(B)
   def exportFiltered(self, f):
     return []
   # self must be covariant()
@@ -58,7 +62,7 @@ class Path:
 
   def __repr__(self):
     return "PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(self.object, self.functor)
-  
+
   def __eq__(self, other):
     return self.bottom() == other.bottom() and self.top() == other.top()
 
@@ -74,6 +78,9 @@ class Path:
 
   def translate(self):
     return Path(functor = self.functor.translate(), object = self.object.translate())
+
+  def toPathArrowList(self):
+    return self.identity().toPathArrowList()
 
   # return a path arrow that uses the indexth import available from self.importFiltered(f)
   def doImportFiltered(self, f, index):
@@ -98,29 +105,31 @@ class Path:
   # return a list of (B, a path arrow to self.onObject((B|self.object)))
   # such that f(B) == True
   def importFilteredArrow(self, f):
+    def g(x):
+      if f(x):
+        return ['dummy']
+      else:
+        return []
     return [(B, Arrow(src = self,
       tgt = Path(functor = self.functor, object = basic.And(B, self.object)),
       arrow = nt(self.object)))
-      for (B, nt) in self.importFiltered(f)]
+      for B, nt, X in self.importFiltered(g)]
 
   # self must be contravariant
   # return: a list of path arrows : self --> self.functor.onObject(basic.true)
   def exportBottom(self):
-    # FIXME Remove the cruft
     assert(not self.functor.covariant())
     # x F --> (x|1) F = 1 ((x|.) o F) --> 1F
     result =  [Arrow(src = self, tgt = Path(functor = self.functor, object = basic.true),
                   arrow = self.functor.onArrow(
                     self.object.backwardForgetRight(basic.true)).forwardCompose(nt(basic.true)))
-            for (B, nt) in self.functor.exportFiltered(lambda x: self.object == x)]
-    print "exportFiltered %s got %s results"%(self.bottom(), len(result),)
+               for B, nt, X in self.functor.exportFiltered(lambda x:
+                 [e for e in ['dummy'] if x == self.object])]
     return result
 
   # self must be contravariant.
   # return a path arrow "which exports as much as possible from nested Ands at the bottom".
   def exportConjunctively(self):
-    # FIXME
-    print self.bottom()
     assert(not self.functor.covariant())
     trial = self.exportBottom()
     if len(trial) > 0:
@@ -156,6 +165,8 @@ class Path:
     (a, b) = self.functor.pop()
     return self._forwardIdentityArrow(Path(functor = b, object = a.onObject(self.object)))
 
+  def advanceTwice(self):
+    return self.advance().forwardFollow(lambda p: p.advance())
   def advance(self):
     if self.object.__class__ == basic.Always:
       p = Path(functor = always_functor.compose(self.functor),
@@ -217,61 +228,27 @@ class Path:
             x.backwardForgetLeft(basic.true)).forwardFollow(lambda p:
                 p.advanceLeft())
 
-  # self must be covariant.
-  # variables: a list of variables that are in scope
-  # return: a list of pairs (B, a) such that B is the value of some importable bounded forall
-  #         into which variables have been substituted
-  #         and a is a path arrow leading to self.onObject((B|self.object)).
+  # return a simple list of the universal things that can be claimed about variables.
+  def importables_universalIn(self, variables):
+    return [a.tgt.bottom() for a in self.universalIn(variables)]
+
+  # return: a PathArrowList of all ways to import claims about variables.
   def universalIn(self, variables):
     assert(self.covariant())
-    a = self.newUnit()
-    return [(B, a.forwardCompose(A)) for (B,A) in a.tgt._universalIn_unit(variables)]
+    return self.newUnit().toPathArrowList().forwardFollowWithImports(lambda B, P:
+      PathArrowList() if B.__class__ != basic.Always or B.value.__class__ != basic.Not else
+          (P.advanceLeft().forwardFollow(lambda P:
+            P.advanceTwice()).toPathArrowList().forwardFollow(lambda P:
+            P.maybeInstantiate(variables)).forwardOnTgts(lambda P:
+              P.retreat().forwardFollow(lambda P:
+                P.forwardOnPathFollow(lambda x:
+                  x.forwardUndoubleDual())))))
 
-  # exactly like self.universalIn(variables), but in which self.object == basic.true
-  # TODO(koreiklein)  This function is large, ugly, and complicated.  Come up with a simpler
-  #                   way to do this.
-  def _universalIn_unit(self, variables):
-    # FIXME
-    print self
-    assert(self.covariant())
-    assert(self.object == basic.true)
-    # this list will be populated with triples (k, h, a) such that
-    # k is importable via self.importFilteredArrow(f)
-    # once k is imported, k can be instantiated via the path arrow a to get h
-    k_h_a = []
-    def f(k):
-      if k.__class__ != basic.Always:
-        return False
-      if k.value.__class__ != basic.Not:
-        return False
-      n_exists = 0
-      t = k.value.value
-      while t.__class__ == basic.Exists:
-        n_exists += 1
-        t = t.value
-      if n_exists != len(variables):
-        return False
-      else:
-        ys = Path(functor = self.functor, object = k).advance().tgt.advance().tgt.instantiate(variables)
-        print ys
-        if len(ys) == 0:
-          return False
-        else:
-          k_h_a.extend([(k, B, A) for (B,A) in ys])
-          return True
-    xs = self.importFilteredArrow(f) # This call populates k_h_a
-    results = []
-    for (B,A) in xs:
-      found = False
-      for (k, h, a) in k_h_a:
-        if k == B:
-          found = True
-          results.append((h, A.forwardCompose(a).forwardFollow(lambda p:
-            p.retreat().forwardFollow(lambda p:
-              p.forwardOnPathFollow(lambda x:
-                x.forwardUndoubleDual())))))
-      assert(found == True) # each B must show up as a k in k_h_a
-    return results
+  def maybeInstantiate(self, variables):
+    if basic.isExistentialOfLength(len(variables), self.object):
+      return self.instantiate(variables)
+    else:
+      return PathArrowList()
 
   # self must be contravariant.
   # self.object must be a bounded existential of the same length as variables
@@ -281,30 +258,28 @@ class Path:
     assert(not self.functor.covariant())
     if len(variables) > 4:
       raise Exception("WARNING: Running instantiate on more than 4 variables may be inefficient.")
-    return [(B,A) for p in _perms(variables) for (B,A) in self.instantiate_ordered(p)]
+    return self.toPathArrowList().forwardFollowWithValues(_perms(variables), lambda perm, path:
+        path.instantiate_ordered(perm))
 
   # like instantiate, but only return instantiations that substitute the variables in order.
   def instantiate_ordered(self, variables):
     path = self
+    assert(not path.covariant())
     path_arrow = path.identity()
     for v in variables:
+      assert(path_arrow.src == self)
       if path.object.__class__ == basic.Exists:
-        path_arrow = path.forwardOnPathFollow(lambda x:
-            x.backwardIntroExists(v))
+        path_arrow = path_arrow.forwardFollow(lambda p, v=v:
+            p.forwardOnPathFollow(lambda x, v=v:
+              x.backwardIntroExists(v)))
         path = path_arrow.tgt
       else:
-        return []
-    print "Tried to export Conjunctively the path ", path.bottom()
-    print ""
+        return PathArrowList()
     exportArrow = path.exportConjunctively()
-    if exportArrow.src != path:
-      raise Exception("Export arrow %s did not leave from path %s"%(exportArrow, path))
-    print "And got", exportArrow.tgt.bottom()
-    # FIXME Remove the silly asserts.
     if exportArrow.tgt.bottom().__class__ == basic.Not:
-      return [(exportArrow.tgt.bottom(), path_arrow.forwardCompose(exportArrow))]
+      return path_arrow.forwardCompose(exportArrow).toPathArrowList()
     else:
-      return []
+      return PathArrowList()
 
 def _perms(xs):
   if len(xs) == 0:
@@ -346,7 +321,7 @@ class Arrow:
 
   def forwardCompose(self, other):
     if self.tgt.top() != other.src.top():
-      raise Exception("Incomposable path arrows"%(self, other))
+      raise Exception("Incomposable path arrows tgt = \n%s\nsrc = \n%s"%(self.tgt, other.src))
     assert(self.tgt.top() == other.src.top())
     return Arrow(src = self.src, tgt = other.tgt, arrow = self.arrow.forwardCompose(other.arrow))
   def backwardCompose(self, other):
@@ -355,6 +330,49 @@ class Arrow:
     return self.forwardCompose(f(self.tgt))
   def backwardFollow(self, f):
     return self.backwardCompose(f(self.src))
+
+  def toPathArrowList(self):
+    return PathArrowList([self])
+
+class PathArrowList:
+  # arrows: a list of path arrows
+  def __init__(self, arrows = []):
+    self.arrows = arrows
+
+  def __len__(self):
+    return len(self.arrows)
+  def __getitem__(self, i):
+    return self.arrows[i]
+  def __iter__(self):
+    return iter(self.arrows)
+
+  # f: takes a tag and a path p and returns a PathArrowList of arrows that start at p.
+  # return: <See the below python code.>
+  def forwardFollow(self, f):
+    return PathArrowList([a.forwardCompose(A)
+      for a in self
+      for A in f(a.tgt)])
+
+  # f: takes paths to paths.
+  def forwardOnTgts(self, f):
+    return PathArrowList([A.forwardFollow(f) for A in self])
+
+  # f: takes a pair (value, oldArrow.tgt) to a PathArrowList of arrows composable with oldArrow.tgt
+  # return: a list of all arrows formable from applying f to an arrow of self and a value in values.
+  def forwardFollowWithValues(self, values, f):
+    return PathArrowList([X
+      for value in values
+      for X in self.forwardFollow(lambda path, value=value: f(value, path))])
+
+  # like forwardFollowWithValues, but as if values were equal to a list of all importable claims.
+  # TODO: Consider passing extra arguments that allow for caching or better filtering so as
+  #       to improve performance.
+  def forwardFollowWithImports(self, f):
+    return PathArrowList([A.forwardCompose(B).forwardCompose(C)
+      for A in self
+      for (b, nt, C) in A.tgt.functor.importFiltered(lambda x, A=A:
+        f(x, Path(functor = A.tgt.functor, object = basic.And(x, A.tgt.object))).arrows)
+      for B in [Arrow(src = A.tgt, tgt = C.src, arrow = nt(A.tgt.object))] ])
 
 left = 'left'
 right = 'right'
@@ -507,13 +525,12 @@ class Composite(Endofunctor):
     assert(self.right.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
-    a = len(result)
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.importFiltered(f)])
     # F o G --> F o ((B|.) o G) --> (B|.) o F o G
-    result.extend([(B_nt[0], lambda x:
-      B_nt[1](self.left.onObject(x)).forwardCompose(
-        self.right.onArrow(self.left._import(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
+    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(x)).forwardCompose(
+                                 self.right.onArrow(self.left._import(B)(x))), X)
+                    for B, nt, X in self.right.importFiltered(f)])
     return result
 
   def importFilteredContravariantContravariant(self, f):
@@ -521,14 +538,19 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.exportFiltered(f)])
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.exportFiltered(f)])
     # F o G --> ((B|.) o F o (B|.)) o G = ((B|.) o F) o ((B|.) o G) --> ((B|.) o F) o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left._export(B_nt[0])(x)).forwardCompose(
-        B_nt[1](self.left.onObject(basic.And(B_nt[0], x))))) for B_nt in self.right.exportFiltered(f)])
+    result.extend([(B, lambda x, B=B, nt=nt: self.right.onArrow(self.left._export(B)(x)).forwardCompose(
+                                nt(self.left.onObject(basic.And(B, x)))), X)
+                   for B, nt, X in self.right.exportFiltered(f)])
     return result
 
+  # self must be covariant()
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     assert(self.covariant())
     if self.right.covariant():
@@ -541,12 +563,12 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.exportFiltered(f)])
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.exportFiltered(f)])
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      B_nt[1](self.left.onObject(basic.And(B_nt[0], x))).forwardCompose(
-        self.right.onArrow(self.left._export(B_nt[0])(x)))) for B_nt in self.right.importFiltered(f)])
+    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(basic.And(B, x))).forwardCompose(
+                                 self.right.onArrow(self.left._export(B)(x))), X)
+                   for B, nt, X in self.right.importFiltered(f)])
     return result
 
   def exportFilteredCovariantContravariant(self, f):
@@ -554,17 +576,19 @@ class Composite(Endofunctor):
     assert(not self.right.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(B_nt[1](x))) for B_nt in self.left.importFiltered(f)])
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
+                   for B, nt, X in self.left.importFiltered(f)])
     # (B|.) o F o G --> F o (B|.) o G --> F o G
-    result.extend([(B_nt[0], lambda x:
-      self.right.onArrow(self.left._import(B_nt[0])(x)).forwardCompose(
-        B_nt[1](self.left.onObject(x)))) for B_nt in self.right.exportFiltered(f)])
+    result.extend([(B, lambda x, B=B, nt=nt: self.right.onArrow(self.left._import(B)(x)).forwardCompose(
+                                 nt(self.left.onObject(x))), X)
+                   for B, nt, X in self.right.exportFiltered(f)])
     return result
 
   # self must not be covariant()
-  # return (B, a function representing some natural transform: (B|.) o F --> F)
-  # such that f(B) == True, or return None if no such natural transform exists.
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform (B|.) o self -> self
+  #   y is in f(B)
   def exportFiltered(self, f):
     if self.right.covariant():
       return self.exportFilteredContravariantCovariant(f)
@@ -645,21 +669,26 @@ class And(Conjunction):
               x.forwardOnRightFollow(lambda x:
                 x.forwardCommute()))))
 
+  # self must be covariant()
+  # f takes each object x to a list f(x)
+  # return a list of triples all [(B, nt, y) such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
   def importFiltered(self, f):
     if self.side == left:
       # (X|A) --> (X|(B|A)) --> ((X|B)|A) --> ((B|X)|A)
-      return [(a.tgt.left, lambda x:
+      return [(a.tgt.left, lambda x, a=a:
         self.onObject(x).forwardOnRight(a).forwardFollow(lambda x:
           x.forwardAssociateOther().forwardFollow(lambda x:
             x.forwardOnLeftFollow(lambda x:
-              x.forwardCommute())))) for a in self.other.produceFiltered(f)]
+              x.forwardCommute()))), X) for a, X in self.other.produceFiltered(f)]
     else:
       # (A|X) --> ((B|A)|X) --> ((A|B)|X) --> (A|(B|X))
       assert(self.side == right)
-      return [(a.tgt.left, lambda x:
+      return [(a.tgt.left, lambda x, a=a:
         self.onObject(x).forwardOnLeft(a.forwardFollow(lambda x:
           x.forwardCommute())).forwardFollow(lambda x:
-            x.forwardAssociate())) for a in self.other.produceFiltered(f)]
+            x.forwardAssociate()), X) for a, X in self.other.produceFiltered(f)]
 
 class Or(Conjunction):
   def stringDivider(self):
@@ -678,4 +707,3 @@ class Or(Conjunction):
 
   def createObject(self, left, right):
     return basic.Or(left = left, right = right)
-

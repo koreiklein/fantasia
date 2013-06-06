@@ -12,12 +12,16 @@ class CommonObjects:
     self.c = common_vars.c()
     self.d = common_vars.d()
     self.b_of_a = basic.Always(basic.Holds(self.a, self.b))
+    self.a_of_b = basic.Always(basic.Holds(self.b, self.a))
+    self.a_of_a = basic.Always(basic.Holds(self.a, self.a))
     self.b_of_c = basic.Always(basic.Holds(self.c, self.b))
     self.d_of_c = basic.Always(basic.Holds(self.c, self.d))
     self.and_b_of_a_functor = path.And(side=path.left,
                                        other=self.b_of_a)
     self.or_d_of_c_functor = path.Or(side=path.left,
                                      other=self.d_of_c)
+    self.exists_a_functor = path.Exists(variable=self.a)
+    self.exists_b_functor = path.Exists(variable=self.b)
     self.exists_c_functor = path.Exists(variable=self.c)
     self.exists_d_functor = path.Exists(variable=self.d)
 
@@ -69,3 +73,18 @@ class ExactImportTests(ImportTest, CommonObjects):
 
   def test_import_not_andBofA_not(self):
     self.assert_can_import_through_covariant_functor(self.not_andBofA_not_functor)
+
+class UniversalInTest(unittest.TestCase, CommonObjects):
+  def setUp(self):
+    self.add_common_objects()
+    self.exists_a_forall_b__a_of_b = basic.MultiExists([self.a],
+        basic.MultiForall([self.b],
+          self.a_of_b))
+    self.path = path.new_path(self.exists_a_forall_b__a_of_b).advance().tgt
+
+  def test_one_variable_no_bounds(self):
+    post_import = basic.MultiExists([self.a],
+        basic.Always(basic.And(self.a_of_a, basic.MultiForall([self.b], self.a_of_b))))
+    importables = self.path.importables_universalIn([self.a])
+    self.assertEqual(1, len(importables), "Failed to import the valid universal claim.")
+    self.assertEqual(importables[0], self.a_of_a)
