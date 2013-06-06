@@ -72,8 +72,6 @@ claim = basic.MultiForall([A],
                             , unique(A)]),
       right = IsFunction(A)))
 
-equivalencelib = library.Library(claims = [claim], variables = [equivalence])
-
 lib = library.Library(
     claims = [ basic.Hidden(claim, "Function")
                #claim
