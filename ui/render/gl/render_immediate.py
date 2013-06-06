@@ -52,8 +52,6 @@ def render(x, covariant = True):
     return renderAndUnit(x, covariant = covariant)
   elif x.__class__ == basic.OrUnit:
     return renderOrUnit(x, covariant = covariant)
-  elif x.__class__ == basic.Holds:
-    return renderHolds(x, covariant = covariant)
   else:
     raise Exception("Unrecognized logic object %s of class %s"%(x,x.__class__))
 
@@ -250,11 +248,26 @@ def renderIff(x, covariant):
 def renderHidden(x, covariant):
   return gl.newTextualGLStack(colors.hiddenColor, "<<" + x.name + ">>")
 
+# holds: a basic.Holds
+# return: the pair of infix symbols, or None of no such symbols exist.
+def getInfix(holds):
+  if holds.held.__class__ != basic.ProductVariable:
+    return None
+  variable = holds.holding
+  if variable.__class__ == basic.StringVariable and variable.infix is not None:
+    return variable.infix
+  elif variable.__class__ == basic.ProjectionVariable and variable.symbol.infix is not None:
+    return variable.symbol.infix
+  else:
+    return None
+
 def renderHolds(x, covariant):
-  if (x.holding.__class__ == basic.StringVariable
-      and x.holding.infix is not None
-      and x.held.__class__ == basic.ProductVariable):
-    (firstSymbol, secondSymbol) = x.holding.infix
+  infix = getInfix(x)
+  if infix is not None:
+  #if (x.holding.__class__ == basic.StringVariable
+  #    and x.holding.infix is not None
+  #    and x.held.__class__ == basic.ProductVariable):
+    (firstSymbol, secondSymbol) = infix
     assert(len(x.held.symbol_variable_pairs) == 2)
     (aSymbol, aVariable) = x.held.symbol_variable_pairs[0]
     (bSymbol, bVariable) = x.held.symbol_variable_pairs[1]

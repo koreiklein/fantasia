@@ -6,7 +6,7 @@ from calculus import symbol
 leftSymbol = symbol.StringSymbol('left')
 rightSymbol = symbol.StringSymbol('right')
 
-relationSymbol = symbol.StringSymbol('=')
+relationSymbol = symbol.StringSymbol('=', infix = (leftSymbol, rightSymbol))
 domainSymbol = symbol.StringSymbol('\'')
 
 srcSymbol = symbol.StringSymbol('src')

@@ -25,9 +25,10 @@ class Symbol:
     return "<abstract symbol %s>"%(self._id,)
 
 class StringSymbol(Symbol):
-  def __init__(self, s):
+  def __init__(self, s, infix = None):
     self._generate_id()
     self._string = s
+    self.infix = infix
 
   def __repr__(self):
     return self._string
