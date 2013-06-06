@@ -67,4 +67,7 @@ proof = proof.forwardFollow(lambda p:
                       p.advance().forwardFollow(lambda p:
                         p.advance())))))))
 
-print [B for (B,A) in proof.arrow.tgt.universalIn([a, b])]
+#print [B for (B,A) in proof.arrow.tgt.universalIn([a, b])]
+#print proof.arrow.tgt.importables_universalIn([a, b])
+proof = proof.forwardFollow(lambda p:
+    p.universalIn([a])[1])

@@ -267,9 +267,11 @@ class Path:
     assert(not path.covariant())
     path_arrow = path.identity()
     for v in variables:
+      assert(path_arrow.src == self)
       if path.object.__class__ == basic.Exists:
-        path_arrow = path.forwardOnPathFollow(lambda x:
-            x.backwardIntroExists(v))
+        path_arrow = path_arrow.forwardFollow(lambda p, v=v:
+            p.forwardOnPathFollow(lambda x, v=v:
+              x.backwardIntroExists(v)))
         path = path_arrow.tgt
       else:
         return PathArrowList()
@@ -360,7 +362,7 @@ class PathArrowList:
   def forwardFollowWithValues(self, values, f):
     return PathArrowList([X
       for value in values
-      for X in self.forwardFollow(lambda path: f(value, path))])
+      for X in self.forwardFollow(lambda path, value=value: f(value, path))])
 
   # like forwardFollowWithValues, but as if values were equal to a list of all importable claims.
   # TODO: Consider passing extra arguments that allow for caching or better filtering so as
@@ -368,7 +370,7 @@ class PathArrowList:
   def forwardFollowWithImports(self, f):
     return PathArrowList([A.forwardCompose(B).forwardCompose(C)
       for A in self
-      for (b, nt, C) in A.tgt.functor.importFiltered(lambda x:
+      for (b, nt, C) in A.tgt.functor.importFiltered(lambda x, A=A:
         f(x, Path(functor = A.tgt.functor, object = basic.And(x, A.tgt.object))).arrows)
       for B in [Arrow(src = A.tgt, tgt = C.src, arrow = nt(A.tgt.object))] ])
 
@@ -523,11 +525,10 @@ class Composite(Endofunctor):
     assert(self.right.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
                    for B, nt, X in self.left.importFiltered(f)])
-    a = len(result)
     # F o G --> F o ((B|.) o G) --> (B|.) o F o G
-    result.extend([(B, lambda x: nt(self.left.onObject(x)).forwardCompose(
+    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(x)).forwardCompose(
                                  self.right.onArrow(self.left._import(B)(x))), X)
                     for B, nt, X in self.right.importFiltered(f)])
     return result
@@ -537,10 +538,10 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # F o G --> ((B|.) o F) o G
-    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
                    for B, nt, X in self.left.exportFiltered(f)])
     # F o G --> ((B|.) o F o (B|.)) o G = ((B|.) o F) o ((B|.) o G) --> ((B|.) o F) o G
-    result.extend([(B, lambda x: self.right.onArrow(self.left._export(B)(x)).forwardCompose(
+    result.extend([(B, lambda x, B=B, nt=nt: self.right.onArrow(self.left._export(B)(x)).forwardCompose(
                                 nt(self.left.onObject(basic.And(B, x)))), X)
                    for B, nt, X in self.right.exportFiltered(f)])
     return result
@@ -562,10 +563,10 @@ class Composite(Endofunctor):
     assert(not self.left.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
                    for B, nt, X in self.left.exportFiltered(f)])
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
-    result.extend([(B, lambda x: nt(self.left.onObject(basic.And(B, x))).forwardCompose(
+    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(basic.And(B, x))).forwardCompose(
                                  self.right.onArrow(self.left._export(B)(x))), X)
                    for B, nt, X in self.right.importFiltered(f)])
     return result
@@ -575,10 +576,10 @@ class Composite(Endofunctor):
     assert(not self.right.covariant())
     result = []
     # (B|.) o F o G --> F o G
-    result.extend([(B, lambda x: self.right.onArrow(nt(x)), X)
+    result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
                    for B, nt, X in self.left.importFiltered(f)])
     # (B|.) o F o G --> F o (B|.) o G --> F o G
-    result.extend([(B, lambda x: self.right.onArrow(self.left._import(B)(x)).forwardCompose(
+    result.extend([(B, lambda x, B=B, nt=nt: self.right.onArrow(self.left._import(B)(x)).forwardCompose(
                                  nt(self.left.onObject(x))), X)
                    for B, nt, X in self.right.exportFiltered(f)])
     return result
@@ -676,7 +677,7 @@ class And(Conjunction):
   def importFiltered(self, f):
     if self.side == left:
       # (X|A) --> (X|(B|A)) --> ((X|B)|A) --> ((B|X)|A)
-      return [(a.tgt.left, lambda x:
+      return [(a.tgt.left, lambda x, a=a:
         self.onObject(x).forwardOnRight(a).forwardFollow(lambda x:
           x.forwardAssociateOther().forwardFollow(lambda x:
             x.forwardOnLeftFollow(lambda x:
@@ -684,7 +685,7 @@ class And(Conjunction):
     else:
       # (A|X) --> ((B|A)|X) --> ((A|B)|X) --> (A|(B|X))
       assert(self.side == right)
-      return [(a.tgt.left, lambda x:
+      return [(a.tgt.left, lambda x, a=a:
         self.onObject(x).forwardOnLeft(a.forwardFollow(lambda x:
           x.forwardCommute())).forwardFollow(lambda x:
             x.forwardAssociate()), X) for a, X in self.other.produceFiltered(f)]

@@ -57,6 +57,9 @@ class Object:
   def backwardRemoveExists(self, variable):
     return RemoveExists(src = Exists(variable = variable, value = self), tgt = self)
 
+  def forwardHide(self, name):
+    return Hide(src = self, tgt = Hidden(self, name))
+
   def identity(self):
     return Id(src = self, tgt = self)
 
@@ -252,7 +255,7 @@ class Exists(Object):
   #   B == Always(C) for some C
   def produceFiltered(self, f):
     # Exists xs. X --> Exists xs. (B|X) --> (B|Exists xs.X)
-    return [(self.forwardOnBody(a).forwardFollow(lambda x:
+    return [(self.forwardOnBody(a).forwardFollow(lambda x, B=B:
                                    AndPastExists(src = And(B, self), tgt = x).invert()), X)
             for a, X in self.value.produceFiltered(f)
             for B in [a.tgt.left]
@@ -333,6 +336,8 @@ class Conjunction(Object):
   def forwardOnConjunction(self, leftArrow, rightArrow):
     assert(isinstance(leftArrow, Arrow))
     assert(isinstance(rightArrow, Arrow))
+    assert(leftArrow.src == self.left)
+    assert(rightArrow.src == self.right)
     return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
         src = self,
         tgt = self.__class__(left = leftArrow.tgt,
@@ -344,6 +349,7 @@ class Conjunction(Object):
                              right = rightArrow.src))
   def forwardOnLeft(self, arrow):
     assert(isinstance(arrow, Arrow))
+    assert(arrow.src == self.left)
     return self.forwardOnConjunction(leftArrow = arrow, rightArrow = self.right.identity())
   def forwardOnRight(self, arrow):
     assert(isinstance(arrow, Arrow))
@@ -527,6 +533,10 @@ class Iff(Object):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def __eq__(self, other):
+    return other.__class__ == Iff and self.left == other.left and self.right == other.right
+  def __ne__(self, other):
+    return not(self == other)
   def translate(self):
     return ExpandIff(self.left.translate(), self.right.translate())
   def updateVariables(self):
@@ -542,12 +552,22 @@ class Hidden(Object):
   def __init__(self, base, name):
     self.base = base
     self.name = name
+
+  def __eq__(self, other):
+    return other.__class__ == Hidden and self.base == other.base
+  def __ne__(self, other):
+    return not(self == other)
   # f is a function taking each object B to a list ys
   # return a list of all pairs (a, X) such that
   #   a is an arrow self -> B|self
   #   X is in f(B)
   #   B == Always(C) for some C
   def produceFiltered(self, f):
+    # Hidden(X) --> X --> B|X --> B|Hidden(X)
+    return [(self.forwardUnhide().forwardCompose(a).forwardFollow(lambda x:
+                  x.forwardOnRightFollow(lambda x: x.forwardHide(self.name))), X)
+            for a, X in self.base.produceFiltered(f)]
+
     return self.base.produceFiltered(f)
   def translate(self):
     return self.base.translate()
@@ -557,6 +577,8 @@ class Hidden(Object):
     return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
   def freeVariables(self):
     return self.base.freeVariables()
+  def forwardUnhide(self):
+    return Hide(src = self.base, tgt = self).invert()
 
 class Not(Object):
   def __init__(self, value, rendered = False):
@@ -895,6 +917,12 @@ class Composite(Arrow):
 
   def __ne__(self, other):
     return not(self == other)
+
+# X <--> Hidden(X)
+class Hide(Isomorphism):
+  def validate(self):
+    assert(self.tgt.__class__ == Hidden)
+    assert(self.src == self.tgt.base)
 
 # A | (B - C) --> (A | B) - (A | C)
 class Distribute(Arrow):
