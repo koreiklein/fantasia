@@ -55,6 +55,7 @@ class Object:
     return IntroExists(src = self,
         tgt = Exists(variable = variable, value = self.substituteVariable(oldVariable, variable)))
   def backwardRemoveExists(self, variable):
+    assert(variable not in self.freeVariables())
     return RemoveExists(src = Exists(variable = variable, value = self), tgt = self)
 
   def forwardHide(self, name):
@@ -274,6 +275,7 @@ class Exists(Object):
     return self.backwardOnBody(f(self.value))
 
   def forwardRemoveExists(self):
+    assert(self.variable not in self.value.freeVariables())
     return RemoveExists(src = self, tgt = self.value)
   def backwardIntroExists(self, newVariable):
     return IntroExists(src = self.value.substituteVariable(self.variable, newVariable), tgt = self)
