@@ -288,10 +288,7 @@ def renderHolds(x, covariant):
                               , renderVariable(x.holding)],
                               spacing = distances.holdsSpacing)
 
-  if covariant:
-    return holds
-  else:
-    return renderNotWithSymbol(holds)
+  return holds
 
 def renderProjectionVariable(v):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
