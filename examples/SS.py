@@ -74,3 +74,6 @@ proof = proof.forwardFollow(lambda p:
 #print proof.arrow.tgt.importables_universalIn([a, b])
 proof = proof.forwardFollow(lambda p:
     p.universalIn([a])[2])
+
+proof = proof.forwardFollow(lambda p:
+    p.liftExists())

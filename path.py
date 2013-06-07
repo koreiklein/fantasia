@@ -32,6 +32,23 @@ class Endofunctor:
   def _export(self, B):
     raise Exception("Abstract superclass.")
 
+  # return a (its tgt, function represention some natural transform:
+  #   (Exists variable .) o F -> G o (Exists variable .) o H such that
+  #   G o H = F and H is as small as reasonably possible.)
+  def liftExists(self, variable):
+    nt = self.liftExistsFull(variable)
+    if nt is None:
+      return ( Exists(variable).compose(self)
+             , (lambda x: self.onObject(basic.Exists(variable, x)).identity()))
+    else:
+      return (self.compose(Exists(variable)), nt)
+
+  # return a function represention some natural transform:
+  #   (Exists variable .) o F -> F o (Exists variable .)
+  # or None if no such function exists.
+  def liftExistsFull(self, variable):
+    return None
+
   def onObject(self, object):
     raise Exception("Abstract superclass.")
   def onArrow(self, arrow):
@@ -65,6 +82,16 @@ class Path:
 
   def __eq__(self, other):
     return self.bottom() == other.bottom() and self.top() == other.top()
+
+  # self must be covariant.
+  # self.bottom() must be an exists.
+  # return: a path arrow that lifts the exists as far as possible.
+  def liftExists(self):
+    assert(self.covariant())
+    assert(self.object.__class__ == basic.Exists)
+    (tgt, nt) = self.functor.liftExists(self.object.variable)
+    return Arrow(src = self, tgt = Path(object = self.object.value, functor = tgt),
+        arrow = nt(self.object.value))
 
   def variables(self):
     return self.functor.variables()
@@ -425,6 +452,12 @@ class Always(Endofunctor):
             x.forwardCojoin()).forwardFollow(lambda x:
               x.forwardZip()))
 
+  # return a function represention some natural transform:
+  #   (Exists variable .) o F -> F o (Exists variable .)
+  # or None if no such function exists.
+  def liftExistsFull(self, variable):
+    return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAlwaysPastExists())
+
   def variables(self):
     return []
   def onObject(self, object):
@@ -487,6 +520,48 @@ class Composite(Endofunctor):
 
   def __repr__(self):
     return "%s\no\n%s"%(self.left, self.right)
+
+  def liftExistsFull(self, variable):
+    (extent, nt) = self._liftExists(variable)
+    if extent == 'partial':
+      return None
+    else:
+      assert(extent == 'full')
+      return nt
+
+  def liftExists(self, variable):
+    (extent, x) = self._liftExists(variable)
+    if extent == 'partial':
+      (tgt, nt) = x
+      assert(tgt.onObject(basic.true) == nt(basic.true).tgt)
+      return (tgt, nt)
+    else:
+      assert(extent == 'full')
+      nt = x
+      return (self.compose(Exists(variable)), nt)
+
+  # return either:
+  #   ('full', nt) for a full lift
+  #   ('partial', (tgt, nt)) for a partial lift
+  def _liftExists(self, variable):
+    nt0 = self.left.liftExistsFull(variable)
+    if nt0 is not None:
+      nt1 = self.right.liftExistsFull(variable)
+      if nt1 is not None:
+        # (Exists v.) o F o G -> F o (Exists v.) o G -> F o G o (Exists v.)
+        return ('full', lambda x:
+                          self.right.onArrow(nt0(x)).forwardCompose(nt1(self.left.onObject(x))))
+      else:
+        # (Exists v.) o F o G -> F o (Exists v.) o G -> F o (H o (Exists v.) o K)
+        (tgt, partialRightNt) = self.right.liftExists(variable)
+        return ('partial', ( self.left.compose(tgt)
+                           , lambda x: self.right.onArrow(nt0(x)).forwardCompose(partialRightNt(self.left.onObject(x)))))
+    else:
+      # (Exists v.) o F o G -> (H o (Exists v.) o K) o G
+      (tgt, partialLeftNt) = self.left.liftExists(variable)
+      return ('partial', ( tgt.compose(self.right)
+                         , lambda x: self.right.onArrow(partialLeftNt(x))))
+
   def _import(self, B):
     if self.right.covariant():
       assert(self.left.covariant())
@@ -654,6 +729,18 @@ class And(Conjunction):
 
   def stringDivider(self):
     return "|"
+
+  # return a function represention some natural transform:
+  #   (Exists variable .) o F -> G o (Exists variable .) o H such that
+  #   G o H = F and H is as small as reasonably possible.
+  def liftExistsFull(self, variable):
+    if self.side == left:
+      # (Exists variable .) o (.|B) -> (.|B) o (Exists variable .)
+      return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExistsOther())
+    else:
+      assert(self.side == right)
+      # (Exists variable .) o (B|.) -> (B|.) o (Exists variable .)
+      return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExists())
 
   def _import(self, B):
     bAnd = And(side = right, other = B)

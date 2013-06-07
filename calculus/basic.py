@@ -459,9 +459,17 @@ class And(Conjunction):
   def forwardAndPastExists(self):
     # (A|Exists xs. B) --> Exists xs. (A|B)
     assert(self.right.__class__ == Exists)
+    v = self.right.variable.updateVariables()
     return AndPastExists(src = self,
         tgt = Exists(variable = self.right.variable,
           value = And(left = self.left, right = self.right.value)))
+
+  def forwardAndPastExistsOther(self):
+    # (Exists xs. A|B) --> Exists xs. (A|B)
+    return self.forwardCommute().forwardFollow(lambda x:
+        x.forwardAndPastExists().forwardFollow(lambda x:
+          x.forwardOnBodyFollow(lambda x:
+            x.forwardCommute())))
 
   def forwardDistibute(self):
     # A | (B - C) --> (A | B) - (A | C)
@@ -677,6 +685,11 @@ class Always(Object):
 
   def forwardCopy(self):
     return Copy(src = self, tgt = And(self, self))
+
+  def forwardAlwaysPastExists(self):
+    # !(Exists x . B) --> Exists x . !B
+    assert(self.value.__class__ == Exists)
+    return AlwaysPastExists(src = self, tgt = Exists(self.value.variable, Always(self.value.value)))
 
   # !(A|B) --> !A | !B
   def forwardDistributeAlways(self):
@@ -1073,6 +1086,17 @@ class AndPastExists(Isomorphism):
     assert(self.tgt.value.__class__ == And)
     assert(self.src.left == self.tgt.value.left)
     assert(self.src.right.variable == self.tgt.variable)
+
+# !(Exists x . B) --> Exists x . !B
+class AlwaysPastExists(Isomorphism):
+  def arrowTitle(self):
+    return "AlwaysPastExists"
+  def validate(self):
+    assert(self.src.__class__ == Always)
+    assert(self.src.value.__class__ == Exists)
+    assert(self.tgt.__class__ == Exists)
+    assert(self.tgt.value.__class__ == Always)
+    assert(self.src.value.value == self.tgt.value.value)
 
 # Exists x . A --> A
 class RemoveExists(Arrow):
