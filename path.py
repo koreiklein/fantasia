@@ -36,18 +36,20 @@ class Endofunctor:
   #   (Exists variable .) o F -> G o (Exists variable .) o H such that
   #   G o H = F and H is as small as reasonably possible.)
   def liftExists(self, variable):
-    nt = self.liftExistsFull(variable)
-    if nt is None:
-      return ( Exists(variable).compose(self)
-             , (lambda x: self.onObject(basic.Exists(variable, x)).identity()))
+    (extent, x) = self._liftExists(variable)
+    if extent == 'partial':
+      return x
     else:
+      assert(extent == 'full')
+      nt = x
       return (self.compose(Exists(variable)), nt)
 
-  # return a function represention some natural transform:
-  #   (Exists variable .) o F -> F o (Exists variable .)
-  # or None if no such function exists.
-  def liftExistsFull(self, variable):
-    return None
+  # return either:
+  #   ('full', nt) for a full lift
+  #   ('partial', (tgt, nt)) for a partial lift
+  def _liftExists(self, variable):
+    return ('partial', ( Exists(variable).compose(self)
+                       , lambda x: self.onObject(basic.Exists(variable, x)).identity()))
 
   def onObject(self, object):
     raise Exception("Abstract superclass.")
@@ -452,11 +454,11 @@ class Always(Endofunctor):
             x.forwardCojoin()).forwardFollow(lambda x:
               x.forwardZip()))
 
-  # return a function represention some natural transform:
-  #   (Exists variable .) o F -> F o (Exists variable .)
-  # or None if no such function exists.
-  def liftExistsFull(self, variable):
-    return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAlwaysPastExists())
+  # return either:
+  #   ('full', nt) for a full lift
+  #   ('partial', (tgt, nt)) for a partial lift
+  def _liftExists(self, variable):
+    return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAlwaysPastExists())
 
   def variables(self):
     return []
@@ -521,46 +523,30 @@ class Composite(Endofunctor):
   def __repr__(self):
     return "%s\no\n%s"%(self.left, self.right)
 
-  def liftExistsFull(self, variable):
-    (extent, nt) = self._liftExists(variable)
-    if extent == 'partial':
-      return None
-    else:
-      assert(extent == 'full')
-      return nt
-
-  def liftExists(self, variable):
-    (extent, x) = self._liftExists(variable)
-    if extent == 'partial':
-      (tgt, nt) = x
-      assert(tgt.onObject(basic.true) == nt(basic.true).tgt)
-      return (tgt, nt)
-    else:
-      assert(extent == 'full')
-      nt = x
-      return (self.compose(Exists(variable)), nt)
-
   # return either:
   #   ('full', nt) for a full lift
   #   ('partial', (tgt, nt)) for a partial lift
   def _liftExists(self, variable):
-    nt0 = self.left.liftExistsFull(variable)
-    if nt0 is not None:
-      nt1 = self.right.liftExistsFull(variable)
-      if nt1 is not None:
-        # (Exists v.) o F o G -> F o (Exists v.) o G -> F o G o (Exists v.)
-        return ('full', lambda x:
-                          self.right.onArrow(nt0(x)).forwardCompose(nt1(self.left.onObject(x))))
-      else:
-        # (Exists v.) o F o G -> F o (Exists v.) o G -> F o (H o (Exists v.) o K)
-        (tgt, partialRightNt) = self.right.liftExists(variable)
-        return ('partial', ( self.left.compose(tgt)
-                           , lambda x: self.right.onArrow(nt0(x)).forwardCompose(partialRightNt(self.left.onObject(x)))))
-    else:
-      # (Exists v.) o F o G -> (H o (Exists v.) o K) o G
-      (tgt, partialLeftNt) = self.left.liftExists(variable)
+    (extent0, x0) = self.left._liftExists(variable)
+    if extent0 == 'partial':
+      (tgt, nt) = x0
       return ('partial', ( tgt.compose(self.right)
-                         , lambda x: self.right.onArrow(partialLeftNt(x))))
+                       , lambda x: self.right.onArrow(nt(x))))
+    else:
+      assert(extent0 == 'full')
+      nt0 = x0
+      (extent1, x1) = self.right._liftExists(variable)
+      if extent1 == 'partial':
+        (tgt, nt1) = x1
+        # (Exists x.) o F o G -> F o (Exists x.) o G -> F o (H o (Exists x.) o K)
+        return ('partial', ( self.left.compose(tgt)
+                         , lambda x: self.right.onArrow(nt0(x)).forwardCompose(
+                             nt1(self.left.onObject(x)))))
+      else:
+        assert(extent1 == 'full')
+        # (Exists x.) o F o G -> F o (Exists x.) o G -> F o G o (Exists x.)
+        return ('full', lambda x: self.right.onArrow(nt0(x)).forwardCompose(
+                          nt1(self.left.onObject(x))))
 
   def _import(self, B):
     if self.right.covariant():
