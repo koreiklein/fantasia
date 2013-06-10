@@ -4,14 +4,21 @@ from calculus import basic, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 from ui.stack import stack
+from lib.common_symbols import inputSymbol, outputSymbol
 
-def render(x, covariant = True):
+# bindings: a dictionary mapping certain variables to stacks that should be used to
+# render them.
+def render(x, covariant, bindings):
   if isinstance(x, basic.Conjunction):
-    return renderConjunction(x, covariant = covariant)
+    return renderConjunction(x, covariant = covariant, bindings = bindings)
   elif x.__class__ == basic.Exists:
     variables = []
     while x.__class__ == basic.Exists:
-      variables.append(x.variable)
+      bound = tryBind(x.value, x.variable)
+      if bound is not None:
+        bindings = _addBinding(bindings, x.variable, bound)
+      else:
+        variables.append(x.variable)
       x = x.value
     renderedVariables = []
     while True:
@@ -22,7 +29,8 @@ def render(x, covariant = True):
             v = variables[i]
             if x.left.value.held == v:
               renderedVariables.append(
-                  renderVariableBinding(renderVariable(v), renderVariable(x.left.value.holding)))
+                  renderVariableBinding( renderVariable(v, bindings)
+                                       , renderVariable(x.left.value.holding, bindings)))
               x = x.right
               matched = True
               variables.pop(i)
@@ -31,23 +39,27 @@ def render(x, covariant = True):
             continue
       break
     for v in variables:
-      renderedVariables.append(renderVariable(v))
-    return renderExists(valueStack = render(x, covariant),
-        variablesList = renderedVariables,
-        covariant = covariant)
+      renderedVariables.append(renderVariable(v, bindings))
+    if len(renderedVariables) == 0:
+      return render(x, covariant, bindings)
+    else:
+      return renderExists(valueStack = render(x, covariant, bindings),
+          variablesList = renderedVariables,
+          covariant = covariant,
+          bindings = bindings)
   elif x.__class__ == basic.Iff:
     return renderIff(x, covariant = covariant)
   elif x.__class__ == basic.Hidden:
     return renderHidden(x, covariant = covariant)
   elif x.__class__ == basic.Holds:
-    return renderHolds(x, covariant = covariant)
+    return renderHolds(x, covariant = covariant, bindings = bindings)
   elif x.__class__ == basic.Not:
-    if x.rendered:
-      return renderNotWithSymbol(render(x.value, covariant))
+    if x.rendered or (x.value.__class__ == basic.Holds and covariant):
+      return renderNotWithSymbol(render(x.value, covariant, bindings))
     else:
-      return render(x.value, not covariant)
+      return render(x.value, not covariant, bindings)
   elif x.__class__ == basic.Always:
-    return renderAlways(render(x.value, covariant), covariant)
+    return renderAlways(render(x.value, covariant, bindings), covariant)
   elif x.__class__ == basic.AndUnit:
     return renderAndUnit(x, covariant = covariant)
   elif x.__class__ == basic.OrUnit:
@@ -55,24 +67,63 @@ def render(x, covariant = True):
   else:
     raise Exception("Unrecognized logic object %s of class %s"%(x,x.__class__))
 
-def renderVariable(x):
-  if x.__class__ == basic.StringVariable:
+def renderVariable(x, bindings):
+  if isinstance(x, basic.Variable) and bindings.has_key(x):
+    (inputVariable, functionVariable) = bindings[x]
+    return renderApply( renderVariable(inputVariable, bindings)
+                      , renderVariable(functionVariable, bindings))
+  elif x.__class__ == basic.StringVariable:
     return renderStringVariable(x)
   elif x.__class__ == basic.ProjectionVariable:
     return renderProjectionVariable(x)
   elif x.__class__ == basic.InjectionVariable:
-    return renderInjectionVariable(x)
+    return renderInjectionVariable(x, bindings)
   elif x.__class__ == basic.ProductVariable:
-    return renderProductVariable(x)
+    return renderProductVariable(x, bindings)
   else:
     raise Exception("Unrecognized logic object %s"%(x,))
 
 def renderApply(x, f):
   return stack.stackAll(0, [x, primitives.apply(), f], spacing = distances.applySpacing)
 
-def renderConjunction(x, covariant = True):
-  left = render(x.left, covariant)
-  right = render(x.right, covariant)
+# return: The pair (a, F) such that ({input : a, output : x} : F) occurs "at the top of" formula.
+#         or None if no such pair exists.
+def tryBind(formula, v):
+  if (formula.__class__ == basic.Holds and
+      formula.held.__class__ == basic.ProductVariable and
+      len(formula.held.symbol_variable_pairs) == 2 and
+      (outputSymbol, v) in formula.held.symbol_variable_pairs):
+    for symbol, variable in formula.held.symbol_variable_pairs:
+      if symbol == inputSymbol:
+        return (variable, formula.holding)
+    raise Exception("Should always find an inputSymbol when you find an inputSymbol.")
+  elif formula.__class__ == basic.And:
+    result = tryBind(formula.left, v)
+    return (result if result is not None else tryBind(formula.right, v))
+  elif formula.__class__ == basic.Always:
+    return tryBind(formula.value, v)
+  elif formula.__class__ == basic.Exists:
+    return tryBind(formula.value, v)
+  else:
+    return None
+
+def renderConjunction(x, covariant, bindings):
+  if x.__class__ == basic.And:
+    free = x.freeVariables()
+    for v in free:
+      if not bindings.has_key(v):
+        bound = tryBind(x, v)
+        if bound is not None:
+          bindings = _addBinding(bindings, v, bound)
+    if _isUnnecessaryInputOutputRelation(x.left, bindings):
+      return render(x.right, covariant, bindings)
+    elif _isUnnecessaryInputOutputRelation(x.right, bindings):
+      return render(x.left, covariant, bindings)
+    else:
+      # TODO: This construct is a mess.  Use something cleaner.
+      pass # Pass through to the below code.
+  left = render(x.left, covariant, bindings)
+  right = render(x.right, covariant, bindings)
   if x.right == basic.unit_for_conjunction(x.__class__):
     return left
   #elif x.left == basic.unit_for_conjunction(x.__class__):
@@ -109,16 +160,6 @@ def renderTriple(dimension, left, middle, right):
           right,
           spacing = distances.divider_spacing)
 
-def renderIntersect(x, covariant = True):
-  res = renderTripleCentered(dimension = _dimension_for_variance(covariant = True),
-      left = render(x.left, True),
-      middle = primitives.intersectDivider(True),
-      right = render(x.right, True))
-  if covariant:
-    return res
-  else:
-    return renderNotWithSymbol(res)
-
 def renderAnd(left, right, covariant):
   return renderTriple(dimension = _dimension_for_variance(covariant),
       left = left,
@@ -131,14 +172,11 @@ def renderOr(left, right, covariant):
       middle = primitives.orDivider(covariant),
       right = right)
 
-def renderNot(value, covariant):
-  return render(value, not variant)
-
 def renderNotWithSymbol(value):
   return primitives.notSymbol(value.widths()[:2]).below(
       value.shift(distances.notShiftOffset))
 
-def renderExists(valueStack, variablesList, covariant):
+def renderExists(valueStack, variablesList, covariant, bindings):
   quantifierStackingDimension = _dimension_for_variance(covariant)
   variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
   if len(variablesList) == 0:
@@ -163,32 +201,6 @@ def renderVariableBinding(variable, domain):
       spacing = distances.variable_binding_spacing).stackCentered(0, domain,
           spacing = distances.variable_binding_spacing)
 
-def _renderVariableBinding(variable, unique, domain, covariant):
-  dimension = 0
-  if unique:
-    c = '!'
-  else:
-    c = ':'
-  middleStack = gl.newTextualGLStack(colors.variableColor, c)
-  return variable.stack(dimension,
-      middleStack,
-      spacing = distances.variable_binding_spacing).stackCentered(dimension,
-          domain,
-          spacing = distances.variable_binding_spacing)
-
-def _renderVariableBinding(binding, covariant = True):
-  dimension = 0
-  if binding.unique:
-    c = '!'
-  else:
-    c = ':'
-  middleStack = gl.newTextualGLStack(colors.variableColor, c)
-  return renderVariable(binding.variable).stack(dimension,
-      middleStack,
-      spacing = distances.variable_binding_spacing).stackCentered(dimension,
-          renderVariable(binding.equivalence),
-          spacing = distances.variable_binding_spacing)
-
 def renderAlways(value, covariant):
   return renderWithBackground( value
                              , distances.exponential_border_width
@@ -200,11 +212,13 @@ def renderWithBackground(s, border_width, color):
   return primitives.solidSquare(color, widths).stackCentered(2, s,
       spacing = distances.epsilon )
 
-def renderAndUnit(x, covariant = True):
-  return primitives.trueDivider(distances.min_unit_divider_length)
+def renderAndUnit(x, covariant):
+  return (primitives.trueDivider(distances.min_unit_divider_length) if covariant
+          else primitives.falseDivider(distances.min_unit_divider_length))
 
-def renderOrUnit(x, covariant = True):
-  return primitives.falseDivider(distances.min_unit_divider_length)
+def renderOrUnit(x, covariant):
+  return (primitives.falseDivider(distances.min_unit_divider_length) if covariant
+          else primitives.trueDivider(distances.min_unit_divider_length))
 
 def renderStringVariable(x):
   return gl.newTextualGLStack(colors.variableColor, repr(x))
@@ -223,7 +237,7 @@ def renderSymbol(s):
 def renderStringSymbol(s):
   return gl.newTextualGLStack(colors.symbolColor, repr(s))
 
-def renderCall(x, covariant = True):
+def renderCall(x, covariant):
   res = render(x.left, True).stack(0,
       primitives.callDot,
       spacing = distances.callSpacing).stack(0,
@@ -261,12 +275,50 @@ def getInfix(holds):
   else:
     return None
 
-def renderHolds(x, covariant):
+# x: a basic.ProductVariable
+# return: (inputVariable, outputVariable) if possible otherwise None
+def _getInputAndOutputVariables(x):
+  assert(x.__class__ == basic.ProductVariable)
+  if len(x.symbol_variable_pairs) == 2:
+    if x.symbol_variable_pairs[0][0] == inputSymbol:
+      assert(x.symbol_variable_pairs[1][0] == outputSymbol)
+      return (x.symbol_variable_pairs[0][1], x.symbol_variable_pairs[1][1])
+    elif x.symbol_variable_pairs[0][0] == outputSymbol:
+      assert(x.symbol_variable_pairs[1][0] == inputSymbol)
+      return (x.symbol_variable_pairs[1][1], x.symbol_variable_pairs[0][1])
+  return None
+
+def _isNearlyAndUnit(x):
+  return (x == basic.unit_for_conjunction(basic.And) or
+      (x.__class__ == basic.Always and _isNearlyAndUnit(x.value)))
+
+def _isUnnecessaryInputOutputRelation(formula, bindings):
+  if formula.__class__ == basic.Always:
+    return _isUnnecessaryInputOutputRelation(formula.value, bindings)
+  elif formula.__class__ == basic.And:
+    if _isNearlyAndUnit(formula.left):
+      return _isUnnecessaryInputOutputRelation(formula.right, bindings)
+    elif _isNearlyAndUnit(formula.right):
+      return _isUnnecessaryInputOutputRelation(formula.left, bindings)
+    elif (_isUnnecessaryInputOutputRelation(formula.left, bindings) and
+        _isUnnecessaryInputOutputRelation(formula.right, bindings)):
+      return True
+  if (formula.__class__ == basic.Holds and
+      formula.held.__class__ == basic.ProductVariable):
+    ioVariables = _getInputAndOutputVariables(formula.held)
+    if ioVariables is not None:
+      (inputVariable, outputVariable) = ioVariables
+      if bindings.has_key(outputVariable):
+        (boundInputVariable, boundFunctionVariable) = bindings[outputVariable]
+        if boundFunctionVariable == formula.holding:
+          return True
+  if _isNearlyAndUnit(formula):
+    return True
+  return False
+
+def renderHolds(x, covariant, bindings):
   infix = getInfix(x)
   if infix is not None:
-  #if (x.holding.__class__ == basic.StringVariable
-  #    and x.holding.infix is not None
-  #    and x.held.__class__ == basic.ProductVariable):
     (firstSymbol, secondSymbol) = infix
     assert(len(x.held.symbol_variable_pairs) == 2)
     (aSymbol, aVariable) = x.held.symbol_variable_pairs[0]
@@ -278,14 +330,14 @@ def renderHolds(x, covariant):
       assert(aSymbol == firstSymbol)
       assert(bSymbol == secondSymbol)
     # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-    holds =  stack.stackAll(0, [ renderVariable(aVariable)
-                               , renderVariable(x.holding)
-                               , renderVariable(bVariable)],
+    holds =  stack.stackAll(0, [ renderVariable(aVariable, bindings)
+                               , renderVariable(x.holding, bindings)
+                               , renderVariable(bVariable, bindings)],
                                spacing = distances.infixSpacing)
   else:
-    holds = stack.stackAll(0, [ renderVariable(x.held)
+    holds = stack.stackAll(0, [ renderVariable(x.held, bindings)
                               , primitives.holds()
-                              , renderVariable(x.holding)],
+                              , renderVariable(x.holding, bindings)],
                               spacing = distances.holdsSpacing)
 
   return holds
@@ -293,8 +345,8 @@ def renderHolds(x, covariant):
 def renderProjectionVariable(v):
   return gl.newTextualGLStack(colors.variableColor, repr(v))
 
-def renderInjectionVariable(v):
-  return renderSymbolVariablePair(renderSymbol(v.symbol), renderVariable(v.variable),
+def renderInjectionVariable(v, bindings):
+  return renderSymbolVariablePair(renderSymbol(v.symbol), renderVariable(v.variable, bindings),
       colors.injectionSymbolBackgroundColor,
       colors.injectionVariableBackgroundColor)
 
@@ -311,13 +363,18 @@ def renderSymbolVariablePair(s, v, c0, c1):
                         distances.variableBackgroundBorderWidth, c1)
                     , distances.productVariableBorder)
 
-def renderProductVariable(productVariable):
+def renderProductVariable(productVariable, bindings):
   symbolVariablePairs = []
   for i in range(len(productVariable.symbol_variable_pairs)):
     (s,v) = productVariable.symbol_variable_pairs[i]
     (c0, c1) = colors.productPairsColor(i)
     symbolVariablePairs.append(renderSymbolVariablePair(renderSymbol(s),
-      renderVariable(v), c0, c1))
+      renderVariable(v, bindings), c0, c1))
   return stack.stackAll(0, symbolVariablePairs,
       spacing = distances.productVariableHorizontalSpacing)
+
+def _addBinding(bindings, key, value):
+  result = dict(bindings)
+  result[key] = value
+  return result
 

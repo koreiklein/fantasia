@@ -79,6 +79,10 @@ class Path:
     self.functor = functor
     self.object = object
 
+  def simplify(self):
+    arrow = self.top().simplify()
+    return Arrow(src = self, tgt = new_path(arrow.tgt), arrow = arrow)
+
   def __repr__(self):
     return "PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(self.object, self.functor)
 

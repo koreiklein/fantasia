@@ -38,5 +38,5 @@ def run(proof):
   glLoadIdentity()
   glOrtho(0.0, w + 0.0, 0.0, h + 0.0, -1.0, 1.0)
   glScale(scale, scale, scale)
-  startingStack = render(proof.tgt.top())
+  startingStack = render(proof.tgt.top(), covariant = True, bindings = {})
   glutMainLoop()

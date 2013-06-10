@@ -75,5 +75,8 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.universalIn([a])[2])
 
+x = proof.arrow.tgt.top()
+
 proof = proof.forwardFollow(lambda p:
-    p.liftExists())
+    p.liftExists().forwardFollow(lambda p:
+      p.simplify()))

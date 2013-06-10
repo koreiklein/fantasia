@@ -3,6 +3,8 @@
 from calculus import symbol, basic
 from lib import equivalence, library, common_vars, common_symbols, function
 
+from common_symbols import inputSymbol, outputSymbol
+
 natural = basic.StringVariable('N')
 
 smaller = symbol.StringSymbol('smaller')
@@ -10,15 +12,13 @@ greater = symbol.StringSymbol('greater')
 natural_less = basic.StringVariable('<', infix = (smaller, greater))
 
 natural_successor = basic.StringVariable('S')
-before = symbol.StringSymbol('before')
-after = symbol.StringSymbol('after')
 
 def Natural(n):
   return basic.Always(equivalence.InDomain(n, natural))
 
 def Successor(a, b):
   return basic.Always(
-      basic.Holds(basic.ProductVariable([(before, a), (after, b)]), natural_successor))
+      basic.Holds(basic.ProductVariable([(inputSymbol, a), (outputSymbol, b)]), natural_successor))
 
 def Equal(a, b):
   return equivalence.EqualUnder(a, b, natural)
@@ -39,7 +39,7 @@ successorIsFunction = function.IsFunction(natural_successor_function)
 a = common_vars.a()
 b = common_vars.b()
 successorIsGreater = basic.MultiBoundedForall([(a, natural)],
-    basic.MultiBoundedExists([(b, natural)],
+    basic.MultiExists([b],
       basic.MultiAnd([Successor(a, b), Less(a, b)])))
 
 zero = basic.StringVariable('zero')

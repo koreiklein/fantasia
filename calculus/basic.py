@@ -5,9 +5,8 @@ from calculus import symbol
 from sets import Set
 
 class Object:
-  # Always returns a "basic" object.
-  def translate(self):
-    raise Exception("Abstract superclass.")
+  def simplify(self):
+    return self.identity()
 
   # f is a function taking each object B to a list ys
   # return a list of all pairs (a, X) such that
@@ -234,6 +233,9 @@ class Exists(Object):
     self.variable = variable
     self.value = value
 
+  def simplify(self):
+    return OnBody(self.variable, self.value.simplify())
+
   def __eq__(self, other):
     return (self.__class__ == other.__class__
         and self.variable == other.variable
@@ -323,6 +325,9 @@ class Conjunction(Object):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+
+  def simplify(self):
+    return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
@@ -445,6 +450,16 @@ class And(Conjunction):
           x.forwardAssociate()), X) for a, X in self.left.produceFiltered(f)])
     return result
 
+  def simplify(self):
+    if self.left == unit_for_conjunction(And):
+      return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
+          x.simplify())
+    elif self.right == unit_for_conjunction(And):
+      return UnitIdentity(tgt = self, src = self.left).invert().forwardFollow(lambda x:
+          x.simplify())
+    else:
+      return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
+
   def forwardApply(self):
     assert(self.right.__class__ == Not)
     assert(self.right.value.__class__ == And)
@@ -509,6 +524,16 @@ class And(Conjunction):
 class Or(Conjunction):
   def __repr__(self):
     return "(%s OR %s)"%(self.left, self.right)
+
+  def simplify(self):
+    if self.left == unit_for_conjunction(Or):
+      return UnitIdentity(src = self, tgt = self.right).forwardFollow(lambda x:
+          x.simplify())
+    elif self.right == unit_for_conjunction(Or):
+      return UnitIdentity(src = self, tgt = self.left).forwardFollow(lambda x:
+          x.simplify())
+    else:
+      return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
   def backwardAdmitLeft(self):
     return Admit(tgt = self, src = self.right)
@@ -595,6 +620,9 @@ class Not(Object):
     self.value = value
     self.rendered = rendered
 
+  def simplify(self):
+    return self.forwardOnNot(self.value.simplify().invert())
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
@@ -645,6 +673,9 @@ class Not(Object):
 class Always(Object):
   def __init__(self, value):
     self.value = value
+
+  def simplify(self):
+    return self.forwardOnAlways(self.value.simplify())
 
   # f is a function taking each object B to a list ys
   # return a list of all pairs (a, X) such that
@@ -817,7 +848,7 @@ class InverseArrow(Isomorphism):
     return InverseArrow(arrow = self.arrow.translate())
 
 # A <--> A
-class Id(Arrow):
+class Id(Isomorphism):
   def arrowTitle(self):
     return "Id"
   def validate(self):
@@ -1137,6 +1168,11 @@ class OnConjunction(FunctorialArrow):
     self.src = src
     self.tgt = tgt
 
+  def invert(self):
+    return OnConjunction(src = self.tgt, tgt = self.src,
+        leftArrow = self.leftArrow.invert(), rightArrow = self.rightArrow.invert())
+
+
   def compress(self):
     left = self.leftArrow.compress()
     right = self.rightArrow.compress()
@@ -1167,6 +1203,9 @@ class OnAlways(FunctorialArrow):
     self.src = Always(arrow.src)
     self.tgt = Always(arrow.tgt)
 
+  def invert(self):
+    return OnAlways(self.arrow.invert())
+
   def arrowTitle(self):
     return "OnAlways"
 
@@ -1179,6 +1218,9 @@ class OnBody(FunctorialArrow):
     self.variable = variable
     self.src = Exists(variable, arrow.src)
     self.tgt = Exists(variable, arrow.tgt)
+
+  def invert(self):
+    return OnBody(self.variable, self.arrow.invert())
 
   def compress(self):
     arrow = self.arrow.compress()
@@ -1199,6 +1241,9 @@ class OnNot(FunctorialArrow):
     self.arrow = arrow
     self.src = Not(arrow.tgt)
     self.tgt = Not(arrow.src)
+
+  def invert(self):
+    return OnNot(self.arrow.invert())
 
   def arrowTitle(self):
     return "OnNot"
