@@ -80,3 +80,28 @@ x = proof.arrow.tgt.top()
 proof = proof.forwardFollow(lambda p:
     p.liftExists().forwardFollow(lambda p:
       p.simplify()))
+
+#print proof.arrow.tgt.top()
+def f(p):
+  print p.bottom().__class__
+  print p.bottom()
+  return p.identity()
+
+proof = proof.forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advanceLeft().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advanceLeft().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda quantifier:
+    quantifier.advance().forwardFollow(lambda p:
+      p.universalIn([quantifier.bottom().variable]))))))))))))))))))

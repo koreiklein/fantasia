@@ -51,13 +51,13 @@ zeroFirst = basic.MultiBoundedForall([(n, natural), (m, natural)],
     basic.Implies(predicate = Successor(n, m),
       consequent = basic.Not(Equal(m, zero))))
 
+allClaims = basic.MultiAnd([ successorIsGreater
+                           , naturalIsEquivalence
+                           , zeroNatural
+                           , zeroFirst
+                           , successorIsFunction])
 pre_lib = library.Library(
-    claims = [ successorIsGreater
-             , naturalIsEquivalence
-             , zeroNatural
-             , zeroFirst
-             , successorIsFunction
-              ],
+    claims = [basic.Hidden(allClaims, 'Naturals')],
     variables = [natural, zero, natural_less, natural_successor])
 
 lib = pre_lib.union(function.lib)

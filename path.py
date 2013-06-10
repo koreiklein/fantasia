@@ -84,7 +84,11 @@ class Path:
     return Arrow(src = self, tgt = new_path(arrow.tgt), arrow = arrow)
 
   def __repr__(self):
-    return "PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(self.object, self.functor)
+    if self.covariant():
+      variance = "Covariant"
+    else:
+      variance = "Contravariant"
+    return "%s PATH:\nBEGIN_WITH: %s\nAPPLY_FUNCTOR:\n%s"%(variance, self.object, self.functor)
 
   def __eq__(self, other):
     return self.bottom() == other.bottom() and self.top() == other.top()
@@ -723,14 +727,14 @@ class And(Conjunction):
   # return a function represention some natural transform:
   #   (Exists variable .) o F -> G o (Exists variable .) o H such that
   #   G o H = F and H is as small as reasonably possible.
-  def liftExistsFull(self, variable):
+  def _liftExists(self, variable):
     if self.side == left:
       # (Exists variable .) o (.|B) -> (.|B) o (Exists variable .)
-      return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExistsOther())
+      return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExistsOther())
     else:
       assert(self.side == right)
       # (Exists variable .) o (B|.) -> (B|.) o (Exists variable .)
-      return (lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExists())
+      return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExists())
 
   def _import(self, B):
     bAnd = And(side = right, other = B)

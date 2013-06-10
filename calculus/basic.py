@@ -691,6 +691,9 @@ class Always(Object):
     result.extend([(self.forwardCopy(), X) for X in f(self)])
     return result
 
+  def forwardCopy(self):
+    return Copy(src = self, tgt = And(self, self))
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
@@ -713,9 +716,6 @@ class Always(Object):
     return self.forwardOnAlways(f(self.value))
   def backwardOnAlwaysFollow(self, f):
     return self.backwardOnAlways(f(self.value))
-
-  def forwardCopy(self):
-    return Copy(src = self, tgt = And(self, self))
 
   def forwardAlwaysPastExists(self):
     # !(Exists x . B) --> Exists x . !B
