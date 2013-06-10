@@ -112,7 +112,7 @@ def iff():
   return newTextualGLStack(colors.iffColor, "<==>")
 
 def apply():
-  return newTextualGLStack(colors.applyColor, "-->")
+  return newTextualGLStack(colors.applyColor, ".")
 
 def holds():
   return newTextualGLStack(colors.applyColor, ":")
