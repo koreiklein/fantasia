@@ -683,16 +683,19 @@ class Always(Object):
   #   X is in f(B)
   #   B == Always(C) for some C
   def produceFiltered(self, f):
+    new = self.updateVariables()
     result = []
     result.extend([(self.forwardOnAlways(a).forwardFollow(lambda x:
       x.forwardDistributeAlways().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
           x.forwardUnalways()))), X) for a, X in self.value.produceFiltered(f)])
-    result.extend([(self.forwardCopy(), X) for X in f(self)])
+    result.extend([(self.forwardCopy(new), X) for X in f(new)])
     return result
 
-  def forwardCopy(self):
-    return Copy(src = self, tgt = And(self, self))
+  def forwardCopy(self, new = None):
+    if new is None:
+      new = self
+    return Copy(src = self, tgt = And(new, self))
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
@@ -1064,14 +1067,16 @@ class Cojoin(Arrow):
     assert(self.tgt.__class__ == Always)
     assert(self.src == self.tgt.value)
 
-# !A --> !A | !A
+# !A --> (!A).updateVariables() | !A
 class Copy(Arrow):
   def arrowTitle(self):
     return "Copy"
   def validate(self):
     assert(self.src.__class__ == Always)
     assert(self.tgt.__class__ == And)
-    assert(self.tgt.left == self.src)
+    # There's no easy way to check that self.tgt.left is like self.src but with variables
+    # updated.
+    # assert(self.tgt.left == self.src)
     assert(self.tgt.right == self.src)
 
 # !A | !B --> !(A|B)
