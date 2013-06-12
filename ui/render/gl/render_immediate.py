@@ -4,7 +4,7 @@ from calculus import basic, symbol
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 from ui.stack import stack
-from lib.common_symbols import inputSymbol, outputSymbol
+from lib.common_symbols import inputSymbol, outputSymbol, relationSymbol, leftSymbol, rightSymbol
 
 # bindings: a dictionary mapping certain variables to stacks that should be used to
 # render them.
@@ -14,7 +14,7 @@ def render(x, covariant, bindings):
   elif x.__class__ == basic.Exists:
     variables = []
     while x.__class__ == basic.Exists:
-      bound = tryBind(x.value, x.variable)
+      bound = tryBind(x.value, x.variable, bindings)
       if bound is not None:
         bindings = _addBinding(bindings, x.variable, bound)
       else:
@@ -88,7 +88,7 @@ def renderApply(x, f):
 
 # return: The pair (a, F) such that ({input : a, output : x} : F) occurs "at the top of" formula.
 #         or None if no such pair exists.
-def tryBind(formula, v):
+def tryBind(formula, v, bindings):
   if (formula.__class__ == basic.Holds and
       formula.held.__class__ == basic.ProductVariable and
       len(formula.held.symbol_variable_pairs) == 2 and
@@ -97,22 +97,30 @@ def tryBind(formula, v):
       if symbol == inputSymbol:
         return (variable, formula.holding)
     raise Exception("Should always find an inputSymbol when you find an inputSymbol.")
-  elif formula.__class__ == basic.And:
-    result = tryBind(formula.left, v)
-    return (result if result is not None else tryBind(formula.right, v))
-  elif formula.__class__ == basic.Always:
-    return tryBind(formula.value, v)
-  elif formula.__class__ == basic.Exists:
-    return tryBind(formula.value, v)
-  else:
-    return None
+  if (formula.__class__ == basic.Holds and
+        formula.held.__class__ == basic.ProductVariable and
+        formula.holding.__class__ == basic.ProjectionVariable and
+        formula.holding.symbol == relationSymbol):
+    (leftVariable, rightVariable) = _getLeftAndRightVariables(formula.held)
+    if rightVariable == v and bindings.has_key(leftVariable):
+      return bindings[leftVariable]
+    elif leftVariable == v and bindings.has_key(rightVariable):
+      return bindings[rightVariable]
+  if formula.__class__ == basic.And:
+    result = tryBind(formula.left, v, bindings)
+    return (result if result is not None else tryBind(formula.right, v, bindings))
+  if formula.__class__ == basic.Always:
+    return tryBind(formula.value, v, bindings)
+  if formula.__class__ == basic.Exists:
+    return tryBind(formula.value, v, bindings)
+  return None
 
 def renderConjunction(x, covariant, bindings):
   if x.__class__ == basic.And:
     free = x.freeVariables()
     for v in free:
       if not bindings.has_key(v):
-        bound = tryBind(x, v)
+        bound = tryBind(x, v, bindings)
         if bound is not None:
           bindings = _addBinding(bindings, v, bound)
     if _isUnnecessaryInputOutputRelation(x.left, bindings):
@@ -278,13 +286,19 @@ def getInfix(holds):
 # x: a basic.ProductVariable
 # return: (inputVariable, outputVariable) if possible otherwise None
 def _getInputAndOutputVariables(x):
+  return _getPair(x, (inputSymbol, outputSymbol))
+
+def _getLeftAndRightVariables(x):
+  return _getPair(x, (leftSymbol, rightSymbol))
+
+def _getPair(x, (left, right)):
   assert(x.__class__ == basic.ProductVariable)
   if len(x.symbol_variable_pairs) == 2:
-    if x.symbol_variable_pairs[0][0] == inputSymbol:
-      assert(x.symbol_variable_pairs[1][0] == outputSymbol)
+    if x.symbol_variable_pairs[0][0] == left:
+      assert(x.symbol_variable_pairs[1][0] == right)
       return (x.symbol_variable_pairs[0][1], x.symbol_variable_pairs[1][1])
-    elif x.symbol_variable_pairs[0][0] == outputSymbol:
-      assert(x.symbol_variable_pairs[1][0] == inputSymbol)
+    elif x.symbol_variable_pairs[0][0] == right:
+      assert(x.symbol_variable_pairs[1][0] == left)
       return (x.symbol_variable_pairs[1][1], x.symbol_variable_pairs[0][1])
   return None
 

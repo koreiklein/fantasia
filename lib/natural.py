@@ -38,9 +38,8 @@ successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
 b = common_vars.b()
-successorIsGreater = basic.MultiBoundedForall([(a, natural)],
-    basic.MultiExists([b],
-      basic.MultiAnd([Successor(a, b), Less(a, b)])))
+successorIsGreater = basic.MultiBoundedForall([(a, natural), (b, natural)],
+    basic.Implies(Successor(a, b), Less(a, b)))
 
 zero = basic.StringVariable('zero')
 zeroNatural = Natural(zero)
@@ -51,13 +50,17 @@ zeroFirst = basic.MultiBoundedForall([(n, natural), (m, natural)],
     basic.Implies(predicate = Successor(n, m),
       consequent = basic.Not(Equal(m, zero))))
 
-allClaims = basic.MultiAnd([ successorIsGreater
-                           , naturalIsEquivalence
-                           , zeroNatural
-                           , zeroFirst
-                           , successorIsFunction])
+allClaims = [ successorIsGreater
+            , naturalIsEquivalence
+            , zeroNatural
+            , zeroFirst
+            , successorIsFunction]
+
+naturalClaims = basic.MultiAnd(allClaims)
+
 pre_lib = library.Library(
-    claims = [basic.Hidden(allClaims, 'Naturals')],
+    #claims = [basic.Hidden(naturalClaims, 'Naturals')],
+    claims = [naturalClaims],
     variables = [natural, zero, natural_less, natural_successor])
 
 lib = pre_lib.union(function.lib)

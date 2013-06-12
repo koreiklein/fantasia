@@ -115,7 +115,8 @@ class StringVariable(Variable):
     return self._name
 
   def __repr__(self):
-    return self.name()
+    # FIXME
+    return self.name()# + str(self._id)
 
   def updateVariables(self):
     return StringVariable(self.name())
@@ -542,10 +543,13 @@ class Or(Conjunction):
 
 # Multiple conjunction will be represented (a | (b | (c | 1)))
 def multiple_conjunction(conjunction, values):
-  result = unit_for_conjunction(conjunction)
-  for value in values[::-1]:
-    result = conjunction(left = value, right = result)
-  return result
+  if len(values) == 0:
+    return unit_for_conjunction(conjunction)
+  else:
+    result = values[-1]
+    for value in values[::-1][1:]:
+      result = conjunction(left = value, right = result)
+    return result
 
 def MultiAnd(values):
   return multiple_conjunction(And, values)
@@ -557,9 +561,6 @@ def Implies(predicate, consequent):
   return Always(Not(
     value = And(left = predicate,
                 right = Not(consequent))))
-  #return Always(Not(
-  #  value = And(left = Not(Not(value = predicate, rendered = True)),
-  #                    right = Not(consequent))))
 
 def ExpandIff(left, right):
   return And(Implies(left, right), Implies(right, left))
@@ -568,6 +569,8 @@ class Iff(Object):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def __repr__(self):
+    return "Iff(\n%s\n<==>\n%s\n)"%(self.left, self.right)
   def __eq__(self, other):
     return other.__class__ == Iff and self.left == other.left and self.right == other.right
   def __ne__(self, other):
