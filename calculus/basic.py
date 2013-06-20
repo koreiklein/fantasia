@@ -238,9 +238,14 @@ class Exists(Object):
     return OnBody(self.variable, self.value.simplify())
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__
-        and self.variable == other.variable
-        and self.value == other.value)
+    if self.__class__n != other.__class__:
+      return False
+    else:
+      if self.variable == other.variable:
+        return self.value == other.value
+      else:
+        return (self.variable not in other.value.freeVariables()
+            and self.value == other.value.substituteVariable(other.variable, self.variable))
 
   def __ne__(self, other):
     return not(self == other)
