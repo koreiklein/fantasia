@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic
-from lib import common_vars
+from lib import common_vars, equivalence
 
 class Endofunctor:
   # Return a basic endofunctor
@@ -427,6 +427,39 @@ def _getSide(side, object):
   else:
     assert(side == right)
     return object.right
+
+class WellDefined(Endofunctor):
+  def __init__(self, variable, newVariable, equivalence):
+    self.variable = variable
+    self.newVariable = newVariable
+    self.equivalence = equivalence
+    self.isEqual = basic.And(
+        basic.Always(equivalence.InDomain(self.newVariable, self.equivalence)),
+        basic.Always(equivalence.EqualUnder(self.newVariable, self.variable, self.equivalence)))
+    self.F = not_functor.compose(
+        Exists(self.newVariable)).compose(
+            And(side = right, other = self.isEqual)).compose(
+                not_functor)
+
+  def __repr__(self):
+    return "Welldefined(%s)"%(self.variable,)
+
+  # Note: The welldefinedness functor is special in that it makes use of its object
+  # in two separate places.  onArrow therefore makes use of its arrow twice, and _import needs
+  # to copy the imported object.
+  def onObject(self, object):
+    return basic.And(object,
+        self.F.onObject(object.substituteVariable(self.variable, self.newVariable)))
+  def onArrow(self, arrow):
+    return basic.OnAnd(arrow,
+        self.F.onArrow(arrow.substituteVariable(a, b)))
+
+  # self must be covariant()
+  # return a function representing a natural transform: F o (B|.) --> (B|.) o F
+  def _import(self, B):
+    # B | (A | F(A.substitute)) --> (B | B)
+    return (lambda x:
+        basic.And(B, self.onObject(x)).
 
 class Exists(Endofunctor):
   def __init__(self, variable):

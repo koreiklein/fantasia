@@ -792,6 +792,10 @@ class Arrow:
     self.tgt = tgt
     self.validate()
 
+  def substituteVariable(self, a, b):
+    return self.__class__(src = self.src.substituteVariable(a, b),
+        tgt = self.tgt.substituteVariable(a, b))
+
   def leftAssociate(self):
     return self
   def _leftAssociate(self, f):
@@ -1153,6 +1157,11 @@ class FunctorialArrow(Arrow):
   def __repr__(self):
     return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
 
+  def substituteVariable(self, a, b):
+    return self.__class__(src = self.src.substituteVariable(a, b),
+        tgt = self.tgt.substituteVariable(a, b),
+        arrow = self.arrow.substituteVariable(a, b))
+
   def compress(self):
     arrow = self.arrow.compress()
     if arrow.__class__ == Id:
@@ -1162,6 +1171,16 @@ class FunctorialArrow(Arrow):
 
   def reprAround(self, middle):
     return "%s {\n%s\n} %s"%(self.arrowTitle(), middle, self.arrowTitle())
+
+def OnAnd(leftArrow, rightArrow):
+  return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+      src = And(leftArrow.src, rightArrow.src),
+      tgt = And(leftArrow.tgt, rightArrow.tgt))
+
+def OnOr(leftArrow, rightArrow):
+  return OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+      src = Or(leftArrow.src, rightArrow.src),
+      tgt = Or(leftArrow.tgt, rightArrow.tgt))
 
 class OnConjunction(FunctorialArrow):
   def __init__(self, leftArrow, rightArrow, src, tgt):
@@ -1175,6 +1194,13 @@ class OnConjunction(FunctorialArrow):
     self.rightArrow = rightArrow
     self.src = src
     self.tgt = tgt
+
+  def substituteVariable(self, a, b):
+    return self.__class__(
+        leftArrow = self.leftArrow.substituteVariable(a, b),
+        rightArrow = self.right.Arrow.substituteVariable(a, b),
+        src = self.src.substituteVariable(a, b),
+        tgt = self.tgt.substituteVariable(a, b))
 
   def invert(self):
     return OnConjunction(src = self.tgt, tgt = self.src,
