@@ -238,9 +238,14 @@ class Exists(Object):
     return OnBody(self.variable, self.value.simplify())
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__
-        and self.variable == other.variable
-        and self.value == other.value)
+    if self.__class__ != other.__class__:
+      return False
+    else:
+      if self.variable == other.variable:
+        return self.value == other.value
+      else:
+        return (self.variable not in other.value.freeVariables()
+            and self.value == other.value.substituteVariable(other.variable, self.variable))
 
   def __ne__(self, other):
     return not(self == other)
@@ -686,19 +691,16 @@ class Always(Object):
   #   X is in f(B)
   #   B == Always(C) for some C
   def produceFiltered(self, f):
-    new = self.updateVariables()
     result = []
     result.extend([(self.forwardOnAlways(a).forwardFollow(lambda x:
       x.forwardDistributeAlways().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
           x.forwardUnalways()))), X) for a, X in self.value.produceFiltered(f)])
-    result.extend([(self.forwardCopy(new), X) for X in f(new)])
+    result.extend([(self.forwardCopy(), X) for X in f(self)])
     return result
 
-  def forwardCopy(self, new = None):
-    if new is None:
-      new = self
-    return Copy(src = self, tgt = And(new, self))
+  def forwardCopy(self):
+    return Copy(src = self, tgt = And(self.updateVariables(), self))
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.value == other.value
