@@ -1,5 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from misc import *
+from calculus import variable
+from lib import common_vars
+from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 from calculus.basic import endofunctor
 from calculus.basic import formula
 
@@ -31,10 +35,17 @@ class Bifunctor:
     assert(left.covariant())
     assert(right.covariant())
     return PrecompositeBifunctor(self, left, right)
+  def precomposeLeft(self, left):
+    return self.precompose(left = left, right = endofunctor.identity_functor)
+  def precomposeRight(self, right):
+    return self.precompose(left = endofunctor.identity_functor, right = right)
 
   def compose(self, other):
     assert(other.covariant())
     return PostcompositeBifunctor(self, other)
+
+  def join(self):
+    return Join(self)
 
 class And(Bifunctor):
   def onObjects(self, left, right):
@@ -56,6 +67,8 @@ class And(Bifunctor):
                 x.forwardAssociate().forwardFollow(lambda x:
                   x.forwardCommute())))).forwardFollow(lambda x:
                     x.forwardAssociate()))
+
+and_functor = And()
 
 class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
@@ -99,7 +112,7 @@ class PrecompositeBifunctor(Bifunctor):
     result.extend(self.bifunctor.variables)
     return result
 
-  def onArrow(self, left, right):
+  def onArrows(self, left, right):
     return self.bifunctor.onArrows(self.left.onArrow(left), self.right.onArrow(right))
   def onObjects(self, left, right):
     return self.bifunctor.onObjects(self.left.onObject(left), self.right.onObject(right))
@@ -158,7 +171,27 @@ class Join(endofunctor.Endofunctor):
   def onObject(self, object):
     return self.bifunctor.onObjects(object, object.updateVariables())
   def onArrow(self, arrow):
-    return self.bifunctor.onArrows(arrow, arrow.updateVariables())
+    return self.bifunctor.onArrows(arrow, arrow)
   def covariant(self):
     return True
+
+
+def InDomain(x, e):
+  return formula.Holds(x, variable.ProjectionVariable(e, domainSymbol))
+
+def EqualUnder(a, b, e):
+  return formula.Holds(
+      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      variable.ProjectionVariable(e, relationSymbol))
+
+def WellDefined(variable, newVariable, equivalence):
+  isEqual = formula.And(
+        formula.Always(InDomain(newVariable, equivalence)),
+        formula.Always(EqualUnder(newVariable, variable, equivalence)))
+  F = endofunctor.SubstituteVariable(variable, newVariable).compose(
+      endofunctor.not_functor.compose(
+        endofunctor.Exists(newVariable)).compose(
+          endofunctor.And(side = right, other = isEqual)).compose(
+            endofunctor.not_functor))
+  return and_functor.precomposeRight(F).join()
 

@@ -1,10 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from misc import *
-from calculus import variable
 from calculus.basic import formula
-from lib import common_vars
-from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 
 class UnliftableException(Exception):
   def __init__(self, functor, B):
@@ -82,62 +79,6 @@ class Endofunctor:
       return self
     else:
       return Composite(left = self, right = other)
-
-class WellDefined(Endofunctor):
-  def __init__(self, variable, newVariable, equivalence):
-    self.variable = variable
-    self.newVariable = newVariable
-    self.equivalence = equivalence
-    self.isEqual = formula.And(
-        formula.Always(InDomain(self.newVariable, self.equivalence)),
-        formula.Always(EqualUnder(self.newVariable, self.variable, self.equivalence)))
-    self.F = not_functor.compose(
-        Exists(self.newVariable)).compose(
-            And(side = right, other = self.isEqual)).compose(
-                not_functor)
-
-  def __repr__(self):
-    return "Welldefined(%s)"%(self.variable,)
-
-  def negations(self):
-    raise Exception("The number of negations in the well defined functor is not well defined." +
-        " It could be 0 or two.  It's parity, however, is well defined.")
-
-  def covariant(self):
-    return True
-
-  # Note: The welldefinedness functor is special in that it makes use of its object
-  # in two separate places.  onArrow therefore makes use of its arrow twice, and _import needs
-  # to copy the imported object.
-  def onObject(self, object):
-    return formula.And(object,
-        self.F.onObject(object.substituteVariable(self.variable, self.newVariable)))
-  def onArrow(self, arrow):
-    return formula.OnAnd(arrow,
-        self.F.onArrow(arrow.substituteVariable(self.variable, self.newVariable)))
-
-  # self must be covariant()
-  # return a function representing a natural transform: F o (B|.) --> (B|.) o F
-  def _import(self, B):
-    def h(start, x):
-      rest = self.F._import(B)(start)
-      return x.forwardCommute().forwardFollow(lambda x: rest)
-    return (lambda start:
-    # B | (A | F(A.substitute..))
-        formula.And(B, self.onObject(start)).forwardOnLeftFollow(lambda x: x.forwardCopy()).forwardFollow(lambda x:
-    # --> (B | B) | (A | F(A.substitute..))
-          x.forwardAssociate().forwardFollow(lambda x:
-    # --> (B | ( B | (A | F(A.substitute..))))
-            x.forwardOnRightFollow(lambda x: x.forwardAssociateOther()))).forwardFollow(lambda x:
-    # --> (B | (( B | A) | F(A.substitute..)))
-                x.forwardCommute()).forwardFollow(lambda x:
-    # --> ((( B | A) | F(A.substitute..)) | B)
-                  x.forwardAssociate().forwardFollow(lambda x:
-    # --> (( B | A) | ( F(A.substitute..) | B))
-                    x.forwardOnRightFollow(lambda x: h(start,x)))))#lambda x: x.forwardCommute().forwardFollow(lambda x:
-    # --> (( B | A) | ( B | F(A.substitute..)))
-                        #self.F._import(B)(start))))))
-    # --> (( B | A) | ( F(B | A.substitute..)))
 
 class Exists(Endofunctor):
   def __init__(self, variable):
@@ -560,11 +501,3 @@ class SubstituteVariable(Endofunctor):
     return arrow.substituteVariable(self.oldVariable, self.newVariable)
   def negations(self):
     return 0
-
-def InDomain(x, e):
-  return formula.Holds(x, variable.ProjectionVariable(e, domainSymbol))
-
-def EqualUnder(a, b, e):
-  return formula.Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(e, relationSymbol))
