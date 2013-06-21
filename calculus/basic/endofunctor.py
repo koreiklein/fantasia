@@ -4,6 +4,13 @@ from calculus import basic
 from lib import common_vars
 from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 
+class UnliftableException(Exception):
+  def __init__(self, functor, B):
+    self.functor = functor
+    self.B = B
+  def __str__(self):
+    return "%s does not move past %s"%(self.B, self.functor)
+
 class Endofunctor:
   def variables(self):
     raise Exception("Abstract superclass.")
@@ -30,6 +37,11 @@ class Endofunctor:
   def _export(self, B):
     raise Exception("Abstract superclass.")
 
+  # self must be covariant
+  # return a function representing some natural transform: (B|.) o F --> F o (B|.) if possible
+  #  otherwise, throw an UnliftableException
+  def lift(self, B):
+    return UnliftableException(self, B)
   # return a (its tgt, function represention some natural transform:
   #   (Exists variable .) o F -> G o (Exists variable .) o H such that
   #   G o H = F and H is as small as reasonably possible.)
@@ -143,6 +155,13 @@ class Exists(Endofunctor):
   def negations(self):
     return 0
 
+  def lift(self, B):
+    if self.variable() in B.freeVariables():
+      raise UnliftableException(self, B)
+    else:
+      # Exist a . (B|x) --> B|(Exists a.x)
+      return (lambda x: basic.And(B, self.onObject(x)).forwardAndPastExists().invert())
+
 class Always(Endofunctor):
   def __repr__(self):
     return "!"
@@ -233,6 +252,13 @@ class Composite(Endofunctor):
       return self.right.covariant()
     else:
       return not self.right.covariant()
+
+  def lift(self, B):
+    # One of the following two calls may throw an exception, pass it on.
+    left = self.left.lift(B)
+    right = self.right.lift(B)
+    return (lambda x:
+        self.right.onArrow(left(x)).forwardCompose(right(self.left.onObject(x))))
 
   # return either:
   #   ('full', nt) for a full lift
@@ -426,6 +452,20 @@ class And(Conjunction):
 
   def stringDivider(self):
     return "|"
+
+  def lift(self, B):
+    if self.side == left:
+      # (B|x)|Y --> B|(x|Y)
+      return (lambda x:
+          self.onObject(basic.And(B, x)).forwardAssociate())
+    else:
+      assert(self.side == right)
+      # Y|(B|x) --> (B|x)|Y --> B|(x|Y) --> B|(Y|x)
+      return (lambda x:
+          self.onObject(basic.And(B, x)).forwardCommute().forwardFollow(lambda x:
+            x.forwardAssociate().forwardFollow(lambda x:
+              x.forwardOnLeftFollow(lambda x:
+                x.forwardCommute()))))
 
   # return a function represention some natural transform:
   #   (Exists variable .) o F -> G o (Exists variable .) o H such that
