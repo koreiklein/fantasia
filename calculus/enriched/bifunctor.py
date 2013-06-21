@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.enriched import forumla
+from calculus.enriched import forumla, endofunctor
+from calculus.basic import bifunctor as basicBifunctor, endofunctor as basicEndofunctor
 
 class Bifunctor:
   def translate(self):
@@ -68,3 +69,43 @@ class PrecompositeBifunctor(Bifunctor):
         left = left.compose(self.left),
         right = right.compose(self.right))
 
+class Conjunction(Bifunctor):
+  # rightIndex is an index into the list formed after inserting at leftIndex
+  # e.g. Conjunction([a, b, c], 1, 1).onObjects(x, y) -> [a, x, b, c] -> [a, y, x, b, c]
+  # e.g. Conjunction([a, b, c], 1, 2).onObjects(x, y) -> [a, x, b, c] -> [a, x, y, b, c]
+  # e.g. Conjunction([a, b, c], 1, 0).onObjects(x, y) -> [a, x, b, c] -> [y, a, x, b, c]
+  def __init__(self, values, leftIndex, rightIndex):
+    self.values = values
+    self.leftIndex = leftIndex
+    self.rightIndex = rightIndex
+
+  def translate(self):
+    # FIXME Implement this once everything works.
+    raise Exception("Not Yet Implemented.")
+  def variables(self):
+    return []
+  def onObjects(self, left, right):
+    values = list(self.values)
+    values.insert(self.leftIndex, left)
+    values.insert(self.rightIndex, right)
+    return self.multiOp()(values)
+
+class And(Bifunctor):
+  def basicEndofunctor(self):
+    return basicEndofunctor.And
+  def enrichedEndofunctor(self):
+    return endofunctor.And
+  def basicBifunctor(self):
+    return basicBifunctor.And
+  def multiOp(self):
+    return formula.And
+
+class Or(Bifunctor):
+  def basicEndofunctor(self):
+    return basicEndofunctor.Or
+  def enrichedEndofunctor(self):
+    return endofunctor.Or
+  def basicBifunctor(self):
+    return basicBifunctor.Or
+  def multiOp(self):
+    return formula.Or
