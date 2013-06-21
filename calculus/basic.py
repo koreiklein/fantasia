@@ -78,9 +78,6 @@ class Variable(GeneralizedVariable):
     self._id = n_variables
     n_variables += 1
 
-  def translate(self):
-    return self
-
   def updateVariables(self):
     return Variable()
 
@@ -208,8 +205,6 @@ class Holds(Formula):
     return not (self == other)
   def __repr__(self):
     return repr(self.held) + " : " + repr(self.holding)
-  def translate(self):
-    return self
   def updateVariables(self):
     return self
   def substituteVariable(self, a, b):
@@ -251,10 +246,6 @@ class Exists(Formula):
 
   def __repr__(self):
     return "( Exists %s . %s )"%(self.variable, self.value)
-
-  def translate(self):
-    return Exists(variable = self.variable.translate(),
-        value = self.value.translate())
 
   # f is a function taking each object B to a list ys
   # return a list of all pairs (a, X) such that
@@ -340,10 +331,6 @@ class Conjunction(Formula):
         and self.right == other.right)
   def __ne__(self, other):
     return not(self == other)
-
-  def translate(self):
-    return self.__class__(left = self.left.translate(),
-                          right = self.right.translate())
 
   def forwardOnConjunction(self, leftArrow, rightArrow):
     assert(isinstance(leftArrow, Arrow))
@@ -638,9 +625,6 @@ class Not(Formula):
   def __repr__(self):
     return "~(%s)"%(self.value,)
 
-  def translate(self):
-    return Not(value = self.value.translate(), rendered = self.rendered)
-
   def forwardOnNot(self, arrow):
     assert(isinstance(arrow, Arrow))
     assert(arrow.tgt == self.value)
@@ -739,9 +723,6 @@ class Always(Formula):
   def forwardCojoin(self):
     return Cojoin(src = self, tgt = Always(self))
 
-  def translate(self):
-    return Always(value = self.value.translate())
-
   def updateVariables(self):
     return self.__class__(value = self.value.updateVariables())
 
@@ -756,9 +737,6 @@ class Unit(Formula):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
-
-  def translate(self):
-    return self
 
   def updateVariables(self):
     return self
@@ -822,9 +800,6 @@ class Arrow:
   def __repr__(self):
     return "%s"%(self.arrowTitle())
 
-  def translate(self):
-    return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
-
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
   def validate(self):
@@ -864,9 +839,6 @@ class InverseArrow(Isomorphism):
 
   def invert(self):
     return self.arrow
-
-  def translate(self):
-    return InverseArrow(arrow = self.arrow.translate())
 
 # A <--> A
 class Id(Isomorphism):
@@ -958,9 +930,6 @@ class Composite(Arrow):
   def _rightAssociate(self, f):
     # (x*(x*(x*f(x))))
     return self.left._rightAssociate(lambda x: Composite(x, self.right._rightAssociate(f)))
-
-  def translate(self):
-    return Composite(left = self.left.translate(), right = self.right.translate())
 
   def __repr__(self):
     return "%s o\n%s"%(self.left, self.right)
@@ -1163,8 +1132,6 @@ class RemoveExists(Arrow):
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
-  def translate(self):
-    raise Exception("Abstract superclass.")
   def __repr__(self):
     return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
 
@@ -1236,12 +1203,6 @@ class OnConjunction(FunctorialArrow):
       assert(self.src.__class__ == Or)
       return "OnOr"
 
-  def translate(self):
-    return OnConjunction(leftArrow = self.leftArrow.translate(),
-        rightArrow = self.rightArrow.translate(),
-        src = self.src.translate(),
-        tgt = self.tgt.translate())
-
 class OnAlways(FunctorialArrow):
   def __init__(self, arrow):
     self.arrow = arrow
@@ -1253,9 +1214,6 @@ class OnAlways(FunctorialArrow):
 
   def arrowTitle(self):
     return "OnAlways"
-
-  def translate(self):
-    return OnAlways(self.arrow.translate())
 
 class OnBody(FunctorialArrow):
   def __init__(self, variable, arrow):
@@ -1277,10 +1235,6 @@ class OnBody(FunctorialArrow):
   def arrowTitle(self):
     return "OnBody"
 
-  def translate(self):
-    return OnBody(self.variable.translate(),
-        self.arrow.translate())
-
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):
     self.arrow = arrow
@@ -1292,9 +1246,6 @@ class OnNot(FunctorialArrow):
 
   def arrowTitle(self):
     return "OnNot"
-
-  def translate(self):
-    return OnNot(arrow = self.arrow.translate())
 
 # The horizontal concatenation of two strings
 def _hconcat(left, right):
