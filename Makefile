@@ -5,7 +5,7 @@ all:
 	python main.py
 
 test:
-	python -c "import tests.test_basic_path ; import unittest ; unittest.main(tests.test_basic_path) ;"
+	python -c "import tests.test_basic_endofunctor ; import unittest ; unittest.main(tests.test_basic_endofunctor) ;"
 
 clean:
 	find . -name '*.pyc' | xargs rm -f

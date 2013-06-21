@@ -1,8 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 import unittest
-from calculus import basicPath as path
-from calculus import basic
+from calculus.basic import endofunctor, formula
+from calculus import variable
 from lib import common_vars
 
 class CommonObjects:
@@ -12,54 +12,53 @@ class CommonObjects:
     self.c = common_vars.c()
     self.d = common_vars.d()
     self.e = common_vars.e()
-    self.b_of_a = basic.Always(basic.Holds(self.a, self.b))
-    self.a_of_b = basic.Always(basic.Holds(self.b, self.a))
-    self.a_of_a = basic.Always(basic.Holds(self.a, self.a))
-    self.b_of_c = basic.Always(basic.Holds(self.c, self.b))
-    self.d_of_c = basic.Always(basic.Holds(self.c, self.d))
-    self.and_b_of_a_functor = path.And(side=path.left,
+    self.b_of_a = formula.Always(formula.Holds(self.a, self.b))
+    self.a_of_b = formula.Always(formula.Holds(self.b, self.a))
+    self.a_of_a = formula.Always(formula.Holds(self.a, self.a))
+    self.b_of_c = formula.Always(formula.Holds(self.c, self.b))
+    self.d_of_c = formula.Always(formula.Holds(self.c, self.d))
+    self.and_b_of_a_functor = endofunctor.And(side=endofunctor.left,
                                        other=self.b_of_a)
-    self.or_d_of_c_functor = path.Or(side=path.left,
+    self.or_d_of_c_functor = endofunctor.Or(side=endofunctor.left,
                                      other=self.d_of_c)
-    self.exists_a_functor = path.Exists(variable=self.a)
-    self.exists_b_functor = path.Exists(variable=self.b)
-    self.exists_c_functor = path.Exists(variable=self.c)
-    self.exists_d_functor = path.Exists(variable=self.d)
-    self.equivalence = basic.StringVariable('equiv')
+    self.exists_a_functor = endofunctor.Exists(variable=self.a)
+    self.exists_b_functor = endofunctor.Exists(variable=self.b)
+    self.exists_c_functor = endofunctor.Exists(variable=self.c)
+    self.exists_d_functor = endofunctor.Exists(variable=self.d)
+    self.equivalence = variable.StringVariable('equiv')
 
 class ImportTest(unittest.TestCase):
   def assert_can_import_through_covariant_functor(self, functor):
     self.assertTrue(functor.covariant())
-    importedObject = basic.Always(basic.Holds(common_vars.x(), common_vars.y()))
-    self.assert_exact_import_succeeds(functor.compose(path.And(side = path.left, other=importedObject)),
+    importedObject = formula.Always(formula.Holds(common_vars.x(), common_vars.y()))
+    self.assert_exact_import_succeeds(functor.compose(endofunctor.And(side = endofunctor.left, other=importedObject)),
                                       importedObject)
 
-  def assert_exact_import_succeeds(self, functor, importedObject):
-    path0 = path.Path(functor=functor, object=basic.true)
-    pairs = path0.importFilteredArrow(lambda x: x == importedObject)
-    self.assertEqual(1, len(pairs), "Should import exactly one claim.")
-    (B, A) = pairs[0]
-    self.assertEqual(B, importedObject, "Imported the wrong claim.")
-    self.assertEqual(A.src, path0, "path.importFilteredArrow returned an arrow whose src was not path.")
-    self.assertEqual(A.tgt, path.Path(functor=functor,
-                                      object = basic.And(importedObject, basic.true)))
+  def assert_exact_import_succeeds(self, functor, B):
+    base = formula.true
+    src = formula.And(B, functor.onObject(base))
+    tgt = functor.onObject(formula.And(B, base))
+    nt = functor._import(B)
+    arrow = nt(base)
+    self.assertEqual(src, arrow.src)
+    self.assertEqual(tgt, arrow.tgt)
 
 class ExactImportTests(ImportTest, CommonObjects):
   def setUp(self):
     self.add_common_objects()
-    self.not_not_functor = path.not_functor.compose(path.not_functor)
-    self.not_andBofA_not_functor = path.not_functor.compose(
+    self.not_not_functor = endofunctor.not_functor.compose(endofunctor.not_functor)
+    self.not_andBofA_not_functor = endofunctor.not_functor.compose(
         self.and_b_of_a_functor).compose(
-            path.not_functor)
+            endofunctor.not_functor)
     # There exists a well defined a such that....
-    self.well_defined_functor = path.WellDefined(self.a, self.b, self.equivalence)
-    self.exists_well_defined_functor = path.WellDefined(self.c, self.d, self.equivalence).compose(
-        path.Exists(self.c))
-    self.well_defined_exists_functor = path.Exists(self.e).compose(
-        path.WellDefined(self.c, self.d, self.equivalence))
+    self.well_defined_functor = endofunctor.WellDefined(self.a, self.b, self.equivalence)
+    self.exists_well_defined_functor = endofunctor.WellDefined(self.c, self.d, self.equivalence).compose(
+        endofunctor.Exists(self.c))
+    self.well_defined_exists_functor = endofunctor.Exists(self.e).compose(
+        endofunctor.WellDefined(self.c, self.d, self.equivalence))
 
   def test_import_through_id(self):
-    self.assert_can_import_through_covariant_functor(path.identity_functor)
+    self.assert_can_import_through_covariant_functor(endofunctor.identity_functor)
 
   def test_import_through_or(self):
     self.assert_can_import_through_covariant_functor(self.or_d_of_c_functor)
@@ -93,17 +92,3 @@ class ExactImportTests(ImportTest, CommonObjects):
   def test_import_well_defined_exists(self):
     self.assert_can_import_through_covariant_functor(self.well_defined_exists_functor)
 
-class UniversalInTest(unittest.TestCase, CommonObjects):
-  def setUp(self):
-    self.add_common_objects()
-    self.exists_a_forall_b__a_of_b = basic.MultiExists([self.a],
-        basic.MultiForall([self.b],
-          self.a_of_b))
-    self.path = path.new_path(self.exists_a_forall_b__a_of_b).advance().tgt
-
-  def test_one_variable_no_bounds(self):
-    post_import = basic.MultiExists([self.a],
-        basic.Always(basic.And(self.a_of_a, basic.MultiForall([self.b], self.a_of_b))))
-    importables = self.path.importables_universalIn([self.a])
-    self.assertEqual(1, len(importables), "Failed to import the valid universal claim.")
-    self.assertEqual(importables[0], self.a_of_a)

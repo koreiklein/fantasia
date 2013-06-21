@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.basic import StringVariable
+from calculus.variable import StringVariable
 
 p = lambda: StringVariable('p')
 n = lambda: StringVariable('n')

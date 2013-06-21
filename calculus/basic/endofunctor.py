@@ -1,6 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
+from misc import *
+from calculus import variable
+from calculus.basic import formula
 from lib import common_vars
 from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 
@@ -59,7 +61,7 @@ class Endofunctor:
   #   ('partial', (tgt, nt)) for a partial lift
   def _liftExists(self, variable):
     return ('partial', ( Exists(variable).compose(self)
-                       , lambda x: self.onObject(basic.Exists(variable, x)).identity()))
+                       , lambda x: self.onObject(formula.Exists(variable, x)).identity()))
 
   def onObject(self, object):
     raise Exception("Abstract superclass.")
@@ -86,9 +88,9 @@ class WellDefined(Endofunctor):
     self.variable = variable
     self.newVariable = newVariable
     self.equivalence = equivalence
-    self.isEqual = basic.And(
-        basic.Always(InDomain(self.newVariable, self.equivalence)),
-        basic.Always(EqualUnder(self.newVariable, self.variable, self.equivalence)))
+    self.isEqual = formula.And(
+        formula.Always(InDomain(self.newVariable, self.equivalence)),
+        formula.Always(EqualUnder(self.newVariable, self.variable, self.equivalence)))
     self.F = not_functor.compose(
         Exists(self.newVariable)).compose(
             And(side = right, other = self.isEqual)).compose(
@@ -108,10 +110,10 @@ class WellDefined(Endofunctor):
   # in two separate places.  onArrow therefore makes use of its arrow twice, and _import needs
   # to copy the imported object.
   def onObject(self, object):
-    return basic.And(object,
+    return formula.And(object,
         self.F.onObject(object.substituteVariable(self.variable, self.newVariable)))
   def onArrow(self, arrow):
-    return basic.OnAnd(arrow,
+    return formula.OnAnd(arrow,
         self.F.onArrow(arrow.substituteVariable(self.variable, self.newVariable)))
 
   # self must be covariant()
@@ -122,7 +124,7 @@ class WellDefined(Endofunctor):
       return x.forwardCommute().forwardFollow(lambda x: rest)
     return (lambda start:
     # B | (A | F(A.substitute..))
-        basic.And(B, self.onObject(start)).forwardOnLeftFollow(lambda x: x.forwardCopy()).forwardFollow(lambda x:
+        formula.And(B, self.onObject(start)).forwardOnLeftFollow(lambda x: x.forwardCopy()).forwardFollow(lambda x:
     # --> (B | B) | (A | F(A.substitute..))
           x.forwardAssociate().forwardFollow(lambda x:
     # --> (B | ( B | (A | F(A.substitute..))))
@@ -145,13 +147,13 @@ class Exists(Endofunctor):
   def _import(self, B):
     assert(self.variable not in B.freeVariables())
     return (lambda x:
-        basic.And(left = B, right = self.onObject(x)).forwardAndPastExists())
+        formula.And(left = B, right = self.onObject(x)).forwardAndPastExists())
   def variables(self):
     return [self.variable]
   def onObject(self, object):
-    return basic.Exists(variable = self.variable, value = object)
+    return formula.Exists(variable = self.variable, value = object)
   def onArrow(self, arrow):
-    return basic.OnBody(variable = self.variable, arrow = arrow)
+    return formula.OnBody(variable = self.variable, arrow = arrow)
   def negations(self):
     return 0
 
@@ -160,7 +162,7 @@ class Exists(Endofunctor):
       raise UnliftableException(self, B)
     else:
       # Exist a . (B|x) --> B|(Exists a.x)
-      return (lambda x: basic.And(B, self.onObject(x)).forwardAndPastExists().invert())
+      return (lambda x: formula.And(B, self.onObject(x)).forwardAndPastExists().invert())
 
 class Always(Endofunctor):
   def __repr__(self):
@@ -169,12 +171,12 @@ class Always(Endofunctor):
     # B|!X --> !(B|X) (not always possible!)
     # but when   B == !C
     # !C | !X --> !!C | !X --> ! (!C | X)
-    if B.__class__ != basic.Always:
+    if B.__class__ != formula.Always:
       raise Exception("Unable to import B past Always when B is not also an Always.  B == %s"%(B,))
     else:
       C = B.value
       return (lambda x:
-          basic.And(left = B, right = self.onObject(x)).forwardOnLeftFollow(lambda x:
+          formula.And(left = B, right = self.onObject(x)).forwardOnLeftFollow(lambda x:
             x.forwardCojoin()).forwardFollow(lambda x:
               x.forwardZip()))
 
@@ -182,14 +184,14 @@ class Always(Endofunctor):
   #   ('full', nt) for a full lift
   #   ('partial', (tgt, nt)) for a partial lift
   def _liftExists(self, variable):
-    return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAlwaysPastExists())
+    return ('full', lambda x: self.onObject(formula.Exists(variable, x)).forwardAlwaysPastExists())
 
   def variables(self):
     return []
   def onObject(self, object):
-    return basic.Always(object)
+    return formula.Always(object)
   def onArrow(self, arrow):
-    return basic.OnAlways(arrow)
+    return formula.OnAlways(arrow)
   def negations(self):
     return 0
 
@@ -201,16 +203,16 @@ class Not(Endofunctor):
   # self must not be covariant()
   # return a function representing some natural transform: (B|.) o F o (B|.) --> F
   def _export(self, b):
-    bAnd = lambda x: basic.And(left = b, right = x)
+    bAnd = lambda x: formula.And(left = b, right = x)
     return (lambda x:
         # B|(~(B|x)) --> ~x
         bAnd(self.onObject(bAnd(x))).forwardApply())
   def variables(self):
     return []
   def onObject(self, object):
-    return basic.Not(object)
+    return formula.Not(object)
   def onArrow(self, arrow):
-    return basic.OnNot(arrow)
+    return formula.OnNot(arrow)
   def negations(self):
     return 1
 
@@ -223,7 +225,7 @@ class Id(Endofunctor):
     # Id o (B|.) --> (B|.) o Id
     # (B|x) --> (B|x)
     return (lambda x:
-        basic.And(left = B, right = x).identity())
+        formula.And(left = B, right = x).identity())
   def variables(self):
     return []
   def pop(self):
@@ -340,7 +342,7 @@ class Composite(Endofunctor):
                    for B, nt, X in self.left.exportFiltered(f)])
     # F o G --> ((B|.) o F o (B|.)) o G = ((B|.) o F) o ((B|.) o G) --> ((B|.) o F) o G
     result.extend([(B, lambda x, B=B, nt=nt: self.right.onArrow(self.left._export(B)(x)).forwardCompose(
-                                nt(self.left.onObject(basic.And(B, x)))), X)
+                                nt(self.left.onObject(formula.And(B, x)))), X)
                    for B, nt, X in self.right.exportFiltered(f)])
     return result
 
@@ -364,7 +366,7 @@ class Composite(Endofunctor):
     result.extend([(B, lambda x, nt=nt: self.right.onArrow(nt(x)), X)
                    for B, nt, X in self.left.exportFiltered(f)])
     # (B|.) o F o G --> (B|.) o F o (B|.) o G --> F o G
-    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(basic.And(B, x))).forwardCompose(
+    result.extend([(B, lambda x, B=B, nt=nt: nt(self.left.onObject(formula.And(B, x))).forwardCompose(
                                  self.right.onArrow(self.left._export(B)(x))), X)
                    for B, nt, X in self.right.importFiltered(f)])
     return result
@@ -425,7 +427,7 @@ class Conjunction(Endofunctor):
   def createObject(self, left, right):
     raise Exception("Abstract superclass.")
   def createArrow(self, leftArrow, rightArrow):
-    return basic.OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+    return formula.OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
         src = self.createObject(left = leftArrow.src, right = rightArrow.src),
         tgt = self.createObject(left = leftArrow.tgt, right = rightArrow.tgt))
 
@@ -448,7 +450,7 @@ class Conjunction(Endofunctor):
 
 class And(Conjunction):
   def createObject(self, left, right):
-    return basic.And(left = left, right = right)
+    return formula.And(left = left, right = right)
 
   def stringDivider(self):
     return "|"
@@ -457,12 +459,12 @@ class And(Conjunction):
     if self.side == left:
       # (B|x)|Y --> B|(x|Y)
       return (lambda x:
-          self.onObject(basic.And(B, x)).forwardAssociate())
+          self.onObject(formula.And(B, x)).forwardAssociate())
     else:
       assert(self.side == right)
       # Y|(B|x) --> (B|x)|Y --> B|(x|Y) --> B|(Y|x)
       return (lambda x:
-          self.onObject(basic.And(B, x)).forwardCommute().forwardFollow(lambda x:
+          self.onObject(formula.And(B, x)).forwardCommute().forwardFollow(lambda x:
             x.forwardAssociate().forwardFollow(lambda x:
               x.forwardOnLeftFollow(lambda x:
                 x.forwardCommute()))))
@@ -473,11 +475,11 @@ class And(Conjunction):
   def _liftExists(self, variable):
     if self.side == left:
       # (Exists variable .) o (.|B) -> (.|B) o (Exists variable .)
-      return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExistsOther())
+      return ('full', lambda x: self.onObject(formula.Exists(variable, x)).forwardAndPastExistsOther())
     else:
       assert(self.side == right)
       # (Exists variable .) o (B|.) -> (B|.) o (Exists variable .)
-      return ('full', lambda x: self.onObject(basic.Exists(variable, x)).forwardAndPastExists())
+      return ('full', lambda x: self.onObject(formula.Exists(variable, x)).forwardAndPastExists())
 
   def _import(self, B):
     bAnd = And(side = right, other = B)
@@ -530,12 +532,12 @@ class Or(Conjunction):
           bAnd.onObject(self.onObject(x)).forwardDistributeRight())
 
   def createObject(self, left, right):
-    return basic.Or(left = left, right = right)
+    return formula.Or(left = left, right = right)
 
 def InDomain(x, e):
-  return basic.Holds(x, basic.ProjectionVariable(e, domainSymbol))
+  return formula.Holds(x, variable.ProjectionVariable(e, domainSymbol))
 
 def EqualUnder(a, b, e):
-  return basic.Holds(
-      basic.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      basic.ProjectionVariable(e, relationSymbol))
+  return formula.Holds(
+      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      variable.ProjectionVariable(e, relationSymbol))
