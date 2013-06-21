@@ -11,6 +11,7 @@ class CommonObjects:
     self.b = common_vars.b()
     self.c = common_vars.c()
     self.d = common_vars.d()
+    self.e = common_vars.e()
     self.b_of_a = basic.Always(basic.Holds(self.a, self.b))
     self.a_of_b = basic.Always(basic.Holds(self.b, self.a))
     self.a_of_a = basic.Always(basic.Holds(self.a, self.a))
@@ -24,6 +25,7 @@ class CommonObjects:
     self.exists_b_functor = path.Exists(variable=self.b)
     self.exists_c_functor = path.Exists(variable=self.c)
     self.exists_d_functor = path.Exists(variable=self.d)
+    self.equivalence = basic.StringVariable('equiv')
 
 class ImportTest(unittest.TestCase):
   def assert_can_import_through_covariant_functor(self, functor):
@@ -46,7 +48,15 @@ class ExactImportTests(ImportTest, CommonObjects):
   def setUp(self):
     self.add_common_objects()
     self.not_not_functor = path.not_functor.compose(path.not_functor)
-    self.not_andBofA_not_functor = path.not_functor.compose(self.and_b_of_a_functor).compose(path.not_functor)
+    self.not_andBofA_not_functor = path.not_functor.compose(
+        self.and_b_of_a_functor).compose(
+            path.not_functor)
+    # There exists a well defined a such that....
+    self.well_defined_functor = path.WellDefined(self.a, self.b, self.equivalence)
+    self.exists_well_defined_functor = path.WellDefined(self.c, self.d, self.equivalence).compose(
+        path.Exists(self.c))
+    self.well_defined_exists_functor = path.Exists(self.e).compose(
+        path.WellDefined(self.c, self.d, self.equivalence))
 
   def test_import_through_id(self):
     self.assert_can_import_through_covariant_functor(path.identity_functor)
@@ -73,6 +83,15 @@ class ExactImportTests(ImportTest, CommonObjects):
 
   def test_import_not_andBofA_not(self):
     self.assert_can_import_through_covariant_functor(self.not_andBofA_not_functor)
+
+  def test_import_well_defined(self):
+    self.assert_can_import_through_covariant_functor(self.well_defined_functor)
+
+  def test_import_exists_well_defined(self):
+    self.assert_can_import_through_covariant_functor(self.exists_well_defined_functor)
+
+  def test_import_well_defined_exists(self):
+    self.assert_can_import_through_covariant_functor(self.well_defined_exists_functor)
 
 class UniversalInTest(unittest.TestCase, CommonObjects):
   def setUp(self):
