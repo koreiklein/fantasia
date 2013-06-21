@@ -1,7 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import basic
-from lib import common_vars, equivalence
+from lib import common_vars
+from lib.common_symbols import domainSymbol, relationSymbol, leftSymbol, rightSymbol
 
 class Endofunctor:
   # Return a basic endofunctor
@@ -434,8 +435,8 @@ class WellDefined(Endofunctor):
     self.newVariable = newVariable
     self.equivalence = equivalence
     self.isEqual = basic.And(
-        basic.Always(equivalence.InDomain(self.newVariable, self.equivalence)),
-        basic.Always(equivalence.EqualUnder(self.newVariable, self.variable, self.equivalence)))
+        basic.Always(InDomain(self.newVariable, self.equivalence)),
+        basic.Always(EqualUnder(self.newVariable, self.variable, self.equivalence)))
     self.F = not_functor.compose(
         Exists(self.newVariable)).compose(
             And(side = right, other = self.isEqual)).compose(
@@ -443,6 +444,13 @@ class WellDefined(Endofunctor):
 
   def __repr__(self):
     return "Welldefined(%s)"%(self.variable,)
+
+  def negations(self):
+    raise Exception("The number of negations in the well defined functor is not well defined." +
+        " It could be 0 or two.  It's parity, however, is well defined.")
+
+  def covariant(self):
+    return True
 
   # Note: The welldefinedness functor is special in that it makes use of its object
   # in two separate places.  onArrow therefore makes use of its arrow twice, and _import needs
@@ -452,14 +460,30 @@ class WellDefined(Endofunctor):
         self.F.onObject(object.substituteVariable(self.variable, self.newVariable)))
   def onArrow(self, arrow):
     return basic.OnAnd(arrow,
-        self.F.onArrow(arrow.substituteVariable(a, b)))
+        self.F.onArrow(arrow.substituteVariable(self.variable, self.newVariable)))
 
   # self must be covariant()
   # return a function representing a natural transform: F o (B|.) --> (B|.) o F
   def _import(self, B):
-    # B | (A | F(A.substitute)) --> (B | B)
-    return (lambda x:
-        basic.And(B, self.onObject(x)).
+    def h(start, x):
+      rest = self.F._import(B)(start)
+      return x.forwardCommute().forwardFollow(lambda x: rest)
+    return (lambda start:
+    # B | (A | F(A.substitute..))
+        basic.And(B, self.onObject(start)).forwardOnLeftFollow(lambda x: x.forwardCopy()).forwardFollow(lambda x:
+    # --> (B | B) | (A | F(A.substitute..))
+          x.forwardAssociate().forwardFollow(lambda x:
+    # --> (B | ( B | (A | F(A.substitute..))))
+            x.forwardOnRightFollow(lambda x: x.forwardAssociateOther()))).forwardFollow(lambda x:
+    # --> (B | (( B | A) | F(A.substitute..)))
+                x.forwardCommute()).forwardFollow(lambda x:
+    # --> ((( B | A) | F(A.substitute..)) | B)
+                  x.forwardAssociate().forwardFollow(lambda x:
+    # --> (( B | A) | ( F(A.substitute..) | B))
+                    x.forwardOnRightFollow(lambda x: h(start,x)))))#lambda x: x.forwardCommute().forwardFollow(lambda x:
+    # --> (( B | A) | ( B | F(A.substitute..)))
+                        #self.F._import(B)(start))))))
+    # --> (( B | A) | ( F(B | A.substitute..)))
 
 class Exists(Endofunctor):
   def __init__(self, variable):
@@ -563,6 +587,12 @@ class Composite(Endofunctor):
 
   def __repr__(self):
     return "%s\no\n%s"%(self.left, self.right)
+
+  def covariant(self):
+    if self.left.covariant():
+      return self.right.covariant()
+    else:
+      return not self.right.covariant()
 
   # return either:
   #   ('full', nt) for a full lift
@@ -821,3 +851,11 @@ class Or(Conjunction):
 
   def createObject(self, left, right):
     return basic.Or(left = left, right = right)
+
+def InDomain(x, e):
+  return basic.Holds(x, basic.ProjectionVariable(e, domainSymbol))
+
+def EqualUnder(a, b, e):
+  return basic.Holds(
+      basic.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      basic.ProjectionVariable(e, relationSymbol))

@@ -295,6 +295,9 @@ class Exists(Object):
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
+    if a == self.variable:
+      # FIXME
+      print "oh no"
     assert(a != self.variable)
     assert(b != self.variable)
     return Exists(variable = self.variable,
@@ -774,9 +777,19 @@ class AndUnit(Unit):
   def __repr__(self):
     return "1"
 
+  def __eq__(self, other):
+    return other.__class__ == AndUnit
+  def __ne__(self, other):
+    return not(self == other)
+
 class OrUnit(Unit):
   def __repr__(self):
     return "0"
+
+  def __eq__(self, other):
+    return other.__class__ == OrUnit
+  def __ne__(self, other):
+    return not(self == other)
 
 true = AndUnit()
 false = OrUnit()
@@ -960,6 +973,7 @@ class Composite(Arrow):
   # Subclasses should override to implement checking.
   def validate(self):
     if not(self.left.tgt == self.right.src):
+      print 'nothing'
       raise Exception(("Invalid composite."
           "left.tgt (%s) != right.src (%s)\nleft.tgt =\n%s\nright.src =\n%s"
           )%(self.left.__class__, self.right.__class__, self.left.tgt, self.right.src))
