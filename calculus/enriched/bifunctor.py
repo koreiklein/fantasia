@@ -1,5 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from misc import *
 from calculus.enriched import forumla, endofunctor
 from calculus.basic import bifunctor as basicBifunctor, endofunctor as basicEndofunctor
 
@@ -80,8 +81,26 @@ class Conjunction(Bifunctor):
     self.rightIndex = rightIndex
 
   def translate(self):
-    # FIXME Implement this once everything works.
-    raise Exception("Not Yet Implemented.")
+    lesserIndex = min(self.leftIndex, self.rightIndex)
+    greaterIndex = max(self.leftIndex, self.rightIndex)
+    # begin, (lesser), middle, (greater), end
+    begin = self.values[:lesserIndex]
+    middle = self.values[lesserIndex:greaterIndex]
+    end = self.values[greaterIndex:]
+    result = self.basicEndofunctor()(side = left,
+        other = self.multiOp()(end).translate())
+    for value in middle[::-1]:
+      result = result.compose(self.basicEndofunctor()(side = right,
+        other = value.translate()))
+    result = self.basicBifunctor().precomposeRight(result)
+    for value in begin[::-1]:
+      result = result.compose(self.basicEndofunctor()(side = right,
+        other = value.translate()))
+    if self.leftIndex < self.rightIndex:
+      return result
+    else:
+      return result.commute()
+
   def variables(self):
     return []
   def onObjects(self, left, right):
