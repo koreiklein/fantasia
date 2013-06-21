@@ -28,9 +28,12 @@ class Bifunctor:
     raise Exception("Abstract superclass.")
 
   def precompose(self, left, right):
+    assert(left.covariant())
+    assert(right.covariant())
     return PrecompositeBifunctor(self, left, right)
 
   def compose(self, other):
+    assert(other.covariant())
     return PostcompositeBifunctor(self, other)
 
 class And(Bifunctor):
