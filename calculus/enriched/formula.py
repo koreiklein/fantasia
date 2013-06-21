@@ -19,6 +19,14 @@ class Formula:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+class Arrow:
+  def __init__(self, src, tgt, basicArrow):
+    self.src = src
+    self.tgt = tgt
+    self.basicArrow = basicArrow
+  def translate(self):
+    return self.basicArrow
+
 class Application(Formula):
   def __init__(self, endofunctor, formula):
     self.endofunctor = endofunctor
