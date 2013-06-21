@@ -23,6 +23,10 @@ class Bifunctor:
   def _import(self, B):
     raise Exception("Abstract superclass.")
 
+  # return those variable quantified anywhere in self.
+  def variables(self):
+    raise Exception("Abstract superclass.")
+
   def precompose(self, left, right):
     return PrecompositeBifunctor(self, left, right)
 
@@ -34,6 +38,8 @@ class And(Bifunctor):
     return formula.And(left, right)
   def onArrows(self, left, right):
     return formula.OnAnd(left, right)
+  def variables(self):
+    return []
   def transport(self, B):
     # (B|x)|y --> B|(x|y)
     return (lambda x, y: formula.And(formula.And(B, x), y).forwardAssociate())
@@ -52,6 +58,12 @@ class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
     self.bifunctor = bifunctor
     self.functor = functor
+
+  def variables(self):
+    result = []
+    result.extend(self.bifunctor.variables())
+    result.extend(self.functor.variables())
+    return result
 
   def onArrows(self, left, right):
     return self.functor.onArrow(self.bifunctor.onArrows(left, right))
@@ -76,6 +88,13 @@ class PrecompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.left = left
     self.right = right
+
+  def variables(self):
+    result = []
+    result.extend(self.left.variables)
+    result.extend(self.right.variables)
+    result.extend(self.bifunctor.variables)
+    return result
 
   def onArrow(self, left, right):
     return self.bifunctor.onArrows(self.left.onArrow(left), self.right.onArrow(right))
@@ -105,3 +124,37 @@ class PrecompositeBifunctor(Bifunctor):
           self.bifunctor.onArrows( self.left._import(B)(left)
                                  , self.right._import(B)(right))))
 
+# for a bifunctor F, Join(F) is the endofunctor F(x, x) obtained by precomposing F with the diagonal.
+class Join(endofunctor.Endofunctor):
+  def __init__(self, bifunctor):
+    self.bifunctor = bifunctor
+
+  # self must be covariant()
+  # f takes each object x to a list f(x)
+  # return a list of all triples [(B, nt, y)] such that
+  #   nt is a natural transform self -> (B|.) o self
+  #   y is in f(B)
+  def importFiltered(self, f):
+    return []
+  # self must be covariant()
+  # return a function representing a natural transform: F o (B|.) --> (B|.) o F
+  def _import(self, B):
+    return (lambda x:
+        self.bifunctor._import(B)(x, x))
+
+  def variables(self):
+    return self.bifunctor.variables()
+
+  # self must be covariant
+  # return a function representing some natural transform: (B|.) o F --> F o (B|.) if possible
+  #  otherwise, throw an UnliftableException
+  def lift(self, B):
+    # TODO Consider actually lifting B.
+    return UnliftableException(self, B)
+
+  def onObject(self, object):
+    return self.bifunctor.onObjects(object, object)
+  def onArrow(self, arrow):
+    return self.bifunctor.onArrows(arrow, arrow)
+  def covariant(self):
+    return True
