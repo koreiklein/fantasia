@@ -534,6 +534,33 @@ class Or(Conjunction):
   def createObject(self, left, right):
     return formula.Or(left = left, right = right)
 
+class SubstituteVariable(Endofunctor):
+  def __init__(self, oldVariable, newVariable):
+    self.oldVariable = oldVariable
+    self.newVariable = newVariable
+  def variables(self):
+    return []
+  def _import(self, B):
+    free = B.freeVariables()
+    if self.oldVariable in free or self.newVariable in free:
+      # TODO Investigate whether this is necessary.
+      raise UnliftableException(self, B)
+    else:
+      return (lambda x: formula.And(B, self.onObject(x)).identity())
+  def lift(self, B):
+    free = B.freeVariables()
+    if self.oldVariable in free or self.newVariable in free:
+      # TODO Investigate whether this is necessary.
+      raise UnliftableException(self, B)
+    else:
+      return (lambda x: formula.And(B, self.onObject(x)).identity())
+  def onObject(self, object):
+    return object.substituteVariable(self.oldVariable, self.newVariable)
+  def onArrow(self, arrow):
+    return arrow.substituteVariable(self.oldVariable, self.newVariable)
+  def negations(self):
+    return 0
+
 def InDomain(x, e):
   return formula.Holds(x, variable.ProjectionVariable(e, domainSymbol))
 
