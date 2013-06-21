@@ -4,7 +4,7 @@ from calculus import symbol
 
 from sets import Set
 
-class Object:
+class Formula:
   def simplify(self):
     return self.identity()
 
@@ -194,7 +194,7 @@ class ProductVariable(GeneralizedVariable):
       result.union_update(v.freeVariables())
     return result
 
-class Holds(Object):
+class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
@@ -228,7 +228,7 @@ def isExistentialOfLength(n, existential):
     existential = existential.value
   return True
 
-class Exists(Object):
+class Exists(Formula):
   def __init__(self, variable, value):
     self.variable = variable
     self.value = value
@@ -325,7 +325,7 @@ def MultiBoundedForall(variable_domain_pairs, value):
 empty_symbol = symbol.StringSymbol('')
 
 # For And and Or.
-class Conjunction(Object):
+class Conjunction(Formula):
   # There is only one global right symbol.
   def __init__(self, left, right):
     self.left = left
@@ -569,7 +569,7 @@ def Implies(predicate, consequent):
 def ExpandIff(left, right):
   return And(Implies(left, right), Implies(right, left))
 
-class Iff(Object):
+class Iff(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
@@ -590,7 +590,7 @@ class Iff(Object):
   def freeVariables(self):
     return self.left.freeVariables().union(self.right.freeVariables())
 
-class Hidden(Object):
+class Hidden(Formula):
   def __init__(self, base, name):
     self.base = base
     self.name = name
@@ -622,7 +622,7 @@ class Hidden(Object):
   def forwardUnhide(self):
     return Hide(src = self.base, tgt = self).invert()
 
-class Not(Object):
+class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
@@ -677,7 +677,7 @@ class Not(Object):
   def freeVariables(self):
     return self.value.freeVariables()
 
-class Always(Object):
+class Always(Formula):
   def __init__(self, value):
     self.value = value
 
@@ -751,7 +751,7 @@ class Always(Object):
   def freeVariables(self):
     return self.value.freeVariables()
 
-class Unit(Object):
+class Unit(Formula):
   def __eq__(self, other):
     return self.__class__ == other.__class__
   def __ne__(self, other):
