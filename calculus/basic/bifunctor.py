@@ -143,7 +143,7 @@ class Join(endofunctor.Endofunctor):
   # return a function representing a natural transform: F o (B|.) --> (B|.) o F
   def _import(self, B):
     return (lambda x:
-        self.bifunctor._import(B)(x, x))
+        self.bifunctor._import(B)(x, x.updateVariables()))
 
   def variables(self):
     return self.bifunctor.variables()
@@ -156,8 +156,9 @@ class Join(endofunctor.Endofunctor):
     return UnliftableException(self, B)
 
   def onObject(self, object):
-    return self.bifunctor.onObjects(object, object)
+    return self.bifunctor.onObjects(object, object.updateVariables())
   def onArrow(self, arrow):
-    return self.bifunctor.onArrows(arrow, arrow)
+    return self.bifunctor.onArrows(arrow, arrow.updateVariables())
   def covariant(self):
     return True
+
