@@ -11,7 +11,13 @@ class UntransportableException(Exception):
   def __init__(self, unliftableException):
     self.unliftableException = unliftableException
   def __str__(self):
-    return "UntransportableException cause by \n%s"%(self.unliftableException,)
+    return "UntransportableException caused by \n%s"%(self.unliftableException,)
+
+class UntransportingOrException(UntransportableException):
+  def __init__(self, B):
+    self.B = B
+  def __str__(self):
+    return "UntransportingOrException can't transport %s"%(self.B,)
 
 class Bifunctor:
   def onObjects(self, left, right):
@@ -29,6 +35,13 @@ class Bifunctor:
 
   # return those variable quantified anywhere in self.
   def variables(self):
+    raise Exception("Abstract superclass.")
+
+  # a natural transform F(., .) o (B|.) --> F(B|., .)
+  def _importLeft(self, B):
+    raise Exception("Abstract superclass.")
+  # a natural transform F(., .) o (B|.) --> F(., B|.)
+  def _importRight(self, B):
     raise Exception("Abstract superclass.")
 
   def precompose(self, left, right):
@@ -58,17 +71,51 @@ class And(Bifunctor):
     # (B|x)|y --> B|(x|y)
     return (lambda x, y: formula.And(formula.And(B, x), y).forwardAssociate())
   def _import(self, B):
-    # B|(x|y) --> (B|B)|(x|y) --> ((B|B)|x)|y --> (B|(B|x))|y --> ((B|x)|B)|y --> (B|x)|(B|y)
+    # B|(x|y) --> (B|B)|(x|y) --> B|(B|(x|y)) --> B|((B|x)|y) --> (B|x)|(B|y)
     return (lambda x, y:
-        formula.And(B, formula.And(x, y)).forwardOnLeftFollow(lambda x:
-          x.forwardCopy()).forwardFollow(lambda x:
-            x.forwardAssociateOther().forwardFollow(lambda x:
-              x.forwardOnLeftFollow(lambda x:
-                x.forwardAssociate().forwardFollow(lambda x:
-                  x.forwardCommute())))).forwardFollow(lambda x:
-                    x.forwardAssociate()))
+        formula.And(B, formula.And(x, y)).forwardOnLeftFollow(lambda f:
+          f.forwardCopy()).forwardFollow(lambda f:
+            f.forwardAssociate()).forwardFollow(lambda f:
+              f.forwardOnRight(self._importLeft(B)(x, y))).forwardCompose(
+                self._importRight(B)(formula.And(B, x), y)))
+
+  def _importLeft(self, B):
+    # B|(x|y) --> (B|x)|y
+    return (lambda x, y: formula.And(B, formula.And(x, y)).forwardAssociateOther())
+  def _importRight(self, B):
+    # B|(x|y) --> (x|y)|B --> x|(y|B) --> x|(B|y)
+    return (lambda x, y:
+        formula.And(B, formula.And(x, y)).forwardCommute().forwardFollow(lambda x:
+          x.forwardAssociate()).forwardFollow(lambda x:
+            x.forwardOnRightFollow(lambda x:
+              x.forwardCommute())))
 
 and_functor = And()
+
+class Or(Bifunctor):
+  def onObjects(self, left, right):
+    return formula.Or(left, right)
+  def onArrows(self, left, right):
+    return formula.OnOr(left, right)
+  def variables(self):
+    return []
+  def transport(self, B):
+    raise UntransportingOrException(B)
+  def _import(self, B):
+    # B|(x-y) --> (B|x)-(B|y)
+    return (lambda x, y:
+        formula.And(B, formula.Or(x, y)).forwardDistibute())
+
+  def _importLeft(self, B):
+    return (lambda x, y:
+        self._import(x, y).forwardCompose(self.onArrows(formula.And(B, x).identity(),
+          formula.And(B.updateVariables(), y).forwardForgetLeft())))
+  def _importRight(self, B):
+    return (lambda x, y:
+        self._import(x, y).forwardCompose(self.onArrows(formula.And(B, x).forwardForgetLeft(),
+          formula.And(B.updateVariables(), y).identity())))
+
+or_functor = Or()
 
 class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
