@@ -773,12 +773,6 @@ class Composite(Arrow):
   def __ne__(self, other):
     return not(self == other)
 
-# X <--> Hidden(X)
-class Hide(Isomorphism):
-  def validate(self):
-    assert(self.tgt.__class__ == Hidden)
-    assert(self.src == self.tgt.base)
-
 # A | (B - C) --> (A | B) - (A | C)
 class Distribute(Arrow):
   def arrowTitle(self):

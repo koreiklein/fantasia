@@ -1,7 +1,22 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from calculus.variable import Variable
+from calculus.basic import formula as basicFormula
+from lib.equivalence import InDomain, EqualUnder
+
 class Formula:
   def translate(self):
+    raise Exception("Abstract superclass.")
+
+  def __eq__(self, other):
+    return isinstance(other, Formula) and self.translate() == other.translate()
+  def __ne__(self, other):
+    return not (self == other)
+
+  def substituteVariable(self, a, b):
+    raise Exception("Abstract superclass.")
+
+  def updateVariables(self):
     raise Exception("Abstract superclass.")
 
 class Application(Formula):
@@ -9,17 +24,39 @@ class Application(Formula):
     self.endofunctor = endofunctor
     self.formula = formula
 
+  def translate(self):
+    return self.endofunctor.translate().onObject(self.formula)
+
+  def substituteVariable(self, a, b):
+    return Application(endofunctor = self.endofunctor.substituteVariable(a, b),
+        formula = self.formula.substituteVariable(a, b))
+
+  def updateVariables(self):
+    return Application(endofunctor = self.endofunctor.updateVariables(),
+        formula = self.formula.updateVariables())
+
 class Conjunction(Formula):
-  pass
+  def __init__(self, values):
+    self.values = values
+    self.basicBinop = self.basicBinop()
 
-class Not(Formula):
-  pass
+  def translate(self):
+    return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
+        values = [value.translate() for value in self.values])
 
-class Always(Formula):
-  pass
+  def substituteVariable(self, a, b):
+    return self.__class__(values = [v.substituteVariable(a, b) for v in self.values])
 
-class Welldefined(Formula):
-  pass
+  def updateVariables(self):
+    return self.__class__(values = [v.updateVariables() for v in self.values])
+
+class And(Conjunction):
+  def basicBinop(self):
+    return basicFormula.And
+
+class Or(Conjunction):
+  def basicBinop(self):
+    return basicFormula.Or
 
 class Iff(Formula):
   def __init__(self, left, right):
@@ -27,50 +64,58 @@ class Iff(Formula):
     self.right = right
   def __repr__(self):
     return "Iff(\n%s\n<==>\n%s\n)"%(self.left, self.right)
-  def __eq__(self, other):
-    return other.__class__ == Iff and self.left == other.left and self.right == other.right
-  def __ne__(self, other):
-    return not(self == other)
   def translate(self):
-    return ExpandIff(self.left.translate(), self.right.translate())
+    return basicFormula.ExpandIff(self.left.translate(), self.right.translate())
   def updateVariables(self):
     return Iff(left = self.left.updateVariables(),
         right = self.right.updateVariables())
   def substituteVariable(self, a, b):
     return Iff(left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
-  def freeVariables(self):
-    return self.left.freeVariables().union(self.right.freeVariables())
 
 class Hidden(Formula):
   def __init__(self, base, name):
     self.base = base
     self.name = name
 
-  def __eq__(self, other):
-    return other.__class__ == Hidden and self.base == other.base
-  def __ne__(self, other):
-    return not(self == other)
-  # f is a function taking each object B to a list ys
-  # return a list of all pairs (a, X) such that
-  #   a is an arrow self -> B|self
-  #   X is in f(B)
-  #   B == Always(C) for some C
-  def produceFiltered(self, f):
-    # Hidden(X) --> X --> B|X --> B|Hidden(X)
-    return [(self.forwardUnhide().forwardCompose(a).forwardFollow(lambda x:
-                  x.forwardOnRightFollow(lambda x: x.forwardHide(self.name))), X)
-            for a, X in self.base.produceFiltered(f)]
-
-    return self.base.produceFiltered(f)
   def translate(self):
     return self.base.translate()
   def updateVariables(self):
     return Hidden(base = self.base.updateVariables(), name = self.name)
   def substituteVariable(self, a, b):
     return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
-  def freeVariables(self):
-    return self.base.freeVariables()
-  def forwardUnhide(self):
-    return Hide(src = self.base, tgt = self).invert()
+
+class Unique(Formula):
+  def __init__(self, variable, equivalence, formula, newVariable = None):
+    self.variable = variable
+    self.equivalence = equivalence
+    self.formula = formula
+    if newVariable is None:
+      self.newVariable = Variable()
+    else:
+      self.newVariable = newVariable
+
+  def translate(self):
+    formulaTranslate = self.formula.translate()
+    all_others_are_equal = basicFormula.Not(
+        basicFormula.Exists(self.newVariable,
+          basicFormula.And(basicFormula.And(
+            InDomain(self.newVariable, self.equivalence),
+            formulaTranslate.substituteVariable(self.variable, self.newVariable)),
+            basicFormula.Not(EqualUnder(self.newVariable, self.variable, self.equivalence)))))
+    return basicFormula.And(formulaTranslate, all_others_are_equal)
+
+  def substituteVariable(self, a, b):
+    assert(b != self.newVariable)
+    assert(a != self.newVariable)
+    return Unique(variable = self.variable.substituteVariable(a, b),
+        equivalence = self.equivalence.substituteVariable(a, b),
+        formula = self.formula.substituteVariable(a, b),
+        newVariable = self.newVariable)
+
+  def updateVariables(self):
+    return Unique(variable = self.variable,
+        equivalence = self.equivalence,
+        formula = self.formula.updateVariables(),
+        newVariable = self.newVariable.updateVariables())
 

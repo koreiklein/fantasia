@@ -2,6 +2,7 @@
 
 from misc import *
 from calculus import variable
+from calculus.enriched import formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basic
 from calculus.basic import bifunctor as basicBifunctor
@@ -11,6 +12,8 @@ class Endofunctor:
   # return a basic endofunctor
   def translate(self):
     raise Exception("Abstract superclass.")
+  def onObject(self, object):
+    return formula.Application(endofunctor = self, formula = object)
 
 class VariableBinding:
   # variable: a variable
@@ -46,7 +49,7 @@ always_functor = DirectTranslate(basic.always_functor)
 not_functor = DirectTranslate(basic.not_functor)
 identity_functor = DirectTranslate(basic.identity_functor)
 
-def WellDefined(variable, newVariable, equivalence):
+def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
         basicFormula.Always(InDomain(newVariable, equivalence)),
         basicFormula.Always(EqualUnder(newVariable, variable, equivalence)))
@@ -56,4 +59,22 @@ def WellDefined(variable, newVariable, equivalence):
           basic.And(side = right, other = isEqual)).compose(
             basic.not_functor))
   return basicBifunctor.and_functor.precomposeRight(F).join()
+
+def Not(x):
+  return formula.Application(not_functor, x)
+def Always(x):
+  return formula.Application(always_functor, x)
+
+def WelldefinedObject(variable, newVariable, equivalence, value):
+  return formula.Application(WellDefined(variable, newVariable, equivalence), value)
+
+class WellDefinedFunctor(Endofunctor):
+  def __init__(self, variable, newVariable, equivalence):
+    self.variable = variable
+    self.newVariable = newVariable
+    self.equivalence = equivalence
+    self.expanded = ExpandWellDefined(variable, newVariable, equivalence)
+
+  def translate(self):
+    return self.expanded
 
