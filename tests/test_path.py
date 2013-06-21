@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 import unittest
-import path
+from calculus import basicPath as path
 from calculus import basic
 from lib import common_vars
 

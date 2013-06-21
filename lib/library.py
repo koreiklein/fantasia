@@ -1,8 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic
-
-import path
+from calculus import basic, basicPath as path
 
 class Library:
   def __init__(self, claims, variables):
