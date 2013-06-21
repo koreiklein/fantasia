@@ -1,13 +1,13 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, basicPath as path
+from calculus.basic import formula
 
 class Library:
   def __init__(self, claims, variables):
     self.variables = variables
     self.claims = claims
-    self.formula = basic.Always(basic.MultiExists(variables,
-        basic.MultiAnd(claims)))
+    self.formula = formula.Always(formula.MultiExists(variables,
+        formula.MultiAnd(claims)))
 
   def translate(self):
     return Library(claims = [claim.translate() for claim in self.claims],

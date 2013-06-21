@@ -4,14 +4,10 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
-class VariableBinding:
-  def __init__(self, variable, unique, welldefined):
-    self.variable = variable
-    self.unique = unique
-    self.welldefined = welldefined
-
-class Exists(Formula):
-  pass
+class Application(Formula):
+  def __init__(self, endofunctor, formula):
+    self.endofunctor = endofunctor
+    self.formula = formula
 
 class Conjunction(Formula):
   pass

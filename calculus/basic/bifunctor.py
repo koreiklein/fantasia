@@ -222,23 +222,3 @@ class Join(endofunctor.Endofunctor):
   def covariant(self):
     return True
 
-
-def InDomain(x, e):
-  return formula.Holds(x, variable.ProjectionVariable(e, domainSymbol))
-
-def EqualUnder(a, b, e):
-  return formula.Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(e, relationSymbol))
-
-def WellDefined(variable, newVariable, equivalence):
-  isEqual = formula.And(
-        formula.Always(InDomain(newVariable, equivalence)),
-        formula.Always(EqualUnder(newVariable, variable, equivalence)))
-  F = endofunctor.SubstituteVariable(variable, newVariable).compose(
-      endofunctor.not_functor.compose(
-        endofunctor.Exists(newVariable)).compose(
-          endofunctor.And(side = right, other = isEqual)).compose(
-            endofunctor.not_functor))
-  return and_functor.precomposeRight(F).join()
-
