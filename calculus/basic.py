@@ -115,8 +115,7 @@ class StringVariable(Variable):
     return self._name
 
   def __repr__(self):
-    # FIXME
-    return self.name()# + str(self._id)
+    return self.name()
 
   def updateVariables(self):
     return StringVariable(self.name())
@@ -295,9 +294,6 @@ class Exists(Object):
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
-    if a == self.variable:
-      # FIXME
-      print "oh no"
     assert(a != self.variable)
     assert(b != self.variable)
     return Exists(variable = self.variable,
@@ -973,7 +969,6 @@ class Composite(Arrow):
   # Subclasses should override to implement checking.
   def validate(self):
     if not(self.left.tgt == self.right.src):
-      print 'nothing'
       raise Exception(("Invalid composite."
           "left.tgt (%s) != right.src (%s)\nleft.tgt =\n%s\nright.src =\n%s"
           )%(self.left.__class__, self.right.__class__, self.left.tgt, self.right.src))
