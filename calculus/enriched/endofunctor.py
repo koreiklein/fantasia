@@ -93,13 +93,13 @@ class Conjunction(Endofunctor):
       result = result.compose(basicEndofunctor()(side = right, other = value.translate()))
     return result
 
-class And(Endofunctor):
+class And(Conjunction):
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def multiOp(self):
     return formula.And
 
-class Or(Endofunctor):
+class Or(Conjunction):
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def multiOp(self):
