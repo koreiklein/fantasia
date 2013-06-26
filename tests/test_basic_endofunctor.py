@@ -32,8 +32,7 @@ class ImportTest(unittest.TestCase):
   def assert_can_import_through_covariant_functor(self, functor):
     self.assertTrue(functor.covariant())
     importedObject = formula.Always(formula.Holds(common_vars.x(), common_vars.y()))
-    self.assert_exact_import_succeeds(functor.compose(endofunctor.And(side = endofunctor.left, other=importedObject)),
-                                      importedObject)
+    self.assert_exact_import_succeeds(functor, importedObject)
 
   def assert_exact_import_succeeds(self, functor, B):
     base = formula.true
