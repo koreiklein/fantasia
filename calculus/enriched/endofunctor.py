@@ -14,6 +14,7 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
   def covariant(self):
     raise Exception("Abstract superclass.")
+
   def onObject(self, object):
     return formula.Application(endofunctor = self, formula = object)
   def onArrow(self, arrow):
@@ -25,6 +26,22 @@ class Endofunctor:
       src = self.onObject(arrow.tgt)
       tgt = self.onObject(arrow.src)
     return formula.Arrow(src = src, tgt = tgt, basicArrow = basicArrow)
+
+  def compose(self, other):
+    return Composite(self, other)
+
+class Composite(Endofunctor):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+  def translate(self):
+    return self.left.translate().compose(self.right.translate())
+  def covariant(self):
+    if self.left.covariant():
+      return self.right.covariant()
+    else:
+      return not self.right.covariant()
 
 class VariableBinding:
   # variable: a variable
