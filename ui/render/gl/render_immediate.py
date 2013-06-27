@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import basic, symbol
+from calculus.enriched import formula
 from ui.render.gl import primitives, distances, colors
 from ui.stack import gl
 from ui.stack import stack

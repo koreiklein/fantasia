@@ -66,6 +66,9 @@ class Or(Conjunction):
   def basicBinop(self):
     return basicFormula.Or
 
+true = And([])
+false = Or([])
+
 class Iff(Formula):
   def __init__(self, left, right):
     self.left = left

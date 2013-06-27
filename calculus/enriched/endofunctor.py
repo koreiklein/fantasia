@@ -7,6 +7,13 @@ from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basic
 from calculus.basic import bifunctor as basicBifunctor
 from lib.equivalence import InDomain, EqualUnder
+from lib import common_symbols
+
+def Maps(a, b, f):
+  return basicFormula.Holds(
+      variable.ProductVariable([ (common_symbols.inputSymbol, a)
+                               , (common_symbols.outputSymbol, b)]),
+      variable.ProjectionVariable(f, common_symbols.functionPairsSymbol))
 
 class Endofunctor:
   # return a basic endofunctor
@@ -44,18 +51,41 @@ class Composite(Endofunctor):
       return not self.right.covariant()
 
 class VariableBinding:
-  # variable: a variable
-  # welldefined: an equivalence relation or None
-  def __init__(self, variable, welldefined):
+  # return: an endofunctor representing existential quantification
+  #         over this variable.
+  def translate(self):
+    raise Exception("Abstract superclass.")
+
+class OrdinaryVariableBinding(VariableBinding):
+  def __init__(self, variable):
     self.variable = variable
-    self.welldefined = welldefined
+
+  def translate(self):
+    return basic.Exists(self.variable)
+
+class WelldefinedVariableBinding(VariableBinding):
+  # variable: a variable
+  # relation: an equivalence relation
+  def __init__(self, variable, relation):
+    self.variable = variable
+    self.relation = relation
 
   def translate(self):
     result = basic.Exists(self.variable)
-    if self.welldefined is not None:
-      newVariable = variable.Variable()
-      result = WellDefined(self.variable, newVariable, self.welldefined).compose(result)
+    newVariable = variable.Variable()
+    result = ExpandWellDefined(self.variable, newVariable, self.relation).compose(result)
     return result
+
+class ImageVariableBinding(VariableBinding):
+  def __init__(self, variable, preimage, function):
+    self.variable = variable
+    self.preimage = preimage
+    self.function = function
+
+  def translate(self):
+    return basic.Exists(self.variable).compose(
+        basic.And(side = right,
+          other = basicFormula.Always(Maps(self.preimage, self.variable, self.function))))
 
 class Exists(Endofunctor):
   def __init__(self, bindings):
@@ -139,7 +169,7 @@ def Always(x):
   return formula.Application(always_functor, x)
 
 def WelldefinedObject(variable, newVariable, equivalence, value):
-  return formula.Application(WellDefined(variable, newVariable, equivalence), value)
+  return formula.Application(WellDefinedFunctor(variable, newVariable, equivalence), value)
 
 class WellDefinedFunctor(Endofunctor):
   def __init__(self, variable, newVariable, equivalence):
