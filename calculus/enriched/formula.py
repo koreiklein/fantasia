@@ -76,9 +76,9 @@ class Holds(Formula):
     return self
 
 class Application(Formula):
-  def __init__(self, endofunctor, formula):
-    self.endofunctor = endofunctor
+  def __init__(self, formula, endofunctor):
     self.formula = formula
+    self.endofunctor = endofunctor
 
   def render(self, context):
     return self.endofunctor.renderOn(context, lambda context:
