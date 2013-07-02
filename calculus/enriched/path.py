@@ -46,8 +46,11 @@ class Path:
   #        None otherwise
   def advance(self, index):
     if index is not None:
-      assert(self.formula.__class__ == formula.Conjunction)
-      return
+      assert(self.formula.__class__ == formula.Conjunction
+          or self.formula.__class__ == formula.Application)
+      a, b = self.formula.factor_index(index)
+      return newIdentityArrow(src = self,
+          tgt = Path(formula = a, endofunctor = b.compose(self.endofunctor)))
     if self.formula.__class__ == formula.Holds:
       raise Exception("Can't advance past Holds.")
     elif self.formula.__class__ == formula.Iff:

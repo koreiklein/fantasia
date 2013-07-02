@@ -11,6 +11,13 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  # index: an index
+  #   self must be equivalent to a functor of the form a o b where
+  #   b == And(...) or B == Or(...)
+  # return: a, b  or throw an exception if self is not of the appropriate form.
+  def factor_index(self, index):
+    raise Exception("Abstract superclass.")
+
   def __eq__(self, other):
     return isinstance(other, Formula) and self.translate() == other.translate()
   def __ne__(self, other):
@@ -80,6 +87,16 @@ class Application(Formula):
     self.formula = formula
     self.endofunctor = endofunctor
 
+  def factor_index(self, index):
+    if is_identity_functor(self.endofunctor):
+      return self.formula.factor_index(index)
+    else:
+      a, b = self.endofunctor.factor_right()
+      if b.__class__ == And or b.__class__ == Or:
+        return (Application(formula = self.formula, endofunctor = a), b)
+      else:
+        raise Exception("The given endofunctor did not factor properly.")
+
   def render(self, context):
     return self.endofunctor.renderOn(context, lambda context:
         formula.render(context))
@@ -99,6 +116,14 @@ class Conjunction(Formula):
   def __init__(self, values):
     self.values = values
     self.basicBinop = self.basicBinop()
+
+  # index: an index
+  #   self must be equivalent to a functor of the form a o b where
+  #   b == And(...) or B == Or(...)
+  # return: a, b  or throw an exception if self is not of the appropriate form.
+  def factor_index(self, index):
+    #FIXME
+    return 
 
   def translate(self):
     return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
