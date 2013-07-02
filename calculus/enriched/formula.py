@@ -3,15 +3,24 @@
 from calculus.variable import Variable
 from calculus.basic import formula as basicFormula
 from lib.equivalence import InDomain, EqualUnder
+from ui.stack import gl
+from ui.stack import stack
+from ui.render.gl import primitives, distances, colors
 
 class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  def factor(self):
+    return (identity_functor, self)
+
   def __eq__(self, other):
     return isinstance(other, Formula) and self.translate() == other.translate()
   def __ne__(self, other):
     return not (self == other)
+
+  def render(self, context):
+    return gl.newTextualGLStack(colors.genericColor, repr(self))
 
   def substituteVariable(self, a, b):
     raise Exception("Abstract superclass.")
@@ -27,10 +36,56 @@ class Arrow:
   def translate(self):
     return self.basicArrow
 
+class Holds(Formula):
+  def __init__(self, held, holding):
+    self.held = held
+    self.holding = holding
+
+  def translate(self):
+    return basicFormula.Holds(held = self.held,
+        holding = self.holding)
+
+  def render(self, context):
+    infix = getInfix(self)
+    if infix is not None:
+      (firstSymbol, secondSymbol) = infix
+      assert(len(self.held.symbol_variable_pairs) == 2)
+      (aSymbol, aVariable) = self.held.symbol_variable_pairs[0]
+      (bSymbol, bVariable) = self.held.symbol_variable_pairs[1]
+      if aSymbol == secondSymbol:
+        assert(bSymbol == firstSymbol)
+        (firstSymbol, secondSymbol) = (secondSymbol, firstSymbol)
+      else:
+        assert(aSymbol == firstSymbol)
+        assert(bSymbol == secondSymbol)
+      # Now aSymbol == firstSymbol and bSymbol == secondSymbol
+      holds =  stack.stackAll(0, [ renderVariable(aVariable, bindings)
+                                 , renderVariable(self.holding, bindings)
+                                 , renderVariable(bVariable, bindings)],
+                                 spacing = distances.infixSpacing)
+    else:
+      holds = stack.stackAll(0, [ renderVariable(self.held, bindings)
+                                , primitives.holds()
+                                , renderVariable(self.holding, bindings)],
+                                spacing = distances.holdsSpacing)
+
+    return holds
+
+  def substituteVariable(self, a, b):
+    return Holds(held = self.held.substituteVariable(a, b),
+        holding = self.holding.substituteVariable(a, b))
+
+  def updateVariables(self):
+    return self
+
 class Application(Formula):
   def __init__(self, endofunctor, formula):
     self.endofunctor = endofunctor
     self.formula = formula
+
+  def render(self, context):
+    return self.endofunctor.renderOn(context, lambda context:
+        formula.render(context))
 
   def translate(self):
     return self.endofunctor.translate().onObject(self.formula)
@@ -58,13 +113,37 @@ class Conjunction(Formula):
   def updateVariables(self):
     return self.__class__(values = [v.updateVariables() for v in self.values])
 
+  def render(self, context):
+    if context.covariant:
+      dimension = 0
+      other_dimension = 1
+    else:
+      dimension = 1
+      other_dimension = 0
+
+    length = distances.min_unit_divider_length
+    values = []
+    for kid in self.values:
+      s = kid.render(context)
+      length = max(length, s.widths[other_dimension])
+      values.apppend(s)
+    return stack.stackAll(dimension,
+        _interleave(self.renderDivider(context.covariant, length), values),
+        spacing = distances.divider_spacing)
+
 class And(Conjunction):
   def basicBinop(self):
     return basicFormula.And
 
+  def renderDivider(self, covariant, length):
+    return primitives.andDivider(covariant)(length)
+
 class Or(Conjunction):
   def basicBinop(self):
     return basicFormula.Or
+
+  def renderDivider(self, covariant, length):
+    return primitives.orDivider(covariant)(length)
 
 true = And([])
 false = Or([])
@@ -84,11 +163,25 @@ class Iff(Formula):
     return Iff(left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
 
+  def render(self, context):
+    kid_context = context.as_covariant()
+    res = render(self.left, kid_context).stack(0,
+        primitives.iff(),
+        spacing = distances.iffSpacing).stack(0,
+            render(self.right, kid_context),
+            spacing = distances.iffSpacing)
+    if context.covariant:
+      return res
+    else:
+      return renderNotWithSymbol(res)
+
 class Hidden(Formula):
   def __init__(self, base, name):
     self.base = base
     self.name = name
 
+  def __repr__(self):
+    return "<<" + self.name + ">>"
   def translate(self):
     return self.base.translate()
   def updateVariables(self):
@@ -130,3 +223,24 @@ class Unique(Formula):
         formula = self.formula.updateVariables(),
         newVariable = self.newVariable.updateVariables())
 
+  def render(self, context):
+    return gl.newTextualGLStack(colors.variableColor,
+        "%s ! in %s . "%(self.variable, self.equivalence)).stack(0,
+            self.formula.render(context))
+
+
+class RenderingContext:
+  def __init__(self, covariant, bindings):
+    self.covariant = covariant
+    self.bindings = bindings
+
+  def bind(self, key, value):
+    bindings = dict(self.bindings)
+    bindings[key] = value
+    return RenderingContext(covariant = self.covariant, bindings = bindings)
+
+  def negate(self):
+    return RenderingContext(covariant = not self.covariant, bindings = self.bindings)
+
+  def as_covariant(self):
+    return self if self.covariant else self.negate()

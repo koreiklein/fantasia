@@ -9,3 +9,11 @@ def flipSide(side):
   else:
     assert(side == right)
     return left
+
+def _interleave(a, xs):
+  result = []
+  for x in xs:
+    result.append(x)
+    result.append(a)
+  return result
+

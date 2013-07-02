@@ -1,35 +1,37 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol, basic
+from calculus import symbol, variable
+from calculus.enriched import constructors
 from lib import equivalence, library, common_vars, common_symbols, function
 
 from common_symbols import inputSymbol, outputSymbol
 
-natural = basic.StringVariable('N')
+natural = variable.StringVariable('N')
 
 smaller = symbol.StringSymbol('smaller')
 greater = symbol.StringSymbol('greater')
-natural_less = basic.StringVariable('<', infix = (smaller, greater))
+natural_less = variable.StringVariable('<', infix = (smaller, greater))
 
-natural_successor = basic.StringVariable('S')
+natural_successor = variable.StringVariable('S')
 
 def Natural(n):
-  return basic.Always(equivalence.InDomain(n, natural))
+  return constructors.Always(equivalence.InDomain(n, natural))
 
 def Successor(a, b):
-  return basic.Always(
-      basic.Holds(basic.ProductVariable([(inputSymbol, a), (outputSymbol, b)]), natural_successor))
+  return constructors.Always(
+      constructors.Holds(variable.ProductVariable(
+        [(inputSymbol, a), (outputSymbol, b)]), natural_successor))
 
 def Equal(a, b):
   return equivalence.EqualUnder(a, b, natural)
 
 def Less(a, b):
-  return basic.Always(basic.Holds(
-      basic.ProductVariable([(smaller, a), (greater, b)]), natural_less))
+  return constructors.Always(constructors.Holds(
+      variable.ProductVariable([(smaller, a), (greater, b)]), natural_less))
 
-naturalIsEquivalence = basic.Always(equivalence.IsEquivalence(natural))
+naturalIsEquivalence = constructors.Always(equivalence.IsEquivalence(natural))
 
-natural_successor_function = basic.ProductVariable(
+natural_successor_function = variable.ProductVariable(
     [ (common_symbols.functionPairsSymbol, natural_successor)
     , (common_symbols.srcSymbol, natural)
     , (common_symbols.tgtSymbol, natural)])
@@ -38,17 +40,21 @@ successorIsFunction = function.IsFunction(natural_successor_function)
 
 a = common_vars.a()
 b = common_vars.b()
-successorIsGreater = basic.MultiBoundedForall([(a, natural), (b, natural)],
-    basic.Implies(Successor(a, b), Less(a, b)))
+successorIsGreater = constructors.Forall(
+    [ constructors.BoundedVariableBinding(a, natural)
+    , constructors.BoundedVariableBinding(b, natural)],
+    constructors.Implies(Successor(a, b), Less(a, b)))
 
-zero = basic.StringVariable('zero')
+zero = variable.StringVariable('zero')
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
 m = common_vars.m()
-zeroFirst = basic.MultiBoundedForall([(n, natural), (m, natural)],
-    basic.Implies(predicate = Successor(n, m),
-      consequent = basic.Not(Equal(m, zero))))
+zeroFirst = constructors.Forall(
+    [ constructors.BoundedVariableBinding(n, natural)
+    , constructors.BoundedVariableBinding(m, natural)],
+    constructors.Implies(predicate = Successor(n, m),
+      consequent = constructors.Not(Equal(m, zero))))
 
 allClaims = [ successorIsGreater
             , naturalIsEquivalence
@@ -56,7 +62,7 @@ allClaims = [ successorIsGreater
             , zeroFirst
             , successorIsFunction]
 
-naturalClaims = basic.MultiAnd(allClaims)
+naturalClaims = constructors.And(allClaims)
 
 pre_lib = library.Library(
     #claims = [basic.Hidden(naturalClaims, 'Naturals')],
