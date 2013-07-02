@@ -11,9 +11,6 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
-  def factor(self):
-    return (identity_functor, self)
-
   def __eq__(self, other):
     return isinstance(other, Formula) and self.translate() == other.translate()
   def __ne__(self, other):
