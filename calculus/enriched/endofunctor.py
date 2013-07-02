@@ -6,8 +6,8 @@ from calculus.enriched import formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basic
 from calculus.basic import bifunctor as basicBifunctor
-from lib.equivalence import InDomain, EqualUnder
 from lib import common_symbols
+from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
 
 def Maps(a, b, f):
   return basicFormula.Holds(
@@ -105,7 +105,7 @@ class BoundedVariableBinding(VariableBinding):
   def translate(self):
     return basic.Exists(self.variable).compose(
         basic.And(side = right,
-          other = basic.Holds(held = variable,
+          other = basicFormula.Holds(held = self.variable,
             holding = self.domain)))
 
   def render(self, context):
@@ -206,7 +206,7 @@ class Exists(Endofunctor):
   def translate(self):
     result = basic.identity_functor
     for binding in self.bindings[::-1]:
-      result = result.compose(bindings.translate())
+      result = result.compose(binding.translate())
     return result
 
 class DirectTranslate(Endofunctor):
@@ -306,8 +306,8 @@ class Or(Conjunction):
 
 def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
-        basicFormula.Always(InDomain(newVariable, equivalence)),
-        basicFormula.Always(EqualUnder(newVariable, variable, equivalence)))
+        basicFormula.Always(formula.InDomain(newVariable, equivalence)),
+        basicFormula.Always(formula.EqualUnder(newVariable, variable, equivalence)))
   F = basic.SubstituteVariable(variable, newVariable).compose(
       basic.not_functor.compose(
         basic.Exists(newVariable)).compose(

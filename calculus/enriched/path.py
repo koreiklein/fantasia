@@ -12,12 +12,18 @@ class Arrow:
     return Arrow(src = self.src, tgt = other.tgt,
         enrichedArrow = self.enrichedArrow.forwardCompose(other.enrichedArrow))
 
+  def translate(self):
+    return self.enrichedArrow.translate()
+
 def newArrow(src, tgt, basicArrow):
   return Arrow(src = src, tgt = tgt,
       enrichedArrow = formula.Arrow(src = src.top(), tgt = tgt.top(), basicArrow = basicArrow))
 
 def newIdentityArrow(src, tgt):
   return newArrow(src = src, tgt = tgt, basicArrow = src.top().translate().identity())
+
+def new_path(formula):
+  return Path(formula = formula, endofunctor = endofunctor.identity_functor)
 
 class Path:
   def __init__(self, formula, endofunctor):
@@ -44,7 +50,7 @@ class Path:
 
   # index: an index into self.bottom().values if self.bottom() is an And or Or
   #        None otherwise
-  def advance(self, index):
+  def advance(self, index = None):
     if index is not None:
       assert(self.formula.__class__ == formula.Conjunction
           or self.formula.__class__ == formula.Application)

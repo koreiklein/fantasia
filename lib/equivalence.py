@@ -58,4 +58,4 @@ claim = formula.MultiForall([A],
         , transitive(A)]),
       right = IsEquivalence(A)))
 
-lib = library.Library(claims = [claim], variables = [equivalence])
+lib = library.Library(claims = [claim], variables = [equivalence], sub_libraries = [])

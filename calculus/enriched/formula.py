@@ -1,8 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+import calculus.variable
 from calculus.variable import Variable
 from calculus.basic import formula as basicFormula
-from lib.equivalence import InDomain, EqualUnder
+from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
 from ui.stack import gl
 from ui.stack import stack
 from ui.render.gl import primitives, distances, colors
@@ -84,8 +85,14 @@ class Holds(Formula):
 
 class Application(Formula):
   def __init__(self, formula, endofunctor):
+    if not(isinstance(formula, Formula)):
+      raise Exception(("Application was given something other than an enriched"
+          + " Formula.  Got %s")%(formula,))
     self.formula = formula
     self.endofunctor = endofunctor
+
+  def __repr__(self):
+    return "Apply %s to %s"%(self.endofunctor, self.formula)
 
   def factor_index(self, index):
     if is_identity_functor(self.endofunctor):
@@ -102,7 +109,7 @@ class Application(Formula):
         formula.render(context))
 
   def translate(self):
-    return self.endofunctor.translate().onObject(self.formula)
+    return self.endofunctor.translate().onObject(self.formula.translate())
 
   def substituteVariable(self, a, b):
     return Application(endofunctor = self.endofunctor.substituteVariable(a, b),
@@ -114,6 +121,10 @@ class Application(Formula):
 
 class Conjunction(Formula):
   def __init__(self, values):
+    for i in range(len(values)):
+      value = values[i]
+      if not(isinstance(value, Formula)):
+        raise Exception("%s at index %s is not an enriched formula."%(value, i))
     self.values = values
     self.basicBinop = self.basicBinop()
 
@@ -123,6 +134,7 @@ class Conjunction(Formula):
   # return: a, b  or throw an exception if self is not of the appropriate form.
   def factor_index(self, index):
     #FIXME
+    assert(False)
     return 
 
   def translate(self):
@@ -266,3 +278,11 @@ class RenderingContext:
 
   def as_covariant(self):
     return self if self.covariant else self.negate()
+
+def InDomain(x, e):
+  return Holds(x, variable.ProjectionVariable(e, domainSymbol))
+
+def EqualUnder(a, b, e):
+  return Holds(
+      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      variable.ProjectionVariable(e, relationSymbol))
