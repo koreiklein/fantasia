@@ -8,7 +8,7 @@ from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basicEndofunctor
 from calculus.basic import bifunctor as basicBifunctor
 from lib import common_symbols
-from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
+from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
 from ui.render.gl import primitives, colors, distances
 from ui.stack import gl
@@ -320,8 +320,8 @@ class Or(Conjunction):
 
 def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
-        basicFormula.Always(formula.InDomain(newVariable, equivalence)),
-        basicFormula.Always(formula.EqualUnder(newVariable, variable, equivalence)))
+        basicFormula.Always(InDomain(newVariable, equivalence)),
+        basicFormula.Always(Equal(newVariable, variable, equivalence)))
   F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
       basicEndofunctor.not_functor.compose(
         basicEndofunctor.Exists(newVariable)).compose(
@@ -329,13 +329,22 @@ def ExpandWellDefined(variable, newVariable, equivalence):
             basicEndofunctor.not_functor))
   return basicBifunctor.and_functor.precomposeRight(F).join()
 
+def InDomain(a, e):
+  return Always(formula.Holds(a, ProjectionVariable(e, domainSymbol)))
+
+def Equal(a, b, e):
+  return Always(formula.Holds(
+      ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      ProjectionVariable(e, relationSymbol)))
+
 def Not(x):
-  return formula.Application(not_functor, x)
+  return formula.Application(formula = x, endofunctor = not_functor)
 def Always(x):
-  return formula.Application(always_functor, x)
+  return formula.Application(formula = x, endofunctor = always_functor)
 
 def WelldefinedObject(variable, newVariable, equivalence, value):
-  return formula.Application(WellDefinedFunctor(variable, newVariable, equivalence), value)
+  return formula.Application(formula = value,
+      endofunctor = WellDefinedFunctor(variable, newVariable, equivalence))
 
 class WellDefinedFunctor(Endofunctor):
   def __init__(self, variable, newVariable, equivalence):

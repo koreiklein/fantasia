@@ -5,7 +5,7 @@ import misc
 from calculus import variable
 from calculus.variable import Variable
 from calculus.basic import formula as basicFormula
-from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
+from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 from ui.stack import gl
 from ui.stack import stack
 from ui.render.gl import primitives, distances, colors
@@ -222,6 +222,12 @@ class Unique(Formula):
       self.newVariable = newVariable
 
   def translate(self):
+    def InDomain(x, e):
+      return Always(Holds(x, variable.ProjectionVariable(e, domainSymbol)))
+    def EqualUnder(a, b, e):
+      return Always(Holds(
+          variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+          variable.ProjectionVariable(e, relationSymbol)))
     formulaTranslate = self.formula.translate()
     all_others_are_equal = basicFormula.Not(
         basicFormula.Exists(self.newVariable,
@@ -266,14 +272,6 @@ class RenderingContext:
 
   def as_covariant(self):
     return self if self.covariant else self.negate()
-
-def InDomain(x, e):
-  return Holds(x, variable.ProjectionVariable(e, domainSymbol))
-
-def EqualUnder(a, b, e):
-  return Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(e, relationSymbol))
 
 # holds: a basic.Holds
 # return: the pair of infix symbols, or None of no such symbols exist.

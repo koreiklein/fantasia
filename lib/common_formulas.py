@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.enriched import constructors
+from calculus.enriched import constructors, endofunctor
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol, inputSymbol, outputSymbol, functionPairsSymbol
 from lib import common_vars
 from calculus import variable
@@ -17,10 +17,5 @@ def Maps(a, b, f):
 def IsFunction(f):
   return constructors.Always(constructors.Holds(f, common_vars.function))
 
-def Equal(a, b, e):
-  return constructors.Always(constructors.Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(e, relationSymbol)))
-
-def InDomain(a, e):
-  return constructors.Always(constructors.Holds(a, variable.ProjectionVariable(e, domainSymbol)))
+InDomain = endofunctor.InDomain
+Equal = endofunctor.Equal
