@@ -93,5 +93,57 @@ class TransportTest(AbstractTransportTest, CommonObjects):
           bifunctor = bifunctor.And(values = values, leftIndex = 5,
             rightIndex = 2)))
 
+  def test_transport_nested_ands(self):
+    values = [self.W, self.X]
+    inner_values = [self.Y, self.Z]
+    f = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precomposeLeft(
+        endofunctor.And(values = inner_values, index = 1))
+    self.assert_standard_transport_succeeds(bifunctor = f)
+
+  def test_transport_doubly_nested_ands(self):
+    values = [self.W, self.X]
+    inner_values0 = [self.W, self.Z]
+    inner_values1 = [self.X, self.Y]
+    f = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precompose(
+        left = endofunctor.And(values = inner_values0, index = 1),
+        right = endofunctor.And(values = inner_values1, index = 2))
+    self.assert_standard_transport_succeeds(bifunctor = f)
+
+  def test_transport_nested_and_or(self):
+    values = [self.W, self.X]
+    inner_values0 = [self.W, self.Z]
+    inner_values1 = [self.X, self.Y]
+    f_and = endofunctor.And(values = inner_values0, index = 1)
+    f_or = endofunctor.Or(values = inner_values1, index = 2)
+    f = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precompose(
+        left = f_and,
+        right = f_or)
+    self.assert_standard_transport_succeeds(bifunctor = f)
+
+    f_broken = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precompose(
+        right = f_and,
+        left = f_or)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.assert_standard_transport_succeeds, bifunctor = f_broken)
+
+  def test_transport_not_or_not(self):
+    values = [self.W, self.X]
+    inner_values0 = [self.W, self.Z]
+    inner_values1 = [self.X, self.Y]
+    f_and = endofunctor.And(values = inner_values0, index = 1)
+    f_not_or_not = endofunctor.not_functor.compose(
+        endofunctor.Or(values = inner_values1, index = 2)).compose(
+            endofunctor.not_functor)
+    f = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precompose(
+        left = f_and,
+        right = f_not_or_not)
+    self.assert_standard_transport_succeeds(bifunctor = f)
+
+    f_broken = bifunctor.And(values = values, leftIndex = 2, rightIndex = 1).precompose(
+        right = f_and,
+        left = f_not_or_not)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.assert_standard_transport_succeeds, bifunctor = f_broken)
+
 def suite():
   return unittest.makeSuite(TransportTest)

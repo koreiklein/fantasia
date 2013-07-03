@@ -303,7 +303,7 @@ class Conjunction(Endofunctor):
     back = self.multiOp()(self.rest).translate()
     result = self.basicEndofunctor()(side = left, other = back)
     for value in self.first[::-1]:
-      result = result.compose(basicEndofunctor()(side = right, other = value.translate()))
+      result = result.compose(self.basicEndofunctor()(side = right, other = value.translate()))
     return result
 
 class And(Conjunction):

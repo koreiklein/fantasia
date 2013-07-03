@@ -4,6 +4,8 @@ from misc import *
 from calculus.enriched import formula, endofunctor, constructors
 from calculus.basic import bifunctor as basicBifunctor, endofunctor as basicEndofunctor
 
+UntransportableException = basicBifunctor.UntransportableException
+
 class Bifunctor:
   def translate(self):
     raise Exception("Abstract superclass.")
@@ -24,6 +26,15 @@ class Bifunctor:
     return formula.Arrow(src = self.onObjects(left.src, right.src),
         tgt = self.onObjects(left.tgt, right.tgt),
         basicArrow = self.translate().onArrows(left.translate(), right.translate()))
+
+  def precompose(self, left, right):
+    return PrecompositeBifunctor(bifunctor = self, left = left, right = right)
+  def compose(self, other):
+    return PostcompositeBifunctor(bifunctor = self, functor = other)
+  def precomposeLeft(self, left):
+    return self.precompose(left = left, right = endofunctor.identity_functor)
+  def precomposeRight(self, right):
+    return self.precompose(left = endofunctor.identity_functor, right = right)
 
 
 class PostcompositeBifunctor(Bifunctor):
