@@ -49,6 +49,14 @@ class Bifunctor:
   def _liftRight(self, B):
     raise endofunctor.UnliftableException(self, B)
 
+  # B: an enriched formula such that B.forwardCopy() is defined.
+  # return a function representing a natural transform: F(B, .) --> F(B, B|.)
+  def transport_duplicating(self, B):
+    # F(B, x) --> F(B|B, x) --> F(B, B|x)
+    return (lambda x:
+        self.onArrows(B.forwardCopy(), x.identity()).forwardCompose(
+          self.transport(B)(B, x)))
+
   # return a function reperesenting a natural transform: F(B|., .) --> F(., B|.) if possible,
   #  otherwise, raise an intransportable exception.
   def transport(self, B):

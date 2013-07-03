@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from misc import *
-from calculus.enriched import forumla, endofunctor
+from calculus.enriched import forumla, endofunctor, constructors
 from calculus.basic import bifunctor as basicBifunctor, endofunctor as basicEndofunctor
 
 class Bifunctor:
@@ -12,8 +12,13 @@ class Bifunctor:
   def onObjects(self, left, right):
     raise Exception("Abstract superclass.")
 
-  def transport(self, B):
-    return self.translate().transport(B.translate())
+  # return a function representing a natural transform: F(B, .) --> F(B, And([B, .]))
+  def transport_duplicating(self, B):
+    nt = self.translate().transport_duplicating(B.translate())
+    return (lambda x:
+        formula.Arrow(src = self.onObjects(left = B, right = x),
+          tgt = self.onObjects(left = B, right = constructors.And([B.updateVariables(), x])),
+          basicArrow = nt(x.translate())))
 
   def onArrows(self, left, right):
     return formula.Arrow(src = self.onObjects(left.src, right.src),
