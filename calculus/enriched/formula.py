@@ -36,10 +36,6 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.basicArrow = basicArrow
-    # FIXME
-    assert(src.translate() == basicArrow.src)
-    if not(tgt.translate() == basicArrow.tgt):
-      raise Exception("%s\n!=\n%s"%(tgt.translate(), basicArrow.tgt))
 
   def translate(self):
     return self.basicArrow

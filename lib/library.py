@@ -63,12 +63,6 @@ class Proof:
     if arrow is None:
       self.arrow = path.new_path(library.formula()).advance()
       self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
-      # FIXME
-      print self.arrow.tgt.endofunctor
-      print 'was the endofunctor'
-      print self.arrow.tgt.bottom().formula.__class__
-      # REMOVE THIS LINE ALTOGETHER
-      self.arrow = self.arrow.forwardFollow(lambda p: p.advance(0))
     else:
       assert(arrow.src.top() == library.formula)
       self.arrow = arrow

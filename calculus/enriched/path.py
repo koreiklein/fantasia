@@ -7,9 +7,6 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.enrichedArrow = enrichedArrow
-    # FIXME
-    assert(src.top().translate() == enrichedArrow.src.translate())
-    assert(tgt.top().translate() == enrichedArrow.tgt.translate())
 
   def forwardCompose(self, other):
     return Arrow(src = self.src, tgt = other.tgt,
@@ -26,8 +23,6 @@ def newArrow(src, tgt, basicArrow):
       enrichedArrow = formula.Arrow(src = src.top(), tgt = tgt.top(), basicArrow = basicArrow))
 
 def newIdentityArrow(src, tgt):
-  # FIXME
-  assert(src.top().translate() == tgt.top().translate())
   return newArrow(src = src, tgt = tgt, basicArrow = src.top().translate().identity())
 
 def new_path(formula):
@@ -65,8 +60,7 @@ class Path:
         raise Exception("Can't advance to index %s in a formula of class %s."%(index,
           self.formula.__class__))
       a, b = endofunctor.factor_index(self.formula, index)
-      # FIXME
-      result = newIdentityArrow(src = self,
+      return newIdentityArrow(src = self,
           tgt = Path(formula = a, endofunctor = b.compose(self.endofunctor)))
     elif self.formula.__class__ == formula.Holds:
       raise Exception("Can't advance past Holds.")
@@ -81,20 +75,13 @@ class Path:
     elif self.formula.__class__ == formula.Application:
       if endofunctor.is_identity_functor(self.formula.endofunctor):
         new_path = Path(formula = self.formula.formula, endofunctor = self.endofunctor)
-        # FIXME
-        print 'index is ', index
-        result = newIdentityArrow(src = self, tgt = new_path).forwardCompose(
+        return newIdentityArrow(src = self, tgt = new_path).forwardCompose(
             new_path.advance(index))
       else:
         a, b = self.formula.endofunctor.factor_right()
-        # FIXME
-        result = newIdentityArrow(src = self,
+        return newIdentityArrow(src = self,
             tgt = Path(formula = formula.Application(formula = self.formula.formula, endofunctor = a),
               endofunctor = b.compose(self.endofunctor)))
     else:
       raise Exception("Unknown class %s of formula to advance past."%(self.formula.__class__,))
-
-    # FIXME
-    assert(self.top().translate() == result.src.top().translate())
-    return result
 
