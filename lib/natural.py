@@ -3,8 +3,9 @@
 from calculus import symbol, variable
 from calculus.enriched import constructors
 from lib import equivalence, library, common_vars, common_symbols, function
+from lib.common_formulas import IsEquivalence, InDomain, Equal
 
-from common_symbols import inputSymbol, outputSymbol, relationSymbol, domainSymbol, leftSymbol, rightSymbol
+from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, rightSymbol
 
 natural = variable.StringVariable('N')
 
@@ -15,23 +16,18 @@ natural_less = variable.StringVariable('<', infix = (smaller, greater))
 natural_successor = variable.StringVariable('S')
 
 def Natural(n):
-  return constructors.Always(constructors.Holds(n, variable.ProjectionVariable(natural, domainSymbol)))
+  return InDomain(n, natural)
 
 def Successor(a, b):
   return constructors.Always(
       constructors.Holds(variable.ProductVariable(
         [(inputSymbol, a), (outputSymbol, b)]), natural_successor))
 
-def Equal(a, b):
-  return constructors.Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(natural, relationSymbol))
-
 def Less(a, b):
   return constructors.Always(constructors.Holds(
       variable.ProductVariable([(smaller, a), (greater, b)]), natural_less))
 
-naturalIsEquivalence = constructors.Always(constructors.Holds(natural, equivalence.equivalence))
+naturalIsEquivalence = constructors.Always(IsEquivalence(natural))
 
 natural_successor_function = variable.ProductVariable(
     [ (common_symbols.functionPairsSymbol, natural_successor)
@@ -56,7 +52,7 @@ zeroFirst = constructors.Forall(
     [ constructors.BoundedVariableBinding(n, natural)
     , constructors.BoundedVariableBinding(m, natural)],
     constructors.Implies(predicate = Successor(n, m),
-      consequent = constructors.Not(Equal(m, zero))))
+      consequent = constructors.Not(Equal(m, zero, natural))))
 
 allClaims = [ successorIsGreater
             , naturalIsEquivalence

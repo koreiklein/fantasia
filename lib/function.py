@@ -3,18 +3,8 @@
 from lib import equivalence, common_vars, common_symbols, library
 from calculus import symbol, variable
 from calculus.enriched import constructors
-from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
-
-function = variable.StringVariable('function')
-
-def IsEquivalence(e):
-  return constructors.Holds(e, equivalence.equivalence)
-
-def Maps(a, b, f):
-  return constructors.Holds(
-      variable.ProductVariable([ (common_symbols.inputSymbol, a)
-                                   , (common_symbols.outputSymbol, b)]),
-      variable.ProjectionVariable(f, common_symbols.functionPairsSymbol))
+from lib.common_formulas import Maps, IsEquivalence, IsFunction, Equal
+from lib import common_vars
 
 def projectSrc(f):
   return variable.ProjectionVariable(f, common_symbols.srcSymbol)
@@ -24,11 +14,6 @@ def projectDomain(e):
   return variable.ProjectionVariable(e, common_symbols.domainSymbol)
 def projectRelation(e):
   return variable.ProjectionVariable(e, common_symbols.relationSymbol)
-
-def EqualUnder(a, b, e):
-  return constructors.Holds(
-      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      variable.ProjectionVariable(e, relationSymbol))
 
 a = common_vars.a()
 b = common_vars.b()
@@ -50,8 +35,8 @@ def wellDefined(f):
       constructors.Implies(
         predicate = constructors.And([ Maps(a, b, f)
                                      , Maps(aprime, bprime, f)
-                                     , EqualUnder(a, aprime, projectSrc(f))]),
-        consequent = EqualUnder(b, bprime, projectTgt(f))))
+                                     , Equal(a, aprime, projectSrc(f))]),
+        consequent = Equal(b, bprime, projectTgt(f))))
 
 a = common_vars.a()
 b = common_vars.b()
@@ -66,11 +51,8 @@ def unique(f):
       constructors.Implies(
         predicate = constructors.And([ Maps(a, b, f)
                                      , Maps(aprime, bprime, f)
-                                     , EqualUnder(b, bprime, projectSrc(f))]),
-        consequent = EqualUnder(a, aprime, projectTgt(f))))
-
-def IsFunction(f):
-  return constructors.Holds(f, function)
+                                     , Equal(b, bprime, projectSrc(f))]),
+        consequent = Equal(a, aprime, projectTgt(f))))
 
 A = common_vars.A()
 claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
@@ -84,6 +66,6 @@ claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
 
 lib = library.Library(
     claims = [ constructors.Hidden(claim, "Function") ],
-    variables = [function],
+    variables = [common_vars.function],
     sub_libraries = [equivalence.lib])
 
