@@ -16,6 +16,7 @@ class CommonObjects:
     self.a_of_a = formula.Always(formula.Holds(self.a, self.a))
     self.b_of_c = formula.Always(formula.Holds(self.c, self.b))
     self.d_of_c = formula.Always(formula.Holds(self.c, self.d))
+    self.e_of_e = formula.Always(formula.Holds(self.e, self.e))
     self.and_b_of_a_functor = endofunctor.And(side=endofunctor.left,
                                        other=self.b_of_a)
     self.or_d_of_c_functor = endofunctor.Or(side=endofunctor.left,

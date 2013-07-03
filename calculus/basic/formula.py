@@ -757,9 +757,10 @@ class Composite(Arrow):
   # Subclasses should override to implement checking.
   def validate(self):
     if not(self.left.tgt == self.right.src):
-      raise Exception(("Invalid composite."
-          "left.tgt (%s) != right.src (%s)\nleft.tgt =\n%s\nright.src =\n%s"
-          )%(self.left.__class__, self.right.__class__, self.left.tgt, self.right.src))
+      raise Exception(("Invalid composite.\n"
+        "left %s\nright %s\nleft.src = %s\n"
+        "left.tgt =%s\nright.src =%s\nright.tgt = %s\n"
+          )%(self.left, self.right, self.left.src, self.left.tgt, self.right.src, self.right.tgt))
 
   # May throw an exception.
   def invert(self):

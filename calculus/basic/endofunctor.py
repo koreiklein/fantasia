@@ -40,7 +40,7 @@ class Endofunctor:
   # return a function representing some natural transform: (B|.) o F --> F o (B|.) if possible
   #  otherwise, throw an UnliftableException
   def lift(self, B):
-    return UnliftableException(self, B)
+    raise UnliftableException(self, B)
   # return a (its tgt, function represention some natural transform:
   #   (Exists variable .) o F -> G o (Exists variable .) o H such that
   #   G o H = F and H is as small as reasonably possible.)
@@ -167,6 +167,8 @@ class Id(Endofunctor):
     # (B|x) --> (B|x)
     return (lambda x:
         formula.And(left = B, right = x).identity())
+  def lift(self, B):
+    return (lambda x: formula.And(left = B, right = x).identity())
   def variables(self):
     return []
   def pop(self):
@@ -399,8 +401,7 @@ class And(Conjunction):
   def lift(self, B):
     if self.side == left:
       # (B|x)|Y --> B|(x|Y)
-      return (lambda x:
-          self.onObject(formula.And(B, x)).forwardAssociate())
+      return (lambda x: self.onObject(formula.And(B, x)).forwardAssociate())
     else:
       assert(self.side == right)
       # Y|(B|x) --> (B|x)|Y --> B|(x|Y) --> B|(Y|x)

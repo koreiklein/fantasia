@@ -62,8 +62,9 @@ class Bifunctor:
   def transport(self, B):
     try:
       lifted = self._liftLeft(B)
-    except UnliftableException as e:
+    except endofunctor.UnliftableException as e:
       raise UntransportableException(e)
+    # F(B|., .) --> B|F(., .) --> F(., B|.)
     return (lambda x, y:
         lifted(x, y).forwardCompose(self._importRight(B)(x, y)))
 
@@ -194,7 +195,7 @@ class PostcompositeBifunctor(Bifunctor):
     bifunctor_nt = self.bifunctor._liftLeft(B)
     functor_nt = self.functor.lift(B)
     return (lambda x, y:
-        self.functor.onObject(bifunctor_nt(x, y)).forwardCompose(
+        self.functor.onArrow(bifunctor_nt(x, y)).forwardCompose(
           functor_nt(self.bifunctor.onObjects(x, y))))
 
   def _liftRight(self, B):
@@ -220,6 +221,16 @@ class PostcompositeBifunctor(Bifunctor):
         self.functor._import(B)(self.bifunctor.onObjects(left, right)).forwardCompose(
           self.functor.onArrow(self.bifunctor._import(B)(left, right))))
 
+  def _importLeft(self, B):
+    return (lambda x, y:
+        self.functor._import(B)(self.bifunctor.onObjects(x, y)).forwardCompose(
+          self.functor.onArrow(self.bifunctor._importLeft(B)(x, y))))
+
+  def _importRight(self, B):
+    return (lambda x, y:
+        self.functor._import(B)(self.bifunctor.onObjects(x, y)).forwardCompose(
+          self.functor.onArrow(self.bifunctor._importRight(B)(x, y))))
+
 class PrecompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, left, right):
     self.bifunctor = bifunctor
@@ -238,7 +249,7 @@ class PrecompositeBifunctor(Bifunctor):
     bifunctor_nt = self.bifunctor._liftLeft(B)
     left_nt = self.left.lift(B)
     return (lambda x, y:
-        bifunctor.onArrows(left_nt(x), self.right.onObject(y).identity()).forwardCompose(
+        self.bifunctor.onArrows(left_nt(x), self.right.onObject(y).identity()).forwardCompose(
           bifunctor_nt(self.left.onObject(x), self.right.onObject(y))))
 
   def _liftRight(self, B):
@@ -258,6 +269,23 @@ class PrecompositeBifunctor(Bifunctor):
     return PrecompositeBifunctor(bifunctor = self.bifunctor,
         left = left.compose(self.left),
         right = right.compose(self.right))
+
+  # a natural transform B|F(., .) --> F(., B|.)
+  def _importRight(self, B):
+    #B| F(L(.), R(.)) --> F(L(.), B|R(.)) --> F(L(.), R(B|.))
+    return (lambda left, right:
+        self.bifunctor._importRight(B)(self.left.onObject(left),
+          self.right.onObject(right)).forwardCompose(
+            self.bifunctor.onArrows(self.left.onObject(left).identity(),
+              self.right._import(B)(right))))
+
+  def _importLeft(self, B):
+    #B| F(L(.), R(.)) --> F(B|L(.), R(.)) --> F(L(B|.), R(.))
+    return (lambda left, right:
+        self.bifunctor._importLeft(B)(self.left.onObject(left),
+          self.right.onObject(right)).forwardCompose(
+            self.bifunctor.onArrows(self.left._import(B)(left),
+              self.right.onObject(right).identity())))
 
   def _import(self, B):
     return (lambda left, right:
@@ -291,7 +319,7 @@ class Join(endofunctor.Endofunctor):
           self.bifunctor.onArrows( formula.And(B, x).identity()
                                  , formula.And(B, x).forwardForgetLeft()).forwardCompose(
             left(x, x)))
-    except UnliftableException as e:
+    except endofunctor.UnliftableException as e:
       # The following line may raise an exception.
       right = self.bifunctor._liftRight
       return (lambda x:
@@ -307,7 +335,7 @@ class Join(endofunctor.Endofunctor):
   #  otherwise, throw an UnliftableException
   def lift(self, B):
     # TODO Consider actually lifting B.
-    return UnliftableException(self, B)
+    return endofunctor.UnliftableException(self, B)
 
   def onObject(self, object):
     return self.bifunctor.onObjects(object, object.updateVariables())

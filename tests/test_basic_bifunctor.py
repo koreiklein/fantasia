@@ -27,7 +27,7 @@ class AbstractStandardTransportTest(AbstractTransportTest, common_objects.Common
     self.add_common_objects()
     self.standard_left = self.a_of_b
     self.standard_right = self.d_of_c
-    self.standard_transported = self.b_of_a
+    self.standard_transported = self.e_of_e
 
   def assert_standard_transport_succeeds(self, bifunctor):
     self.assert_transport_succeeds(bifunctor = bifunctor,
@@ -47,6 +47,20 @@ class AbstractStandardTransportTest(AbstractTransportTest, common_objects.Common
 class TransportTest(AbstractStandardTransportTest):
   def test_and(self):
     self.assert_bifunctor_transports_correctly(bifunctor.and_functor)
+
+  # check that the composites And(left(.), right(.))
+  # and after(And(left(.), right(.))) transport correctly.
+  def check_composite(self,
+      left = endofunctor.identity_functor,
+      right = endofunctor.identity_functor,
+      after = endofunctor.identity_functor):
+    b = bifunctor.and_functor.precompose(left = left, right = right)
+    self.assert_bifunctor_transports_correctly(b)
+    d = b.compose(after)
+    self.assert_bifunctor_transports_correctly(d)
+
+  def test_and_left(self):
+    self.check_composite(left = self.and_b_of_a_functor)
 
 def suite():
   return unittest.makeSuite(TransportTest)
