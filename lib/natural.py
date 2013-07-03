@@ -41,7 +41,7 @@ b = common_vars.b()
 successorIsGreater = constructors.Forall(
     [ constructors.BoundedVariableBinding(a, natural)
     , constructors.BoundedVariableBinding(b, natural)],
-    constructors.Implies(Successor(a, b), Less(a, b)))
+    constructors.Implies(predicates = [Successor(a, b)], consequent = Less(a, b)))
 
 zero = variable.StringVariable('zero')
 zeroNatural = Natural(zero)
@@ -51,7 +51,7 @@ m = common_vars.m()
 zeroFirst = constructors.Forall(
     [ constructors.BoundedVariableBinding(n, natural)
     , constructors.BoundedVariableBinding(m, natural)],
-    constructors.Implies(predicate = Successor(n, m),
+    constructors.Implies(predicates = [Successor(n, m)],
       consequent = constructors.Not(Equal(m, zero, natural))))
 
 allClaims = [ successorIsGreater
@@ -63,7 +63,6 @@ allClaims = [ successorIsGreater
 naturalClaims = constructors.And(allClaims)
 
 lib = library.Library(
-    #claims = [basic.Hidden(naturalClaims, 'Naturals')],
     claims = [naturalClaims],
     variables = [natural, zero, natural_less, natural_successor],
     sub_libraries = [function.lib])

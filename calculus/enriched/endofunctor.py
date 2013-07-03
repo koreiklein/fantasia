@@ -1,13 +1,18 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from misc import *
-from calculus.variable import ProjectionVariable, ProductVariable, InjectionVariable, StringVariable, GeneralizedVariable
+import misc
+from calculus.variable import ProjectionVariable, ProductVariable, InjectionVariable, StringVariable, Variable
 from calculus.enriched import formula as formula
 from calculus.basic import formula as basicFormula
-from calculus.basic import endofunctor as basic
+from calculus.basic import endofunctor as basicEndofunctor
 from calculus.basic import bifunctor as basicBifunctor
 from lib import common_symbols
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
+
+from ui.render.gl import primitives, colors, distances
+from ui.stack import gl
+from ui.stack import stack
 
 def Maps(a, b, f):
   return basicFormula.Holds(
@@ -32,7 +37,7 @@ class Endofunctor:
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, b is non-trivial
   # and b is "as small as possible".
   def factor_right(self):
-    return (self, identity_functor)
+    return (identity_functor, self)
 
   def renderOn(self, context, f):
     raise Exception("Abstract superclass.")
@@ -52,27 +57,33 @@ class Endofunctor:
   def compose(self, other):
     return Composite(self, other)
 
+  def is_identity(self):
+    return is_identity_functor(self)
+
 class Composite(Endofunctor):
   def __init__(self, left, right):
     self.left = left
     self.right = right
 
+  def __repr__(self):
+    return "%s o\n%s"%(self.left, self.right)
+
   def factor_left(self):
     if is_identity_functor(self.right):
-      return self.left.factor()
+      return self.left.factor_left()
     elif is_identity_functor(self.left):
-      return self.right.factor()
+      return self.right.factor_left()
     else:
-      a, b = self.left.factor()
+      a, b = self.left.factor_left()
       return (a, b.compose(self.right))
 
   def factor_right(self):
     if is_identity_functor(self.right):
-      return self.left.factor()
+      return self.left.factor_right()
     elif is_identity_functor(self.left):
-      return self.right.factor()
+      return self.right.factor_right()
     else:
-      a, b = self.right.factor()
+      a, b = self.right.factor_right()
       return (self.left.compose(a), b)
 
   def renderOn(self, context, f):
@@ -103,8 +114,8 @@ class BoundedVariableBinding(VariableBinding):
     self.domain = ProjectionVariable(self.relation, common_symbols.domainSymbol)
 
   def translate(self):
-    return basic.Exists(self.variable).compose(
-        basic.And(side = right,
+    return basicEndofunctor.Exists(self.variable).compose(
+        basicEndofunctor.And(side = right,
           other = basicFormula.Holds(held = self.variable,
             holding = self.domain)))
 
@@ -113,36 +124,22 @@ class BoundedVariableBinding(VariableBinding):
 
 def renderBoundedVariableBinding(variable, domain):
   middleStack = gl.newTextualGLStack(colors.variableColor, ":")
-  return variable.stack(0, middleStack,
-      spacing = distances.variable_binding_spacing).stackCentered(0, domain,
+  return variable.render({}).stack(0, middleStack,
+      spacing = distances.variable_binding_spacing).stackCentered(0, domain.render({}),
           spacing = distances.variable_binding_spacing)
 
 class OrdinaryVariableBinding(VariableBinding):
   def __init__(self, variable):
     self.variable = variable
 
+  def __repr__(self):
+    return repr(self.variable)
+
   def translate(self):
-    return basic.Exists(self.variable)
+    return basicEndofunctor.Exists(self.variable)
 
   def render(self, context):
-    return (renderVariable(context.bindings), context)
-
-def renderVariable(x, bindings):
-  if isinstance(x, GeneralizedVariable) and bindings.has_key(x):
-    (inputVariable, functionVariable) = bindings[x]
-    return renderApply( renderVariable(inputVariable, bindings)
-                      , renderVariable(functionVariable, bindings))
-  elif x.__class__ == StringVariable:
-    return renderStringVariable(x)
-  elif x.__class__ == ProjectionVariable:
-    return renderProjectionVariable(x)
-  elif x.__class__ == InjectionVariable:
-    return renderInjectionVariable(x, bindings)
-  elif x.__class__ == ProductVariable:
-    return renderProductVariable(x, bindings)
-  else:
-    raise Exception("Unrecognized logic object %s"%(x,))
-
+    return (self.variable.render(context.bindings), context)
 
 class WelldefinedVariableBinding(VariableBinding):
   # variable: a variable
@@ -151,15 +148,18 @@ class WelldefinedVariableBinding(VariableBinding):
     self.variable = variable
     self.relation = relation
 
+  def __repr__(self):
+    return "%s wd in %s"%(self.variable, self.relation)
+
   def translate(self):
-    result = basic.Exists(self.variable)
+    result = basicEndofunctor.Exists(self.variable)
     newVariable = variable.Variable()
     result = ExpandWellDefined(self.variable, newVariable, self.relation).compose(result)
     return result
 
   def render(self, context):
     # TODO Render in a clearer way.
-    return (renderVariable(self.variable, context.bindings), context)
+    return (self.variable.render(context.bindings), context)
 
 class ImageVariableBinding(VariableBinding):
   def __init__(self, variable, preimage, function):
@@ -167,9 +167,12 @@ class ImageVariableBinding(VariableBinding):
     self.preimage = preimage
     self.function = function
 
+  def __repr__(self):
+    return "%s = %s(%s)"%(self.variable, self.function, self.preimage)
+
   def translate(self):
-    return basic.Exists(self.variable).compose(
-        basic.And(side = right,
+    return basicEndofunctor.Exists(self.variable).compose(
+        basicEndofunctor.And(side = right,
           other = basicFormula.Always(Maps(self.preimage, self.variable, self.function))))
 
   def render(self, context):
@@ -178,6 +181,9 @@ class ImageVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def __repr__(self):
+    return "Exists%s"%(self.bindings,)
 
   def renderOn(self, context, f):
     quantifierStackingDimension = _dimension_for_variance(context.covariant)
@@ -204,7 +210,7 @@ class Exists(Endofunctor):
     return True
 
   def translate(self):
-    result = basic.identity_functor
+    result = basicEndofunctor.identity_functor
     for binding in self.bindings[::-1]:
       result = result.compose(binding.translate())
     return result
@@ -213,6 +219,8 @@ class DirectTranslate(Endofunctor):
   def __init__(self, basicEndofunctor, _render):
     self.basicEndofunctor = basicEndofunctor
     self._render = _render
+  def __repr__(self):
+    return repr(self.basicEndofunctor)
   def translate(self):
     return self.basicEndofunctor
   def covariant(self):
@@ -226,22 +234,22 @@ class DirectTranslate(Endofunctor):
     if is_identity_functor(self):
       raise Exception("Can't factor the identity functor.")
     else:
-      return (self, identity_functor)
+      return (identity_functor, self)
   def renderOn(self, context, f):
     return self._render(context, f)
     return self._render(f(context), context)
 
-always_functor = DirectTranslate(basic.always_functor, lambda context, f:
+always_functor = DirectTranslate(basicEndofunctor.always_functor, lambda context, f:
     renderWithBackground(f(context),
       distances.exponential_border_width,
       colors.exponentialColor(context.covariant)))
-not_functor = DirectTranslate(basic.not_functor, lambda context, f:
+not_functor = DirectTranslate(basicEndofunctor.not_functor, lambda context, f:
     f(context.negate()))
-identity_functor = DirectTranslate(basic.identity_functor, lambda context, f:
+identity_functor = DirectTranslate(basicEndofunctor.identity_functor, lambda context, f:
     f(context))
 
 def is_identity_functor(f):
-  return f.__class__ == DirectTranslate and f.basicEndofunctor.__class__ == basic.Id
+  return f.__class__ == DirectTranslate and f.basicEndofunctor.__class__ == basicEndofunctor.Id
 
 class Conjunction(Endofunctor):
   def __init__(self, values, index):
@@ -265,13 +273,13 @@ class Conjunction(Endofunctor):
     values = []
     for kid in self.values:
       s = kid.render(context)
-      length = max(length, s.widths[other_dimension])
-      values.apppend(s)
+      length = max(length, s.widths()[other_dimension])
+      values.append(s)
     inserted_kid = f(context)
-    length = max(length, inserted_kid[other_dimension])
+    length = max(length, inserted_kid.widths()[other_dimension])
     values.insert(self.index, inserted_kid)
     return stack.stackAll(dimension,
-        _interleave(self.renderDivider(context.covariant, length), values),
+        misc._interleave(self.renderDivider(context.covariant, length), values),
         spacing = distances.divider_spacing)
 
   def onObject(self, object):
@@ -298,21 +306,27 @@ class And(Conjunction):
   def multiOp(self):
     return formula.And
 
+  def renderDivider(self, covariant, length):
+    return primitives.andDivider(covariant)(length)
+
 class Or(Conjunction):
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def multiOp(self):
     return formula.Or
 
+  def renderDivider(self, covariant, length):
+    return primitives.orDivider(covariant)(length)
+
 def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
         basicFormula.Always(formula.InDomain(newVariable, equivalence)),
         basicFormula.Always(formula.EqualUnder(newVariable, variable, equivalence)))
-  F = basic.SubstituteVariable(variable, newVariable).compose(
-      basic.not_functor.compose(
-        basic.Exists(newVariable)).compose(
-          basic.And(side = right, other = isEqual)).compose(
-            basic.not_functor))
+  F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
+      basicEndofunctor.not_functor.compose(
+        basicEndofunctor.Exists(newVariable)).compose(
+          basicEndofunctor.And(side = right, other = isEqual)).compose(
+            basicEndofunctor.not_functor))
   return basicBifunctor.and_functor.precomposeRight(F).join()
 
 def Not(x):
@@ -338,4 +352,43 @@ class WellDefinedFunctor(Endofunctor):
   def renderOn(self, context, f):
     # TODO render this case more clearly?
     return f(context)
+
+# x: an enriched formula
+# index: an index
+#   self must be equivalent to a b.onObject(a) where
+#   b == And(...) or b == Or(...)
+# return: a, b  or throw an exception if self is not of the appropriate form.
+def factor_index(x, index):
+  if x.__class__ == formula.Application:
+    if x.endofunctor.is_identity():
+      return factor_index(x.formula, index)
+    else:
+      a, b = x.endofunctor.factor_right()
+      if b.__class__ == And or b.__class__ == Or:
+        return (Application(formula = x.formula, endofunctor = a), b)
+      else:
+        raise Exception("The given endofunctor did not factor properly.")
+  elif isinstance(x, formula.Conjunction):
+    if x.__class__ == formula.And:
+      F = And
+    else:
+      assert(x.__class__ == formula.Or)
+      F = Or
+    return (x.values[index],
+        F(values = [x.values[i] for i in range(len(x.values)) if i != index],
+          index = index))
+  else:
+    raise Exception("The given endofunctor did not factor properly.")
+
+def renderWithBackground(s, border_width, color):
+  widths = [x + 2 * border_width for x in s.widths()]
+  widths[2] = 0.0
+  return primitives.solidSquare(color, widths).stackCentered(2, s,
+      spacing = distances.epsilon )
+
+def _dimension_for_variance(covariant):
+  if covariant:
+    return 0
+  else:
+    return 1
 

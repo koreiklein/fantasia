@@ -6,7 +6,7 @@ from calculus.enriched import constructors, path, formula as enrichedFormula
 n_libraries = 0
 
 class Library:
-  def __init__(self, claims, variables, sub_libraries):
+  def __init__(self, claims, variables, sub_libraries, name = None):
     for claim in claims:
       if not(isinstance(claim, enrichedFormula.Formula)):
         raise Exception("Claim is not an enriched formula %s."%(claim,))
@@ -16,6 +16,7 @@ class Library:
     self.variables = variables
     self.claims = claims
     self.sub_libraries = sub_libraries
+    self.name = name
 
   def __hash__(self):
     return self.id
@@ -28,19 +29,28 @@ class Library:
   def all_libraries_recursively(self):
     libraries = Set()
     for library in self.sub_libraries:
+      libraries.add(library)
       for l in library.all_libraries_recursively():
         libraries.add(l)
-    libraries.add(self)
     return libraries
 
   def formula(self):
+    variables = list(self.variables)
     claims = []
     claims.extend(self.claims)
     for l in self.all_libraries_recursively():
-      claims.extend(l.claims)
-    return constructors.Always(constructors.Exists(
-      [constructors.OrdinaryVariableBinding(v) for v in self.variables],
+      variables.extend(l.variables)
+      if l.name is None:
+        claims.extend(l.claims)
+      else:
+        claims.append(constructors.Hidden(constructors.Always(constructors.And(l.claims)), l.name))
+    result = constructors.Always(constructors.Exists(
+      [constructors.OrdinaryVariableBinding(v) for v in variables],
       constructors.And(claims)))
+    if self.name is None:
+      return result
+    else:
+      return constructors.Hidden(result, self.name)
 
   def beginProof(self):
     return Proof(library = self)
@@ -53,8 +63,12 @@ class Proof:
     if arrow is None:
       self.arrow = path.new_path(library.formula()).advance()
       self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
-      for v in self.library.variables:
-        self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
+      # FIXME
+      print self.arrow.tgt.endofunctor
+      print 'was the endofunctor'
+      print self.arrow.tgt.bottom().formula.__class__
+      # REMOVE THIS LINE ALTOGETHER
+      self.arrow = self.arrow.forwardFollow(lambda p: p.advance(0))
     else:
       assert(arrow.src.top() == library.formula)
       self.arrow = arrow

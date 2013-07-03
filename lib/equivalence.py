@@ -17,7 +17,7 @@ def symmetric(e):
   return constructors.Forall([ constructors.BoundedVariableBinding(x, e)
                              , constructors.BoundedVariableBinding(y, e)],
       constructors.Implies(
-        predicate = Equal(x, y, e),
+        predicates = [Equal(x, y, e)],
         consequent = Equal(y, x, e)))
 
 x = common_vars.x()
@@ -28,18 +28,19 @@ def transitive(e):
                              , constructors.BoundedVariableBinding(y, e)
                              , constructors.BoundedVariableBinding(z, e)],
       constructors.Implies(
-        predicate = constructors.And(
-          [ Equal(x, y, e)
-          , Equal(y, z, e) ]),
+        predicates = [ Equal(x, y, e)
+                     , Equal(y, z, e) ],
         consequent = Equal(x, z, e)))
 
 A = common_vars.A()
 claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
     constructors.Iff(
-      left = constructors.And(
+      right = constructors.And(
         [ reflexive(A)
         , symmetric(A)
         , transitive(A)]),
-      right = IsEquivalence(A)))
+      left = IsEquivalence(A)))
 
-lib = library.Library(claims = [claim], variables = [common_vars.equivalence], sub_libraries = [])
+lib = library.Library(claims = [claim],
+    variables = [common_vars.equivalence], sub_libraries = [],
+    name = "Equivalence")

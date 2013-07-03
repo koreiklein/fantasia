@@ -33,9 +33,6 @@ b = common_vars.b()
 
 proof = natural.lib.beginProof()
 
-proof = proof.forwardFollow(lambda p:
-    p.advanceLeft())
-
 #L = proof.arrow.tgt.importFiltered(lambda x: natural.zero in x.freeVariables())
 #L = proof.arrow.tgt.importFiltered(lambda x: True)
 #for (B,f) in L:
@@ -45,84 +42,84 @@ proof = proof.forwardFollow(lambda p:
 #    p.doImportFiltered(lambda x: natural.zero in x.freeVariables(), 1))
 #compressedProof =  proof.arrow.arrow.translate().compress()
 
-a = common_vars.a()
-b = common_vars.b()
-c = common_vars.c()
-proof = proof.forwardFollow(lambda p:
-    p.forwardOnPathFollow(lambda x:
-      x.forwardAssume(basic.MultiBoundedForall([ (a, natural.natural)
-                                               , (b, natural.natural)
-                                               , (c, natural.natural)],
-        basic.Implies(predicate = basic.MultiAnd(
-          [ natural.Successor(a, b)
-          , natural.Successor(b, c)]),
-          consequent = natural.Less(a, c))))))
-
-#print "Originally"
-#print proof.arrow.tgt.bottom().simplify().tgt
-#print "Was the formula."
-
-proof = proof.forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advanceLeft().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advanceRight().forwardFollow(lambda p:
-        p.advanceRight().forwardFollow(lambda p:
-        p.advanceRight().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advance().forwardFollow(lambda p:
-        p.advanceRight().forwardFollow(lambda p:
-        p.identity())))))))))))))))
-
+#a = common_vars.a()
+#b = common_vars.b()
+#c = common_vars.c()
 #proof = proof.forwardFollow(lambda p:
-#    p.universalIn([a])[2])
+#    p.forwardOnPathFollow(lambda x:
+#      x.forwardAssume(basic.MultiBoundedForall([ (a, natural.natural)
+#                                               , (b, natural.natural)
+#                                               , (c, natural.natural)],
+#        basic.Implies(predicate = basic.MultiAnd(
+#          [ natural.Successor(a, b)
+#          , natural.Successor(b, c)]),
+#          consequent = natural.Less(a, c))))))
+#
+##print "Originally"
+##print proof.arrow.tgt.bottom().simplify().tgt
+##print "Was the formula."
 #
 #proof = proof.forwardFollow(lambda p:
-#    p.liftExists().forwardFollow(lambda p:
-#      p.simplify()))
+#        p.advance().forwardFollow(lambda p:
+#        p.advanceLeft().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advanceRight().forwardFollow(lambda p:
+#        p.advanceRight().forwardFollow(lambda p:
+#        p.advanceRight().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advance().forwardFollow(lambda p:
+#        p.advanceRight().forwardFollow(lambda p:
+#        p.identity())))))))))))))))
 #
-#def f(p):
-#  xs = p.universalIn([p.variables()[2]])
-#  return xs[2]
-#
-#proof = proof.forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advanceLeft().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advanceLeft().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advanceRight().forwardFollow(lambda p:
-#    p.advanceRight().forwardFollow(lambda p:
-#    p.advanceRight().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advance().forwardFollow(lambda p:
-#    p.advanceRight().forwardFollow(lambda p:
-#    p.advanceRight().forwardFollow(lambda p:
-#      f(p))))))))))))))))))))))))))
-#
-#def t(p):
-#  variables = p.variables()
-#  #raise Exception("%s"%variables)
-#  xs = p.universalIn([variables[3], variables[0], variables[1]])
-#  raise Exception("%s"%[i.tgt for i in xs])
-#proof = proof.forwardFollow(lambda p:
-#    t(p))
-##raise Exception("%s, %s"%(proof.arrow.tgt.bottom().__class__, proof.arrow.tgt.bottom()))
-#
+##proof = proof.forwardFollow(lambda p:
+##    p.universalIn([a])[2])
+##
+##proof = proof.forwardFollow(lambda p:
+##    p.liftExists().forwardFollow(lambda p:
+##      p.simplify()))
+##
+##def f(p):
+##  xs = p.universalIn([p.variables()[2]])
+##  return xs[2]
+##
+##proof = proof.forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advanceLeft().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advanceLeft().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advanceRight().forwardFollow(lambda p:
+##    p.advanceRight().forwardFollow(lambda p:
+##    p.advanceRight().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advance().forwardFollow(lambda p:
+##    p.advanceRight().forwardFollow(lambda p:
+##    p.advanceRight().forwardFollow(lambda p:
+##      f(p))))))))))))))))))))))))))
+##
+##def t(p):
+##  variables = p.variables()
+##  #raise Exception("%s"%variables)
+##  xs = p.universalIn([variables[3], variables[0], variables[1]])
+##  raise Exception("%s"%[i.tgt for i in xs])
+##proof = proof.forwardFollow(lambda p:
+##    t(p))
+###raise Exception("%s, %s"%(proof.arrow.tgt.bottom().__class__, proof.arrow.tgt.bottom()))
+##

@@ -1,6 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-import calculus.variable
+import misc
+
+from calculus import variable
 from calculus.variable import Variable
 from calculus.basic import formula as basicFormula
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol
@@ -12,17 +14,13 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
-  # index: an index
-  #   self must be equivalent to a functor of the form a o b where
-  #   b == And(...) or B == Or(...)
-  # return: a, b  or throw an exception if self is not of the appropriate form.
-  def factor_index(self, index):
-    raise Exception("Abstract superclass.")
-
   def __eq__(self, other):
     return isinstance(other, Formula) and self.translate() == other.translate()
   def __ne__(self, other):
     return not (self == other)
+
+  def top_level_render(self):
+    return self.render(RenderingContext(covariant = True, bindings = {}))
 
   def render(self, context):
     return gl.newTextualGLStack(colors.genericColor, repr(self))
@@ -38,8 +36,20 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.basicArrow = basicArrow
+    # FIXME
+    assert(src.translate() == basicArrow.src)
+    if not(tgt.translate() == basicArrow.tgt):
+      raise Exception("%s\n!=\n%s"%(tgt.translate(), basicArrow.tgt))
+
   def translate(self):
     return self.basicArrow
+
+  def forwardCompose(self, arrow):
+    return Arrow(src = self.src, tgt = self.tgt,
+        basicArrow = self.basicArrow.forwardCompose(arrow.basicArrow))
+
+  def forwardFollow(self, f):
+    return self.forwardCompose(f(self.tgt))
 
 class Holds(Formula):
   def __init__(self, held, holding):
@@ -51,6 +61,7 @@ class Holds(Formula):
         holding = self.holding)
 
   def render(self, context):
+    bindings = context.bindings
     infix = getInfix(self)
     if infix is not None:
       (firstSymbol, secondSymbol) = infix
@@ -64,14 +75,14 @@ class Holds(Formula):
         assert(aSymbol == firstSymbol)
         assert(bSymbol == secondSymbol)
       # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-      holds =  stack.stackAll(0, [ renderVariable(aVariable, bindings)
-                                 , renderVariable(self.holding, bindings)
-                                 , renderVariable(bVariable, bindings)],
+      holds =  stack.stackAll(0, [ aVariable.render(bindings)
+                                 , self.holding.render(bindings)
+                                 , bVariable.render(bindings)],
                                  spacing = distances.infixSpacing)
     else:
-      holds = stack.stackAll(0, [ renderVariable(self.held, bindings)
+      holds = stack.stackAll(0, [ self.held.render(bindings)
                                 , primitives.holds()
-                                , renderVariable(self.holding, bindings)],
+                                , self.holding.render(bindings)],
                                 spacing = distances.holdsSpacing)
 
     return holds
@@ -94,19 +105,9 @@ class Application(Formula):
   def __repr__(self):
     return "Apply %s to %s"%(self.endofunctor, self.formula)
 
-  def factor_index(self, index):
-    if is_identity_functor(self.endofunctor):
-      return self.formula.factor_index(index)
-    else:
-      a, b = self.endofunctor.factor_right()
-      if b.__class__ == And or b.__class__ == Or:
-        return (Application(formula = self.formula, endofunctor = a), b)
-      else:
-        raise Exception("The given endofunctor did not factor properly.")
-
   def render(self, context):
     return self.endofunctor.renderOn(context, lambda context:
-        formula.render(context))
+        self.formula.render(context))
 
   def translate(self):
     return self.endofunctor.translate().onObject(self.formula.translate())
@@ -127,15 +128,6 @@ class Conjunction(Formula):
         raise Exception("%s at index %s is not an enriched formula."%(value, i))
     self.values = values
     self.basicBinop = self.basicBinop()
-
-  # index: an index
-  #   self must be equivalent to a functor of the form a o b where
-  #   b == And(...) or B == Or(...)
-  # return: a, b  or throw an exception if self is not of the appropriate form.
-  def factor_index(self, index):
-    #FIXME
-    assert(False)
-    return 
 
   def translate(self):
     return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
@@ -159,10 +151,10 @@ class Conjunction(Formula):
     values = []
     for kid in self.values:
       s = kid.render(context)
-      length = max(length, s.widths[other_dimension])
-      values.apppend(s)
+      length = max(length, s.widths()[other_dimension])
+      values.append(s)
     return stack.stackAll(dimension,
-        _interleave(self.renderDivider(context.covariant, length), values),
+        misc._interleave(self.renderDivider(context.covariant, length), values),
         spacing = distances.divider_spacing)
 
 class And(Conjunction):
@@ -199,10 +191,10 @@ class Iff(Formula):
 
   def render(self, context):
     kid_context = context.as_covariant()
-    res = render(self.left, kid_context).stack(0,
+    res = self.left.render(kid_context).stack(0,
         primitives.iff(),
         spacing = distances.iffSpacing).stack(0,
-            render(self.right, kid_context),
+            self.right.render(kid_context),
             spacing = distances.iffSpacing)
     if context.covariant:
       return res
@@ -286,3 +278,16 @@ def EqualUnder(a, b, e):
   return Holds(
       variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
       variable.ProjectionVariable(e, relationSymbol))
+
+# holds: a basic.Holds
+# return: the pair of infix symbols, or None of no such symbols exist.
+def getInfix(holds):
+  if holds.held.__class__ != variable.ProductVariable:
+    return None
+  v = holds.holding
+  if v.__class__ == variable.StringVariable and v.infix is not None:
+    return v.infix
+  elif v.__class__ == variable.ProjectionVariable and v.symbol.infix is not None:
+    return v.symbol.infix
+  else:
+    return None

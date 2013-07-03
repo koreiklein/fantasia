@@ -1,11 +1,18 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from sets import Set
+from calculus import symbol
+
+from ui.render.gl import primitives, colors, distances
+from ui.stack import gl
+from ui.stack import stack
 
 class GeneralizedVariable:
   # Return an equivalent variable that is possibly simpler.
   def simplify(self):
     return self
+  def render(self, bindings):
+    raise Exception("Abstract superclass.")
 
 n_variables = 0
 class Variable(GeneralizedVariable):
@@ -47,6 +54,9 @@ class StringVariable(Variable):
     self._name = name
     self.infix = infix
 
+  def render(self, bindings):
+    return gl.newTextualGLStack(colors.variableColor, repr(self))
+
   def name(self):
     return self._name
 
@@ -74,6 +84,11 @@ class InjectionVariable(GeneralizedVariable):
     return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
   def freeVariables(self):
     return self.variable.freeVariables()
+
+  def render(self, bindings):
+    return renderSymbolVariablePair(renderSymbol(v.symbol), v.variable.render(bindings),
+        colors.injectionSymbolBackgroundColor,
+        colors.injectionVariableBackgroundColor)
 
 class ProjectionVariable(GeneralizedVariable):
   def __init__(self, variable, symbol):
@@ -103,6 +118,9 @@ class ProjectionVariable(GeneralizedVariable):
     else:
       return ProjectionVariable(variable = self.variable.simplify(), symbol = self.symbol)
 
+  def render(self, bindings):
+    return gl.newTextualGLStack(colors.variableColor, repr(self))
+
 # A more elaborate syntax for VARIABLES!!! These construct are under no means
 # meant to be used for objects, nether have they any sort of computational manifestation.
 # They are ENTIRELY FOR BOOKEEPING.
@@ -129,4 +147,42 @@ class ProductVariable(GeneralizedVariable):
     for (s, v) in self.symbol_variable_pairs:
       result.union_update(v.freeVariables())
     return result
+
+  def render(self, bindings):
+    symbolVariablePairs = []
+    for i in range(len(self.symbol_variable_pairs)):
+      (s,v) = self.symbol_variable_pairs[i]
+      (c0, c1) = colors.productPairsColor(i)
+      symbolVariablePairs.append(renderSymbolVariablePair(renderSymbol(s),
+        v.render(bindings), c0, c1))
+    return stack.stackAll(0, symbolVariablePairs,
+        spacing = distances.productVariableHorizontalSpacing)
+
+def renderSymbolVariablePair(s, v, c0, c1):
+  widths = [max(s.widths()[0], v.widths()[0]) , 0.0, 0.0]
+  return borderStack(1
+                    , colors.symbolVariablePairBorderColor
+                    , renderWithBackground(s.atLeast(widths),
+                        distances.symbolBackgroundBorderWidth, c0)
+                    , renderWithBackground(v.atLeast(widths),
+                        distances.variableBackgroundBorderWidth, c1)
+                    , distances.productVariableBorder)
+
+def borderStack(dimension, color, a, b, borderWidth):
+  return renderWithBackground(a.stack(dimension, b, spacing = borderWidth), borderWidth, color)
+
+def renderSymbol(s):
+  if s.__class__ == symbol.StringSymbol:
+    return renderStringSymbol(s)
+  else:
+    raise Exception("Unrecognized symbol %s"%(s,))
+
+def renderStringSymbol(s):
+  return gl.newTextualGLStack(colors.symbolColor, repr(s))
+
+def renderWithBackground(s, border_width, color):
+  widths = [x + 2 * border_width for x in s.widths()]
+  widths[2] = 0.0
+  return primitives.solidSquare(color, widths).stackCentered(2, s,
+      spacing = distances.epsilon )
 

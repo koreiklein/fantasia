@@ -34,8 +34,10 @@ def Always(value):
 def Maybe(value):
   return Not(Always(Not(value)))
 
-def Implies(predicate, consequent):
-  return Not(And([predicate, Not(consequent)]))
+def Implies(predicates, consequent):
+  values = list(predicates)
+  values.append(Not(consequent))
+  return Not(And(values))
 
 def Iff(left, right):
   return formula.Iff(left, right)

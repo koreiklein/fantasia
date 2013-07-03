@@ -33,9 +33,9 @@ def wellDefined(f):
       , constructors.BoundedVariableBinding(b, projectTgt(f))
       , constructors.BoundedVariableBinding(bprime, projectTgt(f))],
       constructors.Implies(
-        predicate = constructors.And([ Maps(a, b, f)
-                                     , Maps(aprime, bprime, f)
-                                     , Equal(a, aprime, projectSrc(f))]),
+        predicates = [ Maps(a, b, f)
+                     , Maps(aprime, bprime, f)
+                     , Equal(a, aprime, projectSrc(f))],
         consequent = Equal(b, bprime, projectTgt(f))))
 
 a = common_vars.a()
@@ -49,23 +49,24 @@ def unique(f):
       , constructors.BoundedVariableBinding(b, projectTgt(f))
       , constructors.BoundedVariableBinding(bprime, projectTgt(f))],
       constructors.Implies(
-        predicate = constructors.And([ Maps(a, b, f)
-                                     , Maps(aprime, bprime, f)
-                                     , Equal(b, bprime, projectSrc(f))]),
+        predicates =[ Maps(a, b, f)
+                    , Maps(aprime, bprime, f)
+                    , Equal(b, bprime, projectSrc(f))],
         consequent = Equal(a, aprime, projectTgt(f))))
 
 A = common_vars.A()
 claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
     constructors.Iff(
-      left = constructors.And([ IsEquivalence(projectSrc(A))
+      right = constructors.And([ IsEquivalence(projectSrc(A))
                               , IsEquivalence(projectTgt(A))
                               , defined(A)
                               , wellDefined(A)
                               , unique(A)]),
-      right = IsFunction(A)))
+      left = IsFunction(A)))
 
 lib = library.Library(
-    claims = [ constructors.Hidden(claim, "Function") ],
+    name = "Function",
+    claims = [claim],
     variables = [common_vars.function],
     sub_libraries = [equivalence.lib])
 
