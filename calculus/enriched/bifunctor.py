@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from misc import *
-from calculus.enriched import forumla, endofunctor, constructors
+from calculus.enriched import formula, endofunctor, constructors
 from calculus.basic import bifunctor as basicBifunctor, endofunctor as basicEndofunctor
 
 class Bifunctor:
@@ -114,22 +114,22 @@ class Conjunction(Bifunctor):
     values.insert(self.rightIndex, right)
     return self.multiOp()(values)
 
-class And(Bifunctor):
+class And(Conjunction):
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def enrichedEndofunctor(self):
     return endofunctor.And
   def basicBifunctor(self):
-    return basicBifunctor.And
+    return basicBifunctor.and_functor
   def multiOp(self):
     return formula.And
 
-class Or(Bifunctor):
+class Or(Conjunction):
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def enrichedEndofunctor(self):
     return endofunctor.Or
   def basicBifunctor(self):
-    return basicBifunctor.Or
+    return basicBifunctor.or_functor
   def multiOp(self):
     return formula.Or

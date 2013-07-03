@@ -203,7 +203,7 @@ class PostcompositeBifunctor(Bifunctor):
     bifunctor_nt = self.bifunctor._liftRight(B)
     functor_nt = self.functor.lift(B)
     return (lambda x, y:
-        self.functor.onObject(bifunctor_nt(x, y)).forwardCompose(
+        self.functor.onArrow(bifunctor_nt(x, y)).forwardCompose(
           functor_nt(self.bifunctor.onObjects(x, y))))
 
   def onArrows(self, left, right):
@@ -257,7 +257,7 @@ class PrecompositeBifunctor(Bifunctor):
     bifunctor_nt = self.bifunctor._liftRight(B)
     right_nt = self.right.lift(B)
     return (lambda x, y:
-        bifunctor.onArrows(self.left.onObject(x).identity(), right_nt(y)).forwardCompose(
+        self.bifunctor.onArrows(self.left.onObject(x).identity(), right_nt(y)).forwardCompose(
           bifunctor_nt(self.left.onObject(x), self.right.onObject(y))))
 
   def onArrows(self, left, right):

@@ -27,6 +27,9 @@ class Endofunctor:
   def covariant(self):
     raise Exception("Abstract superclass.")
 
+  def updateVariables(self):
+    raise Exception("Abstract superclass.")
+
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
   # and a is "as small as possible".
@@ -238,6 +241,9 @@ class DirectTranslate(Endofunctor):
   def renderOn(self, context, f):
     return self._render(context, f)
     return self._render(f(context), context)
+
+  def updateVariables(self):
+    return self
 
 always_functor = DirectTranslate(basicEndofunctor.always_functor, lambda context, f:
     renderWithBackground(f(context),

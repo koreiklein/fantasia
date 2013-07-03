@@ -5,7 +5,7 @@ all:
 	python main.py
 
 test:
-	python -c "import tests.suite ; import unittest ; unittest.TextTestRunner().run(tests.suite.suite()) ;"
+	python -c "import tests.suite ; tests.suite.run() ;"
 
 clean:
 	find . -name '*.pyc' | xargs rm -f
