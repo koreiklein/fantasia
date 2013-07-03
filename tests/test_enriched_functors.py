@@ -22,10 +22,10 @@ class CommonObjects:
     self.Y = constructors.Holds(self.a, self.d)
     self.Z = constructors.Holds(self.a, self.e)
 
-    self.exists_a = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.a)])
-    self.exists_b = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.b)])
-    self.exists_a_b = endofunctor.Exists([ constructors.OrdinaryVariableBinding(self.a)
-                                         , constructors.OrdinaryVariableBinding(self.b)])
+    self.exists_d = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.d)])
+    self.exists_e = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.e)])
+    self.exists_d_e = endofunctor.Exists([ constructors.OrdinaryVariableBinding(self.d)
+                                         , constructors.OrdinaryVariableBinding(self.e)])
 
 class AbstractTransportTest(unittest.TestCase):
   def assertEnrichedEqual(self, a, b):
@@ -144,6 +144,21 @@ class TransportTest(AbstractTransportTest, CommonObjects):
         left = f_not_or_not)
     self.assertRaises(bifunctor.UntransportableException,
         self.assert_standard_transport_succeeds, bifunctor = f_broken)
+
+  def test_transport_ordinary_exists(self):
+    values = [self.W, self.X]
+    left = self.exists_d
+    right = self.exists_e
+    self.assert_standard_transport_succeeds(
+        bifunctor = bifunctor.And(values, leftIndex = 2, rightIndex = 1).precompose(
+          left = left, right = right))
+
+  def test_multi_ordinary_exists(self):
+    values = [self.W, self.X]
+    left = self.exists_d_e
+    self.assert_standard_transport_succeeds(
+        bifunctor = bifunctor.And(values, leftIndex = 2, rightIndex = 1).precomposeLeft(
+          left = left))
 
 def suite():
   return unittest.makeSuite(TransportTest)
