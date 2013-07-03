@@ -61,6 +61,77 @@ class TransportTest(AbstractStandardTransportTest):
 
   def test_and_left(self):
     self.check_composite(left = self.and_b_of_a_functor)
+    self.check_composite(left = self.b_of_a_and_functor)
+    self.check_composite(left = self.b_of_a_and_functor, after = self.and_b_of_a_functor)
+
+  def test_and_right(self):
+    self.check_composite(right = self.and_b_of_a_functor)
+    self.check_composite(right = self.b_of_a_and_functor)
+
+  def test_and_left_right(self):
+    self.check_composite(left = self.and_b_of_a_functor, right = self.and_b_of_a_functor)
+    self.check_composite(left = self.and_b_of_a_functor, right = self.b_of_a_and_functor)
+    self.check_composite(left = self.b_of_a_and_functor, right = self.and_b_of_a_functor)
+    self.check_composite(left = self.b_of_a_and_functor, right = self.b_of_a_and_functor)
+
+  def test_or_right(self):
+    self.check_composite(right = self.or_d_of_c_functor)
+    self.check_composite(right = self.d_of_c_or_functor)
+
+  def test_or_left(self):
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, left = self.or_d_of_c_functor)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, left = self.d_of_c_or_functor)
+
+  def test_or_both(self):
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, right = self.or_d_of_c_functor, left = self.or_d_of_c_functor)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, right = self.or_d_of_c_functor, left = self.d_of_c_or_functor)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, right = self.or_d_of_c_functor, left = self.d_of_c_or_functor,
+        after = self.and_b_of_a_functor)
+
+  def test_or_and(self):
+    self.check_composite(left = self.and_b_of_a_functor, right = self.or_d_of_c_functor)
+    self.check_composite(left = self.and_b_of_a_functor, right = self.or_d_of_c_functor,
+        after = self.b_of_a_and_functor)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, left = self.or_d_of_c_functor, right = self.and_b_of_a_functor)
+
+  def test_deep_and_or(self):
+    self.check_composite(left = self.and_b_of_a_functor.compose(self.and_b_of_a_functor))
+    self.check_composite(left = self.and_b_of_a_functor.compose(self.b_of_a_and_functor))
+    self.check_composite(left = self.and_b_of_a_functor.compose(self.b_of_a_and_functor),
+        right = self.d_of_c_or_functor.compose(self.or_d_of_c_functor))
+
+    self.check_composite(left = self.and_b_of_a_functor.compose(self.b_of_a_and_functor),
+        right = self.d_of_c_or_functor.compose(self.or_d_of_c_functor),
+        after = self.b_of_a_and_functor.compose(self.and_b_of_a_functor))
+
+  def test_not_not(self):
+    self.check_composite(right = self.not_not_functor)
+    self.assertRaises(bifunctor.UntransportableException,
+        self.check_composite, left = self.not_not_functor)
+
+  def test_deep_and_not_not(self):
+    self.check_composite(left = self.and_b_of_a_functor.compose(self.b_of_a_and_functor),
+      right = self.not_not_functor)
+
+  def test_exists(self):
+    self.check_composite(left = self.exists_d_functor)
+
+  def test_multiple_exists(self):
+    self.check_composite(left = self.exists_d_functor,
+        right = self.exists_c_functor)
+
+    self.check_composite(left = self.exists_d_functor,
+        right = self.exists_c_functor.compose(self.exists_a_functor))
+
+    self.check_composite(left = self.exists_d_functor,
+        right = self.exists_c_functor.compose(self.exists_a_functor),
+        after = self.exists_b_functor)
 
 def suite():
   return unittest.makeSuite(TransportTest)

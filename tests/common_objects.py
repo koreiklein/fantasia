@@ -19,11 +19,16 @@ class CommonObjects:
     self.e_of_e = formula.Always(formula.Holds(self.e, self.e))
     self.and_b_of_a_functor = endofunctor.And(side=endofunctor.left,
                                        other=self.b_of_a)
+    self.b_of_a_and_functor = endofunctor.And(side=endofunctor.right,
+                                       other=self.b_of_a)
     self.or_d_of_c_functor = endofunctor.Or(side=endofunctor.left,
+                                     other=self.d_of_c)
+    self.d_of_c_or_functor = endofunctor.Or(side=endofunctor.right,
                                      other=self.d_of_c)
     self.exists_a_functor = endofunctor.Exists(variable=self.a)
     self.exists_b_functor = endofunctor.Exists(variable=self.b)
     self.exists_c_functor = endofunctor.Exists(variable=self.c)
     self.exists_d_functor = endofunctor.Exists(variable=self.d)
+    self.not_not_functor = endofunctor.not_functor.compose(endofunctor.not_functor)
     self.equivalence = variable.StringVariable('equiv')
 

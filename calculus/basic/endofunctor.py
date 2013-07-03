@@ -99,7 +99,7 @@ class Exists(Endofunctor):
     return 0
 
   def lift(self, B):
-    if self.variable() in B.freeVariables():
+    if self.variable in B.freeVariables():
       raise UnliftableException(self, B)
     else:
       # Exist a . (B|x) --> B|(Exists a.x)
@@ -408,7 +408,7 @@ class And(Conjunction):
       return (lambda x:
           self.onObject(formula.And(B, x)).forwardCommute().forwardFollow(lambda x:
             x.forwardAssociate().forwardFollow(lambda x:
-              x.forwardOnLeftFollow(lambda x:
+              x.forwardOnRightFollow(lambda x:
                 x.forwardCommute()))))
 
   # return a function represention some natural transform:
