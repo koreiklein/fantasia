@@ -134,7 +134,7 @@ class And(Bifunctor):
 
   def _liftLeft(self, B):
     # ((B|x)|y) --> B|(x|y)
-    return (lambda x,y: self.onObjects(formula.And(B, x), y).forwardAssociate())
+    return (lambda x, y: self.onObjects(formula.And(B, x), y).forwardAssociate())
   def _liftRight(self, B):
     # (x|(B|y)) --> (x|B)|y --> (B|x)|y --> B|(x|y)
     return (lambda x, y:
