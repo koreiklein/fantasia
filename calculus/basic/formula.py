@@ -4,7 +4,7 @@ from calculus import symbol
 
 from sets import Set
 
-class Object:
+class Formula:
   def simplify(self):
     return self.identity()
 
@@ -63,138 +63,7 @@ class Object:
   def identity(self):
     return Id(src = self, tgt = self)
 
-class GeneralizedVariable:
-  # Return an equivalent variable that is possibly simpler.
-  def simplify(self):
-    return self
-
-n_variables = 0
-class Variable(GeneralizedVariable):
-  def __init__(self):
-    self._generate_id()
-
-  def _generate_id(self):
-    global n_variables
-    self._id = n_variables
-    n_variables += 1
-
-  def translate(self):
-    return self
-
-  def updateVariables(self):
-    return Variable()
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self._id == other._id
-  def __ne__(self, other):
-    return not(self == other)
-  def __hash__(self):
-    return hash(self._id)
-
-  def __repr__(self):
-    return "<abstract variable %s>"%(self._id,)
-
-  def substituteVariable(self, a, b):
-    if self == a:
-      return b
-    else:
-      return self
-
-  def freeVariables(self):
-    return Set([self])
-
-class StringVariable(Variable):
-  # infix: either None, or a pair of symbols (a, b) such that when this variable holds
-  #        of a variable v, v is a product variable over symbols a and b.
-  def __init__(self, name, infix = None):
-    self._generate_id()
-    self._name = name
-    self.infix = infix
-
-  def name(self):
-    return self._name
-
-  def __repr__(self):
-    return self.name()
-
-  def updateVariables(self):
-    return StringVariable(self.name())
-
-class InjectionVariable(GeneralizedVariable):
-  def __init__(self, variable, symbol):
-    self.variable = variable
-    self.symbol = symbol
-  def __eq__(self, other):
-    return (other.__class__ == InjectionVariable
-        and self.variable == other.variable
-        and self.symbol == other.symbol)
-  def __ne__(self, other):
-    return not (self == other)
-  def __repr__(self):
-    return "<: " + repr(self.variable) + " :: " + repr(self.symbol) + " :>"
-  def updateVariables(self):
-    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
-  def substituteVariable(self, a, b):
-    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
-  def freeVariables(self):
-    return self.variable.freeVariables()
-
-class ProjectionVariable(GeneralizedVariable):
-  def __init__(self, variable, symbol):
-    self.variable = variable
-    self.symbol = symbol
-  def __eq__(self, other):
-    return (other.__class__ == ProjectionVariable
-        and self.variable == other.variable
-        and self.symbol == other.symbol)
-  def __ne__(self, other):
-    return not (self == other)
-  def __repr__(self):
-    return repr(self.variable) + "." + repr(self.symbol)
-  def updateVariables(self):
-    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
-  def substituteVariable(self, a, b):
-    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
-  def freeVariables(self):
-    return self.variable.freeVariables()
-  def simplify(self):
-    if self.variable.__class__ == ProductVariable:
-      for (symbol, variable) in self.variable.symbol_variable_pairs:
-        if symbol == self.symbol:
-          return variable
-      raise Exception(("Failed to simplify %s because the product variable " +
-          "did not contain the component projected upon.")%(self,))
-    else:
-      return ProjectionVariable(variable = self.variable.simplify(), symbol = self.symbol)
-
-# A more elaborate syntax for VARIABLES!!! These construct are under no means
-# meant to be used for objects, nether have they any sort of computational manifestation.
-# They are ENTIRELY FOR BOOKEEPING.
-class ProductVariable(GeneralizedVariable):
-  def __init__(self, symbol_variable_pairs):
-    self.symbol_variable_pairs = symbol_variable_pairs
-
-  def __eq__(self, other):
-    return (other.__class__ == ProductVariable
-        and self.symbol_variable_pairs == other.symbol_variable_pairs)
-  def __ne__(self, other):
-    return not(self == other)
-  def __repr__(self):
-    return "{" + ", ".join([repr(s) + ": " + repr(v) for (s,v) in self.symbol_variable_pairs]) + "}"
-  def updateVariables(self):
-    return ProductVariable(
-        symbol_variable_pairs = [(s, v.updateVariables()) for (s,v) in self.symbol_variable_pairs])
-  def substituteVariable(self, a, b):
-    return ProductVariable(
-        symbol_variable_pairs = [(s, v.substituteVariable(a, b))
-                                 for (s,v) in self.symbol_variable_pairs])
-  def freeVariables(self):
-    result = Set()
-    for (s, v) in self.symbol_variable_pairs:
-      result.union_update(v.freeVariables())
-    return result
-
-class Holds(Object):
+class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
@@ -208,8 +77,6 @@ class Holds(Object):
     return not (self == other)
   def __repr__(self):
     return repr(self.held) + " : " + repr(self.holding)
-  def translate(self):
-    return self
   def updateVariables(self):
     return self
   def substituteVariable(self, a, b):
@@ -228,7 +95,7 @@ def isExistentialOfLength(n, existential):
     existential = existential.value
   return True
 
-class Exists(Object):
+class Exists(Formula):
   def __init__(self, variable, value):
     self.variable = variable
     self.value = value
@@ -251,10 +118,6 @@ class Exists(Object):
 
   def __repr__(self):
     return "( Exists %s . %s )"%(self.variable, self.value)
-
-  def translate(self):
-    return Exists(variable = self.variable.translate(),
-        value = self.value.translate())
 
   # f is a function taking each object B to a list ys
   # return a list of all pairs (a, X) such that
@@ -325,7 +188,7 @@ def MultiBoundedForall(variable_domain_pairs, value):
 empty_symbol = symbol.StringSymbol('')
 
 # For And and Or.
-class Conjunction(Object):
+class Conjunction(Formula):
   # There is only one global right symbol.
   def __init__(self, left, right):
     self.left = left
@@ -340,10 +203,6 @@ class Conjunction(Object):
         and self.right == other.right)
   def __ne__(self, other):
     return not(self == other)
-
-  def translate(self):
-    return self.__class__(left = self.left.translate(),
-                          right = self.right.translate())
 
   def forwardOnConjunction(self, leftArrow, rightArrow):
     assert(isinstance(leftArrow, Arrow))
@@ -569,60 +428,7 @@ def Implies(predicate, consequent):
 def ExpandIff(left, right):
   return And(Implies(left, right), Implies(right, left))
 
-class Iff(Object):
-  def __init__(self, left, right):
-    self.left = left
-    self.right = right
-  def __repr__(self):
-    return "Iff(\n%s\n<==>\n%s\n)"%(self.left, self.right)
-  def __eq__(self, other):
-    return other.__class__ == Iff and self.left == other.left and self.right == other.right
-  def __ne__(self, other):
-    return not(self == other)
-  def translate(self):
-    return ExpandIff(self.left.translate(), self.right.translate())
-  def updateVariables(self):
-    return Iff(left = self.left.updateVariables(),
-        right = self.right.updateVariables())
-  def substituteVariable(self, a, b):
-    return Iff(left = self.left.substituteVariable(a, b),
-        right = self.right.substituteVariable(a, b))
-  def freeVariables(self):
-    return self.left.freeVariables().union(self.right.freeVariables())
-
-class Hidden(Object):
-  def __init__(self, base, name):
-    self.base = base
-    self.name = name
-
-  def __eq__(self, other):
-    return other.__class__ == Hidden and self.base == other.base
-  def __ne__(self, other):
-    return not(self == other)
-  # f is a function taking each object B to a list ys
-  # return a list of all pairs (a, X) such that
-  #   a is an arrow self -> B|self
-  #   X is in f(B)
-  #   B == Always(C) for some C
-  def produceFiltered(self, f):
-    # Hidden(X) --> X --> B|X --> B|Hidden(X)
-    return [(self.forwardUnhide().forwardCompose(a).forwardFollow(lambda x:
-                  x.forwardOnRightFollow(lambda x: x.forwardHide(self.name))), X)
-            for a, X in self.base.produceFiltered(f)]
-
-    return self.base.produceFiltered(f)
-  def translate(self):
-    return self.base.translate()
-  def updateVariables(self):
-    return Hidden(base = self.base.updateVariables(), name = self.name)
-  def substituteVariable(self, a, b):
-    return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
-  def freeVariables(self):
-    return self.base.freeVariables()
-  def forwardUnhide(self):
-    return Hide(src = self.base, tgt = self).invert()
-
-class Not(Object):
+class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
@@ -637,9 +443,6 @@ class Not(Object):
 
   def __repr__(self):
     return "~(%s)"%(self.value,)
-
-  def translate(self):
-    return Not(value = self.value.translate(), rendered = self.rendered)
 
   def forwardOnNot(self, arrow):
     assert(isinstance(arrow, Arrow))
@@ -677,7 +480,7 @@ class Not(Object):
   def freeVariables(self):
     return self.value.freeVariables()
 
-class Always(Object):
+class Always(Formula):
   def __init__(self, value):
     self.value = value
 
@@ -739,9 +542,6 @@ class Always(Object):
   def forwardCojoin(self):
     return Cojoin(src = self, tgt = Always(self))
 
-  def translate(self):
-    return Always(value = self.value.translate())
-
   def updateVariables(self):
     return self.__class__(value = self.value.updateVariables())
 
@@ -751,14 +551,11 @@ class Always(Object):
   def freeVariables(self):
     return self.value.freeVariables()
 
-class Unit(Object):
+class Unit(Formula):
   def __eq__(self, other):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
-
-  def translate(self):
-    return self
 
   def updateVariables(self):
     return self
@@ -822,9 +619,6 @@ class Arrow:
   def __repr__(self):
     return "%s"%(self.arrowTitle())
 
-  def translate(self):
-    return self.__class__(src = self.src.translate(), tgt = self.tgt.translate())
-
   # Throw an exception if self is not valid.
   # Subclasses should override to implement checking.
   def validate(self):
@@ -864,9 +658,6 @@ class InverseArrow(Isomorphism):
 
   def invert(self):
     return self.arrow
-
-  def translate(self):
-    return InverseArrow(arrow = self.arrow.translate())
 
 # A <--> A
 class Id(Isomorphism):
@@ -959,9 +750,6 @@ class Composite(Arrow):
     # (x*(x*(x*f(x))))
     return self.left._rightAssociate(lambda x: Composite(x, self.right._rightAssociate(f)))
 
-  def translate(self):
-    return Composite(left = self.left.translate(), right = self.right.translate())
-
   def __repr__(self):
     return "%s o\n%s"%(self.left, self.right)
 
@@ -969,9 +757,10 @@ class Composite(Arrow):
   # Subclasses should override to implement checking.
   def validate(self):
     if not(self.left.tgt == self.right.src):
-      raise Exception(("Invalid composite."
-          "left.tgt (%s) != right.src (%s)\nleft.tgt =\n%s\nright.src =\n%s"
-          )%(self.left.__class__, self.right.__class__, self.left.tgt, self.right.src))
+      raise Exception(("Invalid composite.\n"
+        "left %s\nright %s\nleft.src = %s\n"
+        "left.tgt =%s\nright.src =%s\nright.tgt = %s\n"
+          )%(self.left, self.right, self.left.src, self.left.tgt, self.right.src, self.right.tgt))
 
   # May throw an exception.
   def invert(self):
@@ -984,12 +773,6 @@ class Composite(Arrow):
 
   def __ne__(self, other):
     return not(self == other)
-
-# X <--> Hidden(X)
-class Hide(Isomorphism):
-  def validate(self):
-    assert(self.tgt.__class__ == Hidden)
-    assert(self.src == self.tgt.base)
 
 # A | (B - C) --> (A | B) - (A | C)
 class Distribute(Arrow):
@@ -1163,8 +946,6 @@ class RemoveExists(Arrow):
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
-  def translate(self):
-    raise Exception("Abstract superclass.")
   def __repr__(self):
     return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
 
@@ -1236,12 +1017,6 @@ class OnConjunction(FunctorialArrow):
       assert(self.src.__class__ == Or)
       return "OnOr"
 
-  def translate(self):
-    return OnConjunction(leftArrow = self.leftArrow.translate(),
-        rightArrow = self.rightArrow.translate(),
-        src = self.src.translate(),
-        tgt = self.tgt.translate())
-
 class OnAlways(FunctorialArrow):
   def __init__(self, arrow):
     self.arrow = arrow
@@ -1253,9 +1028,6 @@ class OnAlways(FunctorialArrow):
 
   def arrowTitle(self):
     return "OnAlways"
-
-  def translate(self):
-    return OnAlways(self.arrow.translate())
 
 class OnBody(FunctorialArrow):
   def __init__(self, variable, arrow):
@@ -1277,10 +1049,6 @@ class OnBody(FunctorialArrow):
   def arrowTitle(self):
     return "OnBody"
 
-  def translate(self):
-    return OnBody(self.variable.translate(),
-        self.arrow.translate())
-
 class OnNot(FunctorialArrow):
   def __init__(self, arrow):
     self.arrow = arrow
@@ -1292,9 +1060,6 @@ class OnNot(FunctorialArrow):
 
   def arrowTitle(self):
     return "OnNot"
-
-  def translate(self):
-    return OnNot(arrow = self.arrow.translate())
 
 # The horizontal concatenation of two strings
 def _hconcat(left, right):

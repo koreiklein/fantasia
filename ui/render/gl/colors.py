@@ -4,6 +4,8 @@ from OpenGL.GL import *
 
 from ui.stack.color import Color
 
+genericColor = Color(r = 0.0, g = 0.0, b = 0.0)
+
 variableColor = Color(r = 0.0, g = 0.0, b = 0.0)
 symbolColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
