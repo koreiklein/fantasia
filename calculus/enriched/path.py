@@ -44,6 +44,10 @@ class Path:
   def onPathFollow(self, f):
     return self.onPath(f(self.bottom()))
 
+  def forwardAndTrue(self):
+    return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
+        p.advance(0))
+
   def retreat(self):
     if endofunctor.is_identity_functor(self.endofunctor):
       raise Exception("Can't retreat any more.")

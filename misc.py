@@ -11,6 +11,8 @@ def flipSide(side):
     return left
 
 def _interleave(a, xs):
+  if len(xs) == 0:
+    return [a]
   result = []
   for x in xs:
     result.append(x)

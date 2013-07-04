@@ -31,6 +31,25 @@ class Formula:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+  def is_and(self):
+    return False
+
+  def compress(self):
+    return self
+
+  def forwardAndTrue(self):
+    values = [And([])]
+    if self.is_and():
+      values.extend(self.compress().values)
+    else:
+      values.append(self)
+    return Arrow(src = self,
+        tgt = And(values),
+        basicArrow = self.translate().forwardAndTrue())
+
+  def identity(self):
+    return Arrow(src = self, tgt = self, basicArrow = self.translate().identity())
+
 class Arrow:
   def __init__(self, src, tgt, basicArrow):
     self.src = src
@@ -98,8 +117,15 @@ class Application(Formula):
     self.formula = formula
     self.endofunctor = endofunctor
 
+  def compress(self):
+    return self.endofunctor.onObject(self.formula)
+
   def __repr__(self):
     return "Apply %s to %s"%(self.endofunctor, self.formula)
+
+  def is_and(self):
+    return (self.endofunctor.is_and_functor() or (
+      self.endofunctor.is_identity() and self.formula.is_and()))
 
   def render(self, context):
     return self.endofunctor.renderOn(context, lambda context:
@@ -154,6 +180,9 @@ class Conjunction(Formula):
         spacing = distances.divider_spacing)
 
 class And(Conjunction):
+  def is_and(self):
+    return True
+
   def basicBinop(self):
     return basicFormula.And
 

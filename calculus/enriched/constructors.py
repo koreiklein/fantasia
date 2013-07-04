@@ -45,3 +45,7 @@ def Iff(left, right):
 def Hidden(value, name):
   return formula.Hidden(value, name)
 
+def assume(x, B):
+  return formula.Arrow(src = x,
+      tgt = Not(And([B, Not(And([B, x]))])),
+      basicArrow = x.translate().forwardAssume(B.translate()))

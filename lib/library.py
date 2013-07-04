@@ -37,20 +37,19 @@ class Library:
   def formula(self):
     variables = list(self.variables)
     claims = []
-    claims.extend(self.claims)
+    if self.name is None:
+      claims.extend(self.claims)
+    else:
+      claims.append(constructors.Hidden(constructors.And(self.claims), self.name))
     for l in self.all_libraries_recursively():
       variables.extend(l.variables)
       if l.name is None:
         claims.extend(l.claims)
       else:
         claims.append(constructors.Hidden(constructors.Always(constructors.And(l.claims)), l.name))
-    result = constructors.Always(constructors.Exists(
+    return constructors.Always(constructors.Exists(
       [constructors.OrdinaryVariableBinding(v) for v in variables],
       constructors.And(claims)))
-    if self.name is None:
-      return result
-    else:
-      return constructors.Hidden(result, self.name)
 
   def beginProof(self):
     return Proof(library = self)
@@ -63,8 +62,9 @@ class Proof:
     if arrow is None:
       self.arrow = path.new_path(library.formula()).advance()
       self.arrow = self.arrow.forwardFollow(lambda p: p.advance())
+      self.arrow = self.arrow.forwardFollow(lambda p: p.forwardAndTrue())
     else:
-      assert(arrow.src.top() == library.formula)
+      assert(arrow.src.top().translate() == library.formula().translate())
       self.arrow = arrow
     self.tgt = self.arrow.tgt
 

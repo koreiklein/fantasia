@@ -63,6 +63,7 @@ allClaims = [ successorIsGreater
 naturalClaims = constructors.And(allClaims)
 
 lib = library.Library(
+    name = "Natural",
     claims = [naturalClaims],
     variables = [natural, zero, natural_less, natural_successor],
     sub_libraries = [function.lib])

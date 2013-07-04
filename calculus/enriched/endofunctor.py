@@ -27,6 +27,9 @@ class Endofunctor:
   def covariant(self):
     raise Exception("Abstract superclass.")
 
+  def is_and_functor(self):
+    return False
+
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
@@ -46,16 +49,22 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
 
   def onObject(self, object):
-    return formula.Application(endofunctor = self, formula = object)
-  def onArrow(self, arrow):
-    basicArrow = self.translate().onArrow(arrow)
-    if self.covariant():
-      src = self.onObject(arrow.src)
-      tgt = self.onObject(arrow.tgt)
+    if self.is_identity():
+      return object
     else:
-      src = self.onObject(arrow.tgt)
-      tgt = self.onObject(arrow.src)
-    return formula.Arrow(src = src, tgt = tgt, basicArrow = basicArrow)
+      return formula.Application(endofunctor = self, formula = object)
+  def onArrow(self, arrow):
+    if self.is_identity():
+      return arrow
+    else:
+      basicArrow = self.translate().onArrow(arrow)
+      if self.covariant():
+        src = self.onObject(arrow.src)
+        tgt = self.onObject(arrow.tgt)
+      else:
+        src = self.onObject(arrow.tgt)
+        tgt = self.onObject(arrow.src)
+      return formula.Arrow(src = src, tgt = tgt, basicArrow = basicArrow)
 
   def compose(self, other):
     return Composite(self, other)
@@ -68,8 +77,17 @@ class Composite(Endofunctor):
     self.left = left
     self.right = right
 
+  def onObject(self, object):
+    return self.right.onObject(self.left.onObject(object))
+
+  def onArrow(self, arrow):
+    return self.right.onArrow(self.left.onArrow(arrow))
+
   def __repr__(self):
     return "%s o\n%s"%(self.left, self.right)
+
+  def is_and_functor(self):
+    return self.right.is_and_functor()
 
   def factor_left(self):
     if is_identity_functor(self.right):
@@ -223,7 +241,7 @@ class DirectTranslate(Endofunctor):
     self.basicEndofunctor = basicEndofunctor
     self._render = _render
   def __repr__(self):
-    return repr(self.basicEndofunctor)
+    return "direct(%s)"%(self.basicEndofunctor,)
   def translate(self):
     return self.basicEndofunctor
   def covariant(self):
@@ -307,6 +325,9 @@ class Conjunction(Endofunctor):
     return result
 
 class And(Conjunction):
+  def is_and_functor(self):
+    return True
+
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def multiOp(self):
