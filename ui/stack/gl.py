@@ -13,6 +13,13 @@ class GLBackend(stack.Backend):
   def render(self):
     return self._render()
 
+  def flip(self):
+    def f():
+      glScale(-1.0, -1.0, 1.0)
+      self.render()
+      glScale(-1.0, -1.0, 1.0)
+    return GLBackend(f)
+
   def below(self, other):
     assert(other.__class__ == GLBackend)
     def render():

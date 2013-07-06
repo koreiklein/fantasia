@@ -7,6 +7,10 @@ class Backend:
   def below(self, other):
     raise Exception("Abstract superclass.")
 
+  # return: a new backend object in which self is draw transposed
+  def flip(self):
+    raise Exception("Abstract superclass.")
+
   # offset: a list of coordinates, meant to serve as a translation of other.
   # return: a new backend object like self, but shifted by offset.
   def shift(self, offset):
@@ -36,6 +40,13 @@ class Stack:
   def __init__(self, coords, backend):
     self._coords = coords
     self._backend = backend
+
+  def flip(self):
+    coords = list(self.coords)
+    tmp = coords[0]
+    coords[0] = coords[1]
+    coords[1] = tmp
+    return Stack(coords, self.backend.flip())
 
   # Return widths.
   def widths(self):
