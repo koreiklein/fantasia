@@ -74,6 +74,11 @@ class Path:
       return (self.formula.value, endofunctor.not_functor)
     elif self.formula.__class__ == formula.Exists:
       return (self.formula.value, endofunctor.Exists(self.formula.bindings))
+    elif self.formula.__class__ == formula.WellDefined:
+      return (self.formula.value, endofunctor.WellDefinedFunctor(
+        variable = self.formula.variable,
+        newVariable = self.formula.newVariable,
+        equivalence = self.formula.equivalence))
     elif self.formula.__class__ == formula.Holds:
       raise Exception("Can't advance past Holds.")
     elif self.formula.__class__ == formula.Iff:
