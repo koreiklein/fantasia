@@ -182,23 +182,6 @@ class WelldefinedVariableBinding(VariableBinding):
     # TODO Render in a clearer way.
     return (self.variable.render(), context)
 
-class ImageVariableBinding(VariableBinding):
-  def __init__(self, variable, preimage, function):
-    self.variable = variable
-    self.preimage = preimage
-    self.function = function
-
-  def __repr__(self):
-    return "%s = %s(%s)"%(self.variable, self.function, self.preimage)
-
-  def translate(self):
-    return basicEndofunctor.Exists(self.variable).compose(
-        basicEndofunctor.And(side = right,
-          other = basicFormula.Always(Maps(self.preimage, self.variable, self.function))))
-
-  def render(self, context):
-    return (gl.nullStack, context.bind(self.variable, (self.preimage, self.function)))
-
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings

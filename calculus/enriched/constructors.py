@@ -19,8 +19,6 @@ def BoundedVariableBinding(variable, relation):
   return endofunctor.BoundedVariableBinding(variable, relation)
 def WelldefinedVariableBinding(variable, relation):
   return endofunctor.WelldefinedVariableBinding(variable, relation)
-def ImageVariableBinding(variable, preimage, function):
-  return endofunctor.ImageVariableBinding(variable, preimage, function)
 
 def Exists(bindings, value):
   return formula.Application(endofunctor = endofunctor.Exists(bindings), formula = value)
