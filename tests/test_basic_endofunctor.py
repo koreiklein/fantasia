@@ -2,7 +2,7 @@
 
 import unittest
 from calculus.basic import endofunctor, formula
-from calculus.enriched import endofunctor as enrichedEndo
+from calculus.enriched import formula as enrichedFormula
 from calculus import variable
 from lib import common_vars
 from tests import common_objects
@@ -30,11 +30,11 @@ class ExactImportTests(ImportTest, common_objects.CommonObjects):
         self.and_b_of_a_functor).compose(
             endofunctor.not_functor)
     # There exists a well defined a such that....
-    self.well_defined_functor = enrichedEndo.ExpandWellDefined(self.a, self.b, self.equivalence)
-    self.exists_well_defined_functor = enrichedEndo.ExpandWellDefined(self.c, self.d, self.equivalence).compose(
+    self.well_defined_functor = enrichedFormula.ExpandWellDefined(self.a, self.b, self.equivalence)
+    self.exists_well_defined_functor = enrichedFormula.ExpandWellDefined(self.c, self.d, self.equivalence).compose(
         endofunctor.Exists(self.c))
     self.well_defined_exists_functor = endofunctor.Exists(self.e).compose(
-        enrichedEndo.ExpandWellDefined(self.c, self.d, self.equivalence))
+        enrichedFormula.ExpandWellDefined(self.c, self.d, self.equivalence))
 
   def test_import_through_id(self):
     self.assert_can_import_through_covariant_functor(endofunctor.identity_functor)
