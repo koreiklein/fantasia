@@ -11,7 +11,7 @@ class GeneralizedVariable:
   # Return an equivalent variable that is possibly simpler.
   def simplify(self):
     return self
-  def render(self, bindings):
+  def render(self):
     raise Exception("Abstract superclass.")
 
 n_variables = 0
@@ -54,7 +54,7 @@ class StringVariable(Variable):
     self._name = name
     self.infix = infix
 
-  def render(self, bindings):
+  def render(self):
     return gl.newTextualGLStack(colors.variableColor, repr(self))
 
   def name(self):
@@ -85,19 +85,23 @@ class ApplySymbolVariable(GeneralizedVariable):
   def freeVariables(self):
     return self.variable.freeVariables()
 
-  def render(self, bindings):
-    symbolBackgroundColor, variableBackgroundColor = colors_for_symbol_type(v.symbol.type)
-    return renderSymbolVariablePair(renderSymbol(v.symbol), v.variable.render(bindings),
+  def render(self):
+    symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(v.symbol)
+    if v.symbol.__class__ == Variable:
+      symbolStack = v.symbol.render()
+    else:
+      symbolStack = renderSymbol(v.symbol)
+    return renderSymbolVariablePair(symbolStack, v.variable.render(),
         symbolBackgroundColor,
         variableBackgroundColor)
 
-def colors_for_symbol_type(type):
-  if type == symbol.projection:
-    return (colors.projectionSymbolBackgroundColor, colors.projectionVariableBackgroundColor)
-  elif type == symbol.coinjection:
-    return (colors.injectionSymbolBackgroundColor, colors.injectionVariableBackgroundColor)
-  elif type == symbol.function:
+def colors_for_symbol(symbol):
+  if isinstance(symbol, Variable):
     return (colors.callSymbolBackgroundColor, colors.callVariableBackgroundColor)
+  elif symbol.type == symbol.projection:
+    return (colors.projectionSymbolBackgroundColor, colors.projectionVariableBackgroundColor)
+  elif symbol.type == symbol.coinjection:
+    return (colors.injectionSymbolBackgroundColor, colors.injectionVariableBackgroundColor)
   else:
     raise Exception("Unrecognized symbol type %s"%(type,))
 
@@ -128,13 +132,13 @@ class ProductVariable(GeneralizedVariable):
       result.union_update(v.freeVariables())
     return result
 
-  def render(self, bindings):
+  def render(self):
     symbolVariablePairs = []
     for i in range(len(self.symbol_variable_pairs)):
       (s,v) = self.symbol_variable_pairs[i]
       (c0, c1) = colors.productPairsColor(i)
       symbolVariablePairs.append(renderSymbolVariablePair(renderSymbol(s),
-        v.render(bindings), c0, c1))
+        v.render(), c0, c1))
     return stack.stackAll(0, symbolVariablePairs,
         spacing = distances.productVariableHorizontalSpacing)
 

@@ -20,7 +20,7 @@ class Formula:
     return not (self == other)
 
   def top_level_render(self):
-    return self.render(RenderingContext(covariant = True, bindings = {}))
+    return self.render(RenderingContext(covariant = True))
 
   def render(self, context):
     return gl.newTextualGLStack(colors.genericColor, repr(self))
@@ -76,7 +76,6 @@ class Holds(Formula):
         holding = self.holding)
 
   def render(self, context):
-    bindings = context.bindings
     infix = getInfix(self)
     if infix is not None:
       (firstSymbol, secondSymbol) = infix
@@ -90,14 +89,14 @@ class Holds(Formula):
         assert(aSymbol == firstSymbol)
         assert(bSymbol == secondSymbol)
       # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-      holds =  stack.stackAll(0, [ aVariable.render(bindings)
-                                 , self.holding.render(bindings)
-                                 , bVariable.render(bindings)],
+      holds =  stack.stackAll(0, [ aVariable.render()
+                                 , self.holding.render()
+                                 , bVariable.render()],
                                  spacing = distances.infixSpacing)
     else:
-      holds = stack.stackAll(0, [ self.held.render(bindings)
+      holds = stack.stackAll(0, [ self.held.render()
                                 , primitives.holds()
-                                , self.holding.render(bindings)],
+                                , self.holding.render()],
                                 spacing = distances.holdsSpacing)
 
     return holds
@@ -287,17 +286,11 @@ class Unique(Formula):
 
 
 class RenderingContext:
-  def __init__(self, covariant, bindings):
+  def __init__(self, covariant):
     self.covariant = covariant
-    self.bindings = bindings
-
-  def bind(self, key, value):
-    bindings = dict(self.bindings)
-    bindings[key] = value
-    return RenderingContext(covariant = self.covariant, bindings = bindings)
 
   def negate(self):
-    return RenderingContext(covariant = not self.covariant, bindings = self.bindings)
+    return RenderingContext(covariant = not self.covariant)
 
   def as_covariant(self):
     return self if self.covariant else self.negate()

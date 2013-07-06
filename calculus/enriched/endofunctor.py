@@ -160,7 +160,7 @@ class OrdinaryVariableBinding(VariableBinding):
     return basicEndofunctor.Exists(self.variable)
 
   def render(self, context):
-    return (self.variable.render(context.bindings), context)
+    return (self.variable.render(), context)
 
 class WelldefinedVariableBinding(VariableBinding):
   # variable: a variable
@@ -180,7 +180,7 @@ class WelldefinedVariableBinding(VariableBinding):
 
   def render(self, context):
     # TODO Render in a clearer way.
-    return (self.variable.render(context.bindings), context)
+    return (self.variable.render(), context)
 
 class ImageVariableBinding(VariableBinding):
   def __init__(self, variable, preimage, function):

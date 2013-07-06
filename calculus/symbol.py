@@ -2,7 +2,6 @@
 
 projection = 'projection'
 coinjection = 'coinjection'
-function = 'function'
 
 # This class is used to represent the "symbols" involved in limits and colimits.
 # Symbols can be rendered and tested for equality.  They importantly have little
