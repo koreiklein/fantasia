@@ -2,7 +2,7 @@
 
 from misc import *
 import misc
-from calculus.variable import ProjectionVariable, ProductVariable, InjectionVariable, StringVariable, Variable
+from calculus.variable import ApplySymbolVariable, ProductVariable, StringVariable, Variable
 from calculus.enriched import formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basicEndofunctor
@@ -18,7 +18,7 @@ def Maps(a, b, f):
   return basicFormula.Holds(
       ProductVariable([ (common_symbols.inputSymbol, a)
                                , (common_symbols.outputSymbol, b)]),
-      ProjectionVariable(f, common_symbols.functionPairsSymbol))
+      ApplySymbolVariable(f, common_symbols.functionPairsSymbol))
 
 class Endofunctor:
   # return a basic endofunctor
@@ -132,7 +132,7 @@ class BoundedVariableBinding(VariableBinding):
   def __init__(self, variable, relation):
     self.variable = variable
     self.relation = relation
-    self.domain = ProjectionVariable(self.relation, common_symbols.domainSymbol)
+    self.domain = ApplySymbolVariable(self.relation, common_symbols.domainSymbol)
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable).compose(
@@ -357,12 +357,12 @@ def ExpandWellDefined(variable, newVariable, equivalence):
   return basicBifunctor.and_functor.precomposeRight(F).join()
 
 def InDomain(a, e):
-  return Always(formula.Holds(a, ProjectionVariable(e, domainSymbol)))
+  return Always(formula.Holds(a, ApplySymbolVariable(e, domainSymbol)))
 
 def Equal(a, b, e):
   return Always(formula.Holds(
       ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-      ProjectionVariable(e, relationSymbol)))
+      ApplySymbolVariable(e, relationSymbol)))
 
 def Not(x):
   return formula.Application(formula = x, endofunctor = not_functor)

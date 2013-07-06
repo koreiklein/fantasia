@@ -12,7 +12,7 @@ def Maps(a, b, f):
   return constructors.Always(constructors.Holds(
       variable.ProductVariable([ (inputSymbol, a)
                                , (outputSymbol, b)]),
-      variable.ProjectionVariable(f, functionPairsSymbol)))
+      variable.ApplySymbolVariable(f, functionPairsSymbol)))
 
 def IsFunction(f):
   return constructors.Always(constructors.Holds(f, common_vars.function))

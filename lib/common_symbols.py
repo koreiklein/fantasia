@@ -3,16 +3,16 @@
 from calculus import symbol
 
 
-leftSymbol = symbol.StringSymbol('left')
-rightSymbol = symbol.StringSymbol('right')
+leftSymbol = symbol.StringSymbol('left', type = symbol.projection)
+rightSymbol = symbol.StringSymbol('right', type = symbol.projection)
 
-relationSymbol = symbol.StringSymbol('=', infix = (leftSymbol, rightSymbol))
-domainSymbol = symbol.StringSymbol('\'')
+relationSymbol = symbol.StringSymbol('=', infix = (leftSymbol, rightSymbol), type = symbol.projection)
+domainSymbol = symbol.StringSymbol('\'', type = symbol.projection)
 
-srcSymbol = symbol.StringSymbol('src')
-tgtSymbol = symbol.StringSymbol('tgt')
-functionPairsSymbol = symbol.StringSymbol('\'')
+srcSymbol = symbol.StringSymbol('src', type = symbol.projection)
+tgtSymbol = symbol.StringSymbol('tgt', type = symbol.projection)
+functionPairsSymbol = symbol.StringSymbol('\'', symbol.projection)
 
-inputSymbol = symbol.StringSymbol('input')
-outputSymbol = symbol.StringSymbol('output')
+inputSymbol = symbol.StringSymbol('input', type = symbol.projection)
+outputSymbol = symbol.StringSymbol('output', type = symbol.projection)
 

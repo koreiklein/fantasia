@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import symbol
+from lib import common_symbols
 
 from sets import Set
 
@@ -184,8 +185,6 @@ def MultiForall(variables, value):
 
 def MultiBoundedForall(variable_domain_pairs, value):
   return Always(Not(MultiBoundedExists(variable_domain_pairs, Not(value))))
-
-empty_symbol = symbol.StringSymbol('')
 
 # For And and Or.
 class Conjunction(Formula):

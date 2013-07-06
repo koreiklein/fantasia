@@ -1,13 +1,17 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+projection = 'projection'
+coinjection = 'coinjection'
+function = 'function'
 
 # This class is used to represent the "symbols" involved in limits and colimits.
 # Symbols can be rendered and tested for equality.  They importantly have little
 # additional structure.  They need not be string symbols.
 n_symbols = 0
 class Symbol:
-  def __init__(self):
+  def __init__(self, type):
     self._generate_id()
+    self.type = type
 
   def _generate_id(self):
     global n_symbols
@@ -25,9 +29,10 @@ class Symbol:
     return "<abstract symbol %s>"%(self._id,)
 
 class StringSymbol(Symbol):
-  def __init__(self, s, infix = None):
+  def __init__(self, s, type, infix = None):
     self._generate_id()
     self._string = s
+    self.type = type
     self.infix = infix
 
   def __repr__(self):

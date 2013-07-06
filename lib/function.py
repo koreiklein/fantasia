@@ -7,13 +7,13 @@ from lib.common_formulas import Maps, IsEquivalence, IsFunction, Equal
 from lib import common_vars
 
 def projectSrc(f):
-  return variable.ProjectionVariable(f, common_symbols.srcSymbol)
+  return variable.ApplySymbolVariable(f, common_symbols.srcSymbol)
 def projectTgt(f):
-  return variable.ProjectionVariable(f, common_symbols.tgtSymbol)
+  return variable.ApplySymbolVariable(f, common_symbols.tgtSymbol)
 def projectDomain(e):
-  return variable.ProjectionVariable(e, common_symbols.domainSymbol)
+  return variable.ApplySymbolVariable(e, common_symbols.domainSymbol)
 def projectRelation(e):
-  return variable.ProjectionVariable(e, common_symbols.relationSymbol)
+  return variable.ApplySymbolVariable(e, common_symbols.relationSymbol)
 
 a = common_vars.a()
 b = common_vars.b()

@@ -252,11 +252,11 @@ class Unique(Formula):
 
   def translate(self):
     def InDomain(x, e):
-      return Always(Holds(x, variable.ProjectionVariable(e, domainSymbol)))
+      return Always(Holds(x, variable.ApplySymbolVariable(e, domainSymbol)))
     def EqualUnder(a, b, e):
       return Always(Holds(
           variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-          variable.ProjectionVariable(e, relationSymbol)))
+          variable.ApplySymbolVariable(e, relationSymbol)))
     formulaTranslate = self.formula.translate()
     all_others_are_equal = basicFormula.Not(
         basicFormula.Exists(self.newVariable,
@@ -310,7 +310,7 @@ def getInfix(holds):
   v = holds.holding
   if v.__class__ == variable.StringVariable and v.infix is not None:
     return v.infix
-  elif v.__class__ == variable.ProjectionVariable and v.symbol.infix is not None:
+  elif v.__class__ == variable.ApplySymbolVariable and v.symbol.infix is not None:
     return v.symbol.infix
   else:
     return None
