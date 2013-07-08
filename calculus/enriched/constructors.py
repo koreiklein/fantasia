@@ -1,5 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from calculus import variable
 from calculus.enriched import formula, endofunctor
 
 def Holds(held, holding):
@@ -12,6 +13,9 @@ def Or(values):
 
 def Not(value):
   return formula.Not(value)
+
+def Apply(v, x):
+  return variable.ApplySymbolVariable(v, x)
 
 def OrdinaryVariableBinding(variable):
   return endofunctor.OrdinaryVariableBinding(variable)

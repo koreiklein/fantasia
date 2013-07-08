@@ -9,6 +9,14 @@ n = common_vars.n()
 a = common_vars.a()
 b = common_vars.b()
 
+claim = natural.Less(natural.zero,
+    constructors.Apply( constructors.Apply(natural.zero, natural.natural_successor)
+                      , natural.natural_successor))
+
 proof = natural.lib.beginProof().forwardFollow(lambda p:
     p.onPathFollow(lambda x:
-      constructors.assume(x, constructors.Always(constructors.Holds(a, b)))))
+      constructors.assume(x, claim)))
+
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      x.forwardSimplify()))

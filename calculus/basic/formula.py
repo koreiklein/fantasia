@@ -313,6 +313,14 @@ class And(Conjunction):
           x.forwardAssociate()), X) for a, X in self.left.produceFiltered(f)])
     return result
 
+  def simplifyOnce(self):
+    if self.left == unit_for_conjunction(And):
+      return UnitIdentity(tgt = self, src = self.right).invert()
+    elif self.right == unit_for_conjunction(And):
+      return UnitIdentity(tgt = self, src = self.left).invert()
+    else:
+      raise Exception("Can't simplify once.")
+
   def simplify(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
@@ -387,6 +395,14 @@ class And(Conjunction):
 class Or(Conjunction):
   def __repr__(self):
     return "(%s OR %s)"%(self.left, self.right)
+
+  def simplifyOnce(self):
+    if self.left == unit_for_conjunction(Or):
+      return UnitIdentity(src = self, tgt = self.right)
+    elif self.right == unit_for_conjunction(Or):
+      return UnitIdentity(src = self, tgt = self.left)
+    else:
+      raise Exception("Can't simplify once.")
 
   def simplify(self):
     if self.left == unit_for_conjunction(Or):

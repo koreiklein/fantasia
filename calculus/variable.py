@@ -86,14 +86,12 @@ class ApplySymbolVariable(GeneralizedVariable):
     return self.variable.freeVariables()
 
   def render(self):
-    symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(v.symbol)
-    if v.symbol.__class__ == Variable:
-      symbolStack = v.symbol.render()
+    symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(self.symbol)
+    if isinstance(self.symbol, Variable):
+      symbolStack = self.symbol.render()
     else:
-      symbolStack = renderSymbol(v.symbol)
-    return renderSymbolVariablePair(symbolStack, v.variable.render(),
-        symbolBackgroundColor,
-        variableBackgroundColor)
+      symbolStack = renderSymbol(self.symbol)
+    return self.variable.render().stack(0, primitives.projectDot).stack(0, symbolStack)
 
 def colors_for_symbol(symbol):
   if isinstance(symbol, Variable):

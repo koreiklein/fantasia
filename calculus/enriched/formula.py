@@ -15,6 +15,11 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  def forwardSimplify(self):
+    return self.identity()
+  def backwardSimplify(self):
+    return self.identity()
+
   def __eq__(self, other):
     return isinstance(other, Formula) and self.translate() == other.translate()
   def __ne__(self, other):
@@ -41,7 +46,7 @@ class Formula:
   def forwardAndTrue(self):
     values = [And([])]
     if self.is_and():
-      values.extend(self.compress().values)
+      values.extend(self.values)
     else:
       values.append(self)
     return Arrow(src = self,
@@ -56,16 +61,30 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.basicArrow = basicArrow
+    # FIXME
+    assert(basicArrow.src == src.translate())
+    if not(basicArrow.tgt == tgt.translate()):
+      print basicArrow.tgt
+      print '==========='
+      print tgt.translate()
+      assert(False)
 
   def translate(self):
     return self.basicArrow
 
   def forwardCompose(self, arrow):
-    return Arrow(src = self.src, tgt = self.tgt,
+    return Arrow(src = self.src, tgt = arrow.tgt,
         basicArrow = self.basicArrow.forwardCompose(arrow.basicArrow))
+
+  def backwardCompose(self, arrow):
+    return Arrow(src = arrow.src, tgt = self.tgt,
+        basicArrow = self.basicArrow.backwardCompose(arrow.basicArrow))
 
   def forwardFollow(self, f):
     return self.forwardCompose(f(self.tgt))
+
+  def backwardFollow(self, f):
+    return self.backwardCompose(f(self.src))
 
 class Holds(Formula):
   def __init__(self, held, holding):
@@ -112,6 +131,32 @@ class Holds(Formula):
 class Not(Formula):
   def __init__(self, value):
     self.value = value
+
+  def forwardSimplify(self):
+    arrow = self.value.backwardSimplify()
+    value = arrow.src
+    result = Arrow(src = self,
+          tgt = Not(value),
+          basicArrow = basicFormula.OnNot(arrow.basicArrow))
+    if value.__class__ == Not:
+      return result.forwardFollow(lambda x:
+          Arrow(src = x, tgt = x.value.value,
+            basicArrow = x.translate().forwardUndoubleDual()))
+    else:
+      return result
+
+  def backwardSimplify(self):
+    arrow = self.value.forwardSimplify()
+    value = arrow.tgt
+    result = Arrow(tgt = self, src = Not(value),
+        basicArrow = basicFormula.OnNot(arrow.basicArrow))
+    if value.__class__ == Not:
+      return result.backwardFollow(lambda x:
+          Arrow(src = x.value.value, tgt = x,
+            basicArrow = x.translate().backwardDoubleDual()))
+    else:
+      return result
+
   def __repr__(self):
     return "~%s"%(self.value,)
   def translate(self):
@@ -127,6 +172,14 @@ class Exists(Formula):
   def __init__(self, bindings, value):
     self.bindings = bindings
     self.value = value
+  def forwardSimplify(self):
+    arrow = self.value.forwardSimplify()
+    return Arrow(src = self, tgt = Exists(bindings = self.bindings, value = arrow.tgt),
+        basicArrow = basicFormula.OnBody(arrow.basicArrow))
+  def backwardSimplify(self):
+    arrow = self.value.backwardSimplify()
+    return Arrow(src = Exists(bindings = self.bindings, value = arrow.src), tgt = self,
+        basicArrow = basicFormula.OnBody(arrow.basicArrow))
   def __repr__(self):
     return "Exists(%s) . %s"%(self.bindings, self.value)
   def translate(self):
@@ -158,6 +211,14 @@ class Exists(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+  def forwardSimplify(self):
+    arrow = self.value.forwardSimplify()
+    return Arrow(src = self, tgt = Always(arrow.tgt),
+        basicArrow = basicFormula.OnAlways(arrow.basicArrow))
+  def backwardSimplify(self):
+    arrow = self.value.backwardSimplify()
+    return Arrow(src = Always(arrow.src), tgt = self,
+        basicArrow = basicFormula.OnAlways(arrow.basicArrow))
   def __repr__(self):
     return "!%s"%(self.value,)
   def translate(self):
@@ -177,9 +238,22 @@ class WellDefined(Formula):
     self.newVariable = newVariable
     self.equivalence = equivalence
     self.value = value
+  def forwardSimplify(self):
+    arrow = self.value.forwardSimplify()
+    return Arrow(src = self, tgt = WellDefined(variable = self.variable,
+      newVariable = self.newVariable, equivalence = self.equivalence, value = arrow.tgt),
+      basicArrow = self.getBasicFunctor().onArrow(arrow.basicArrow))
+  def backwardSimplify(self):
+    arrow = self.value.backwardSimplify()
+    return Arrow(src = WellDefined(variable = self.variable,
+      newVariable = self.newVariable, equivalence = self.equivalence, value = arrow.src),
+      tgt = self,
+      basicArrow = self.getBasicFunctor().onArrow(arrow.basicArrow))
   def translate(self):
+    return self.getBasicFunctor().onObject(self.value.translate())
+  def getBasicFunctor(self):
     return ExpandWellDefined(self.variable, self.newVariable,
-        self.equivalence).onObject(self.value.translate())
+      self.equivalence)
   def render(self, context):
     # TODO render a well defined formula more clearly?
     return self.value.render(context)
@@ -214,10 +288,101 @@ class Conjunction(Formula):
         raise Exception("%s at index %s is not an enriched formula."%(value, i))
     self.values = values
     self.basicBinop = self.basicBinop()
-
+  def __repr__(self):
+    return "%s%s"%(self.name(), self.values)
   def translate(self):
     return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
         values = [value.translate() for value in self.values])
+
+  def forwardSimplify(self):
+    if len(self.values) == 0:
+      return self.identity()
+    else:
+      arrows = [v.forwardSimplify() for v in self.values]
+      result = Arrow(src = self, tgt = self.__class__(values = [a.tgt for a in arrows]),
+          basicArrow = self.forwardOnArrows(arrows))
+      return result.forwardFollow(lambda x:
+          x.forwardRemoveUnits().forwardFollow(lambda x:
+            x.forwardMaybeUnsingleton()))
+
+  def forwardMaybeUnsingleton(self):
+    if len(self.values) == 1:
+      return Arrow(src = self, tgt = self.values[0],
+          basicArrow = self.translate().identity())
+    else:
+      return self.identity()
+
+  def backwardMaybeUnsingleton(self):
+    if len(self.values) == 1:
+      return Arrow(tgt = self, src = self.values[0],
+          basicArrow = self.translate().identity())
+    else:
+      return self.identity()
+
+  def backwardSimplify(self):
+    if len(self.values) == 0:
+      return self.identity()
+    else:
+      arrows = [v.backwardSimplify() for v in self.values]
+      result = Arrow(tgt = self, src = self.__class__(values = [a.src for a in arrows]),
+          basicArrow = self.forwardOnArrows(arrows))
+      return result.backwardFollow(lambda x:
+          x.backwardIntroduceUnits().backwardFollow(lambda x:
+            x.backwardMaybeUnsingleton()))
+
+  def forwardRemoveUnits(self):
+    assert(len(self.values) > 0)
+    def f(i):
+      if i == len(self.values) - 1:
+        return self.values[i].translate().identity()
+      else:
+        def g(x):
+          if x.left == self.basicUnit():
+            return x.simplifyOnce()
+          elif x.right == self.basicUnit():
+            return x.simplifyOnce()
+          else:
+            return x.identity()
+        return self.__class__(self.values[i:]).translate().forwardOnRight(f(i+1)).forwardFollow(g)
+    basicArrow = f(0)
+    return Arrow(src = self,
+      tgt = self.__class__(
+        values = [v for v in self.values if not(v.__class__ == self.__class__ and len(v.values) == 0)]),
+      basicArrow = basicArrow)
+
+  def backwardIntroduceUnits(self):
+    assert(len(self.values) > 0)
+    def f(i):
+      if i == len(self.values) - 1:
+        return self.values[i].translate().identity()
+      else:
+        def g(x):
+          if x.left == self.basicUnit():
+            return x.simplifyOnce().invert()
+          elif x.right == self.basicUnit():
+            return x.simplifyOnce().invert()
+          else:
+            return x.identity()
+        return self.__class__(self.values[i:]).translate().backwardOnRight(f(i+1)).backwardFollow(g)
+    basicArrow = f(0)
+    assert(basicArrow.tgt == self.translate())
+    return Arrow(tgt = self,
+      src = self.__class__(
+        values = [v for v in self.values if not(v.__class__ == self.__class__ and len(v.values) == 0)]),
+      basicArrow = basicArrow)
+
+  def forwardOnArrows(self, arrows):
+    assert(len(arrows) > 0)
+    def f(i):
+      if i == len(arrows) - 1:
+        return arrows[i].basicArrow
+      else:
+        leftArrow = arrows[i].basicArrow
+        rightArrow = f(i + 1)
+        return basicFormula.OnConjunction(leftArrow = leftArrow, rightArrow = rightArrow,
+            src = self.basicBinop(leftArrow.src, rightArrow.src),
+            tgt = self.basicBinop(leftArrow.tgt, rightArrow.tgt))
+    return f(0)
 
   def substituteVariable(self, a, b):
     return self.__class__(values = [v.substituteVariable(a, b) for v in self.values])
@@ -246,9 +411,14 @@ class Conjunction(Formula):
 class And(Conjunction):
   def is_and(self):
     return True
+  
+  def name(self):
+    return 'And'
 
   def basicBinop(self):
     return basicFormula.And
+  def basicUnit(self):
+    return basicFormula.true
 
   def renderDivider(self, covariant, length):
     return primitives.andDivider(covariant)(length)
@@ -256,9 +426,13 @@ class And(Conjunction):
 class Or(Conjunction):
   def basicBinop(self):
     return basicFormula.Or
-
+  def name(self):
+    return 'Or'
   def renderDivider(self, covariant, length):
     return primitives.orDivider(covariant)(length)
+
+  def basicUnit(self):
+    return basicFormula.false
 
 true = And([])
 false = Or([])
