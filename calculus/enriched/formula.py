@@ -1,10 +1,11 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 import misc
+from misc import *
 
 from calculus import variable
 from calculus.variable import Variable
-from calculus.basic import formula as basicFormula
+from calculus.basic import formula as basicFormula, endofunctor as basicEndofunctor, bifunctor as basicBifunctor
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 from ui.stack import gl
 from ui.stack import stack
@@ -20,7 +21,7 @@ class Formula:
     return not (self == other)
 
   def top_level_render(self):
-    return self.render(RenderingContext(covariant = True, bindings = {}))
+    return self.render(RenderingContext(covariant = True))
 
   def render(self, context):
     return gl.newTextualGLStack(colors.genericColor, repr(self))
@@ -76,7 +77,6 @@ class Holds(Formula):
         holding = self.holding)
 
   def render(self, context):
-    bindings = context.bindings
     infix = getInfix(self)
     if infix is not None:
       (firstSymbol, secondSymbol) = infix
@@ -90,14 +90,14 @@ class Holds(Formula):
         assert(aSymbol == firstSymbol)
         assert(bSymbol == secondSymbol)
       # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-      holds =  stack.stackAll(0, [ aVariable.render(bindings)
-                                 , self.holding.render(bindings)
-                                 , bVariable.render(bindings)],
+      holds =  stack.stackAll(0, [ aVariable.render()
+                                 , self.holding.render()
+                                 , bVariable.render()],
                                  spacing = distances.infixSpacing)
     else:
-      holds = stack.stackAll(0, [ self.held.render(bindings)
+      holds = stack.stackAll(0, [ self.held.render()
                                 , primitives.holds()
-                                , self.holding.render(bindings)],
+                                , self.holding.render()],
                                 spacing = distances.holdsSpacing)
 
     return holds
@@ -109,38 +109,102 @@ class Holds(Formula):
   def updateVariables(self):
     return self
 
-class Application(Formula):
-  def __init__(self, formula, endofunctor):
-    if not(isinstance(formula, Formula)):
-      raise Exception(("Application was given something other than an enriched"
-          + " Formula.  Got %s")%(formula,))
-    self.formula = formula
-    self.endofunctor = endofunctor
-
-  def compress(self):
-    return self.endofunctor.onObject(self.formula)
-
+class Not(Formula):
+  def __init__(self, value):
+    self.value = value
   def __repr__(self):
-    return "Apply %s to %s"%(self.endofunctor, self.formula)
-
-  def is_and(self):
-    return (self.endofunctor.is_and_functor() or (
-      self.endofunctor.is_identity() and self.formula.is_and()))
-
-  def render(self, context):
-    return self.endofunctor.renderOn(context, lambda context:
-        self.formula.render(context))
-
+    return "~%s"%(self.value,)
   def translate(self):
-    return self.endofunctor.translate().onObject(self.formula.translate())
-
+    return basicFormula.Not(self.value.translate())
+  def render(self, context):
+    return self.value.render(context.negate())
   def substituteVariable(self, a, b):
-    return Application(endofunctor = self.endofunctor.substituteVariable(a, b),
-        formula = self.formula.substituteVariable(a, b))
-
+    return Not(self.value.substituteVariable(a, b))
   def updateVariables(self):
-    return Application(endofunctor = self.endofunctor.updateVariables(),
-        formula = self.formula.updateVariables())
+    return Not(self.value.updateVariables())
+
+class Exists(Formula):
+  def __init__(self, bindings, value):
+    self.bindings = bindings
+    self.value = value
+  def __repr__(self):
+    return "Exists(%s) . %s"%(self.bindings, self.value)
+  def translate(self):
+    result = basicEndofunctor.identity_functor
+    for binding in self.bindings[::-1]:
+      result = result.compose(binding.translate())
+    return result.onObject(self.value.translate())
+  def render(self, context):
+    quantifierStackingDimension = _dimension_for_variance(context.covariant)
+    variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
+    if len(self.bindings) == 0:
+      variablesStack = gl.nullStack
+    else:
+      variablesStack, context = self.bindings[0].render(context)
+      for binding in self.bindings[1:]:
+        rendered_binding, context = binding.render(context)
+        variablesStack = variablesStack.stack(variableStackingDimension,
+            rendered_binding,
+            spacing = distances.quantifier_variables_spacing)
+    kid = self.value.render(context)
+    divider = primitives.quantifierDivider(context.covariant,
+        max(kid.widths()[variableStackingDimension],
+          variablesStack.widths()[variableStackingDimension]))
+    return variablesStack.stackCentered(quantifierStackingDimension, divider,
+        spacing = distances.quantifier_before_divider_spacing).stackCentered(
+        quantifierStackingDimension, kid,
+        spacing = distances.quantifier_after_divider_spacing)
+
+class Always(Formula):
+  def __init__(self, value):
+    self.value = value
+  def __repr__(self):
+    return "!%s"%(self.value,)
+  def translate(self):
+    return basicFormula.Always(self.value.translate())
+  def render(self, context):
+    return renderWithBackground(self.value.render(context),
+        distances.exponential_border_width,
+        colors.exponentialColor(context.covariant))
+  def substituteVariable(self, a, b):
+    return Always(self.value.substituteVariable(a, b))
+  def updateVariables(self):
+    return Always(self.value.updateVariables())
+
+class WellDefined(Formula):
+  def __init__(variable, newVariable, equivalence, value):
+    self.variable = variable
+    self.newVariable = newVariable
+    self.equivalence = equivalence
+    self.value = value
+  def translate(self):
+    return ExpandWellDefined(self.variable, self.newVariable,
+        self.equivalence).onObject(self.value.translate())
+  def render(self, context):
+    # TODO render a well defined formula more clearly?
+    return self.value.render(context)
+  def substituteVariable(self, a, b):
+    return WellDefined(variable = self.variable.substituteVariable(a, b),
+        newVariable = self.newVariable.substituteVariable(a, b),
+        equivalence = self.equivalence.substituteVariable(a, b),
+        value = self.value.substituteVariable(a, b))
+  def updateVariables(self):
+    return WellDefined(variable = self.variable,
+        newVariable = self.newVariable,
+        equivalence = self.equivalence,
+        value = self.value.updateVariables())
+
+def ExpandWellDefined(variable, newVariable, equivalence):
+  isEqual = basicFormula.And(
+        basicFormula.Always(InDomain(newVariable, equivalence)),
+        basicFormula.Always(Equal(newVariable, variable, equivalence)))
+  F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
+      basicEndofunctor.not_functor.compose(
+        basicEndofunctor.Exists(newVariable)).compose(
+          basicEndofunctor.And(side = right, other = isEqual)).compose(
+            basicEndofunctor.not_functor))
+  return basicBifunctor.and_functor.precomposeRight(F).join()
+
 
 class Conjunction(Formula):
   def __init__(self, values):
@@ -240,6 +304,14 @@ class Hidden(Formula):
   def substituteVariable(self, a, b):
     return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
 
+def InDomain(x, e):
+  return Always(Holds(x, variable.ApplySymbolVariable(e, domainSymbol)))
+
+def Equal(a, b, e):
+  return Always(Holds(
+      variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
+      variable.ApplySymbolVariable(e, relationSymbol)))
+
 class Unique(Formula):
   def __init__(self, variable, equivalence, formula, newVariable = None):
     self.variable = variable
@@ -251,19 +323,13 @@ class Unique(Formula):
       self.newVariable = newVariable
 
   def translate(self):
-    def InDomain(x, e):
-      return Always(Holds(x, variable.ProjectionVariable(e, domainSymbol)))
-    def EqualUnder(a, b, e):
-      return Always(Holds(
-          variable.ProductVariable([(leftSymbol, a), (rightSymbol, b)]),
-          variable.ProjectionVariable(e, relationSymbol)))
     formulaTranslate = self.formula.translate()
     all_others_are_equal = basicFormula.Not(
         basicFormula.Exists(self.newVariable,
           basicFormula.And(basicFormula.And(
             InDomain(self.newVariable, self.equivalence),
             formulaTranslate.substituteVariable(self.variable, self.newVariable)),
-            basicFormula.Not(EqualUnder(self.newVariable, self.variable, self.equivalence)))))
+            basicFormula.Not(Equal(self.newVariable, self.variable, self.equivalence)))))
     return basicFormula.And(formulaTranslate, all_others_are_equal)
 
   def substituteVariable(self, a, b):
@@ -287,17 +353,11 @@ class Unique(Formula):
 
 
 class RenderingContext:
-  def __init__(self, covariant, bindings):
+  def __init__(self, covariant):
     self.covariant = covariant
-    self.bindings = bindings
-
-  def bind(self, key, value):
-    bindings = dict(self.bindings)
-    bindings[key] = value
-    return RenderingContext(covariant = self.covariant, bindings = bindings)
 
   def negate(self):
-    return RenderingContext(covariant = not self.covariant, bindings = self.bindings)
+    return RenderingContext(covariant = not self.covariant)
 
   def as_covariant(self):
     return self if self.covariant else self.negate()
@@ -310,7 +370,20 @@ def getInfix(holds):
   v = holds.holding
   if v.__class__ == variable.StringVariable and v.infix is not None:
     return v.infix
-  elif v.__class__ == variable.ProjectionVariable and v.symbol.infix is not None:
+  elif v.__class__ == variable.ApplySymbolVariable and v.symbol.infix is not None:
     return v.symbol.infix
   else:
     return None
+
+def renderWithBackground(s, border_width, color):
+  widths = [x + 2 * border_width for x in s.widths()]
+  widths[2] = 0.0
+  return primitives.solidSquare(color, widths).stackCentered(2, s,
+      spacing = distances.epsilon )
+
+def _dimension_for_variance(covariant):
+  if covariant:
+    return 0
+  else:
+    return 1
+

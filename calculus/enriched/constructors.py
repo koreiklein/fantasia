@@ -11,7 +11,7 @@ def Or(values):
   return formula.Or(values)
 
 def Not(value):
-  return formula.Application(endofunctor = endofunctor.not_functor, formula = value)
+  return formula.Not(value)
 
 def OrdinaryVariableBinding(variable):
   return endofunctor.OrdinaryVariableBinding(variable)
@@ -19,17 +19,15 @@ def BoundedVariableBinding(variable, relation):
   return endofunctor.BoundedVariableBinding(variable, relation)
 def WelldefinedVariableBinding(variable, relation):
   return endofunctor.WelldefinedVariableBinding(variable, relation)
-def ImageVariableBinding(variable, preimage, function):
-  return endofunctor.ImageVariableBinding(variable, preimage, function)
 
 def Exists(bindings, value):
-  return formula.Application(endofunctor = endofunctor.Exists(bindings), formula = value)
+  return formula.Exists(bindings = bindings, value = value)
 
 def Forall(bindings, value):
   return Not(Exists(bindings, Not(value)))
 
 def Always(value):
-  return formula.Application(endofunctor = endofunctor.always_functor, formula = value)
+  return formula.Always(value)
 
 def Maybe(value):
   return Not(Always(Not(value)))

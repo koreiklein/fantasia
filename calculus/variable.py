@@ -11,7 +11,7 @@ class GeneralizedVariable:
   # Return an equivalent variable that is possibly simpler.
   def simplify(self):
     return self
-  def render(self, bindings):
+  def render(self):
     raise Exception("Abstract superclass.")
 
 n_variables = 0
@@ -54,7 +54,7 @@ class StringVariable(Variable):
     self._name = name
     self.infix = infix
 
-  def render(self, bindings):
+  def render(self):
     return gl.newTextualGLStack(colors.variableColor, repr(self))
 
   def name(self):
@@ -66,12 +66,12 @@ class StringVariable(Variable):
   def updateVariables(self):
     return StringVariable(self.name())
 
-class InjectionVariable(GeneralizedVariable):
+class ApplySymbolVariable(GeneralizedVariable):
   def __init__(self, variable, symbol):
     self.variable = variable
     self.symbol = symbol
   def __eq__(self, other):
-    return (other.__class__ == InjectionVariable
+    return (other.__class__ == ApplySymbolVariable
         and self.variable == other.variable
         and self.symbol == other.symbol)
   def __ne__(self, other):
@@ -79,47 +79,31 @@ class InjectionVariable(GeneralizedVariable):
   def __repr__(self):
     return "<: " + repr(self.variable) + " :: " + repr(self.symbol) + " :>"
   def updateVariables(self):
-    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
+    return ApplySymbolVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
   def substituteVariable(self, a, b):
-    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
+    return ApplySymbolVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
   def freeVariables(self):
     return self.variable.freeVariables()
 
-  def render(self, bindings):
-    return renderSymbolVariablePair(renderSymbol(v.symbol), v.variable.render(bindings),
-        colors.injectionSymbolBackgroundColor,
-        colors.injectionVariableBackgroundColor)
-
-class ProjectionVariable(GeneralizedVariable):
-  def __init__(self, variable, symbol):
-    self.variable = variable
-    self.symbol = symbol
-  def __eq__(self, other):
-    return (other.__class__ == ProjectionVariable
-        and self.variable == other.variable
-        and self.symbol == other.symbol)
-  def __ne__(self, other):
-    return not (self == other)
-  def __repr__(self):
-    return repr(self.variable) + "." + repr(self.symbol)
-  def updateVariables(self):
-    return InjectionVariable(variable = self.variable.updateVariables(), symbol = self.symbol)
-  def substituteVariable(self, a, b):
-    return InjectionVariable(variable = self.variable.substituteVariable(a, b), symbol = self.symbol)
-  def freeVariables(self):
-    return self.variable.freeVariables()
-  def simplify(self):
-    if self.variable.__class__ == ProductVariable:
-      for (symbol, variable) in self.variable.symbol_variable_pairs:
-        if symbol == self.symbol:
-          return variable
-      raise Exception(("Failed to simplify %s because the product variable " +
-          "did not contain the component projected upon.")%(self,))
+  def render(self):
+    symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(v.symbol)
+    if v.symbol.__class__ == Variable:
+      symbolStack = v.symbol.render()
     else:
-      return ProjectionVariable(variable = self.variable.simplify(), symbol = self.symbol)
+      symbolStack = renderSymbol(v.symbol)
+    return renderSymbolVariablePair(symbolStack, v.variable.render(),
+        symbolBackgroundColor,
+        variableBackgroundColor)
 
-  def render(self, bindings):
-    return gl.newTextualGLStack(colors.variableColor, repr(self))
+def colors_for_symbol(symbol):
+  if isinstance(symbol, Variable):
+    return (colors.callSymbolBackgroundColor, colors.callVariableBackgroundColor)
+  elif symbol.type == symbol.projection:
+    return (colors.projectionSymbolBackgroundColor, colors.projectionVariableBackgroundColor)
+  elif symbol.type == symbol.coinjection:
+    return (colors.injectionSymbolBackgroundColor, colors.injectionVariableBackgroundColor)
+  else:
+    raise Exception("Unrecognized symbol type %s"%(type,))
 
 # A more elaborate syntax for VARIABLES!!! These construct are under no means
 # meant to be used for objects, nether have they any sort of computational manifestation.
@@ -148,13 +132,13 @@ class ProductVariable(GeneralizedVariable):
       result.union_update(v.freeVariables())
     return result
 
-  def render(self, bindings):
+  def render(self):
     symbolVariablePairs = []
     for i in range(len(self.symbol_variable_pairs)):
       (s,v) = self.symbol_variable_pairs[i]
       (c0, c1) = colors.productPairsColor(i)
       symbolVariablePairs.append(renderSymbolVariablePair(renderSymbol(s),
-        v.render(bindings), c0, c1))
+        v.render(), c0, c1))
     return stack.stackAll(0, symbolVariablePairs,
         spacing = distances.productVariableHorizontalSpacing)
 

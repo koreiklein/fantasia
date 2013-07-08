@@ -49,23 +49,36 @@ class Path:
         p.advance(0))
 
   def retreat(self):
-    if endofunctor.is_identity_functor(self.endofunctor):
+    if self.endofunctor.is_identity_functor(self.endofunctor):
       raise Exception("Can't retreat any more.")
     else:
       (a, b) = self.endofunctor.factor_left()
       return Path(formula = a.onObject(self.formula), endofunctor = b)
 
-  # index: an index into self.bottom().values if self.bottom() is an And or Or
-  #        None otherwise
-  def advance(self, index = None):
+  def _factor_for_advance(self, index):
     if index is not None:
-      if not(isinstance(self.formula, formula.Conjunction)
-          or self.formula.__class__ == formula.Application):
+      if not(isinstance(self.formula, formula.Conjunction)):
         raise Exception("Can't advance to index %s in a formula of class %s."%(index,
           self.formula.__class__))
-      a, b = endofunctor.factor_index(self.formula, index)
-      return newIdentityArrow(src = self,
-          tgt = Path(formula = a, endofunctor = b.compose(self.endofunctor)))
+      values = list(self.formula.values)
+      a = values.pop(index)
+      if self.formula.__class__ == formula.And:
+        b = endofunctor.And(values = values, index = index)
+      else:
+        assert(self.formula.__class__ == formula.Or)
+        b = endofunctor.Or(values = values, index = index)
+      return (a, b)
+    elif self.formula.__class__ == formula.Always:
+      return (self.formula.value, endofunctor.always_functor)
+    elif self.formula.__class__ == formula.Not:
+      return (self.formula.value, endofunctor.not_functor)
+    elif self.formula.__class__ == formula.Exists:
+      return (self.formula.value, endofunctor.Exists(self.formula.bindings))
+    elif self.formula.__class__ == formula.WellDefined:
+      return (self.formula.value, endofunctor.WellDefinedFunctor(
+        variable = self.formula.variable,
+        newVariable = self.formula.newVariable,
+        equivalence = self.formula.equivalence))
     elif self.formula.__class__ == formula.Holds:
       raise Exception("Can't advance past Holds.")
     elif self.formula.__class__ == formula.Iff:
@@ -76,16 +89,13 @@ class Path:
       raise Exception("Can't advance past Unique.")
     elif isinstance(self.formula, formula.Conjunction):
       raise Exception("Can't advance past Conjunction without giving an index.")
-    elif self.formula.__class__ == formula.Application:
-      if endofunctor.is_identity_functor(self.formula.endofunctor):
-        new_path = Path(formula = self.formula.formula, endofunctor = self.endofunctor)
-        return newIdentityArrow(src = self, tgt = new_path).forwardCompose(
-            new_path.advance(index))
-      else:
-        a, b = self.formula.endofunctor.factor_right()
-        return newIdentityArrow(src = self,
-            tgt = Path(formula = formula.Application(formula = self.formula.formula, endofunctor = a),
-              endofunctor = b.compose(self.endofunctor)))
     else:
       raise Exception("Unknown class %s of formula to advance past."%(self.formula.__class__,))
+
+  # index: an index into self.bottom().values if self.bottom() is an And or Or
+  #        None otherwise
+  def advance(self, index = None):
+    a, b = self._factor_for_advance(index)
+    return newIdentityArrow(src = self,
+        tgt = Path(formula = a, endofunctor = b.compose(self.endofunctor)))
 

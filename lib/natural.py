@@ -9,8 +9,8 @@ from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, 
 
 natural = variable.StringVariable('N')
 
-smaller = symbol.StringSymbol('smaller')
-greater = symbol.StringSymbol('greater')
+smaller = symbol.StringSymbol('smaller', type = symbol.projection)
+greater = symbol.StringSymbol('greater', type = symbol.projection)
 natural_less = variable.StringVariable('<', infix = (smaller, greater))
 
 natural_successor = variable.StringVariable('S')
