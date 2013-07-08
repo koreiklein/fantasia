@@ -61,13 +61,10 @@ class Arrow:
     self.src = src
     self.tgt = tgt
     self.basicArrow = basicArrow
-    # FIXME
-    assert(basicArrow.src == src.translate())
+    if not(basicArrow.src == src.translate()):
+      raise Exception("basicArrow.src =\n%s\nsrc.translate() =\n%s"%(basicArrow.src, src.translate()))
     if not(basicArrow.tgt == tgt.translate()):
-      print basicArrow.tgt
-      print '==========='
-      print tgt.translate()
-      assert(False)
+      raise Exception("basicArrow.tgt =\n%s\ntgt.translate() =\n%s"%(basicArrow.tgt, tgt.translate()))
 
   def translate(self):
     return self.basicArrow
@@ -90,6 +87,9 @@ class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
+    
+  def __repr__(self):
+    return "%s : %s"%(self.held, self.holding)
 
   def translate(self):
     return basicFormula.Holds(held = self.held,

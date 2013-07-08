@@ -90,6 +90,9 @@ class Bifunctor:
 class Commute(Bifunctor):
   def __init__(self, bifunctor):
     self.bifunctor = bifunctor
+    
+  def __repr__(self):
+    return "commute %s"%(self.bifunctor,)
 
   def onObjects(self, left, right):
     return self.bifunctor.onObjects(right, left)
@@ -118,6 +121,8 @@ class Commute(Bifunctor):
         lift(y, x))
 
 class And(Bifunctor):
+  def __repr__(self):
+    return "AND"
   def onObjects(self, left, right):
     return formula.And(left, right)
   def onArrows(self, left, right):
@@ -157,6 +162,8 @@ class And(Bifunctor):
 and_functor = And()
 
 class Or(Bifunctor):
+  def __repr__(self):
+    return "OR"
   def onObjects(self, left, right):
     return formula.Or(left, right)
   def onArrows(self, left, right):
@@ -183,6 +190,9 @@ class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
     self.bifunctor = bifunctor
     self.functor = functor
+  
+  def __repr__(self):
+    return "%s . %s"%(self.bifunctor, self.functor)
 
   def variables(self):
     result = []
@@ -236,6 +246,9 @@ class PrecompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.left = left
     self.right = right
+    
+  def __repr__(self):
+    return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
 
   def variables(self):
     result = []

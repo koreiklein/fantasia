@@ -246,8 +246,11 @@ class Conjunction(Endofunctor):
     # self.rest = [c, d]
     # self.first = [a, b]
     # [a, b, ., c, d] -> a|(b|(.|(c|(d|1))))
-    back = self.multiOp()(self.rest).translate()
-    result = self.basicEndofunctor()(side = left, other = back)
+    if len(self.rest) > 0:
+      back = self.multiOp()(self.rest).translate()
+      result = self.basicEndofunctor()(side = left, other = back)
+    else:
+      result = basicEndofunctor.identity_functor
     for value in self.first[::-1]:
       result = result.compose(self.basicEndofunctor()(side = right, other = value.translate()))
     return result

@@ -65,6 +65,9 @@ class PrecompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.left = left
     self.right = right
+    
+  def __repr__(self):
+    return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
 
   def variables(self):
     result = []
@@ -96,15 +99,27 @@ class Conjunction(Bifunctor):
     self.leftIndex = leftIndex
     self.rightIndex = rightIndex
 
+  def __repr__(self):
+    values = [repr(value) for value in self.values]
+    values.insert(self.leftIndex, " . ")
+    values.insert(self.rightIndex, " . ")
+    return self.name() + " [ " + ', '.join(values) + ' ]'
+    
   def translate(self):
     lesserIndex = min(self.leftIndex, self.rightIndex)
     greaterIndex = max(self.leftIndex, self.rightIndex)
     # begin, (lesser), middle, (greater), end
     begin = self.values[:lesserIndex]
-    middle = self.values[lesserIndex:greaterIndex]
-    end = self.values[greaterIndex:]
-    result = self.basicEndofunctor()(side = left,
-        other = self.multiOp()(end).translate())
+    m = greaterIndex
+    if self.leftIndex < self.rightIndex:
+      m -= 1
+    middle = self.values[lesserIndex:m]
+    end = self.values[m:]
+    if len(end) > 0:
+      result = self.basicEndofunctor()(side = left,
+          other = self.multiOp()(end).translate())
+    else:
+      result = basicEndofunctor.identity_functor
     for value in middle[::-1]:
       result = result.compose(self.basicEndofunctor()(side = right,
         other = value.translate()))
@@ -126,6 +141,8 @@ class Conjunction(Bifunctor):
     return self.multiOp()(values)
 
 class And(Conjunction):
+  def name(self):
+    return 'AND'
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def enrichedEndofunctor(self):
@@ -136,6 +153,8 @@ class And(Conjunction):
     return formula.And
 
 class Or(Conjunction):
+  def name(self):
+    return 'OR'
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def enrichedEndofunctor(self):
