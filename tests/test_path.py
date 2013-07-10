@@ -78,6 +78,10 @@ class PathSearchTest(AbstractPathSearchTest, CommonObjects):
     self.assert_exact_path_search_succeeds_once(src_path = self.EP1,
         formula = self.a_in_domain_b)
 
+  def test_search_wd_exists(self):
+    self.assert_exact_path_search_succeeds_once(src_path = self.WDEP1,
+        formula = self.a_in_domain_b)
+
   def test_search_past_wd_exists(self):
     self.assert_exact_path_search_succeeds_once(src_path = self.WDEP1,
         formula = self.B)

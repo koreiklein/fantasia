@@ -188,15 +188,18 @@ class WelldefinedVariableBinding(VariableBinding):
   def __init__(self, variable, relation):
     self.variable = variable
     self.relation = relation
+    self.inDomain = formula.InDomain(self.variable, self.relation)
 
   def __repr__(self):
     return "%s wd in %s"%(self.variable, self.relation)
 
   def translate(self):
-    result = basicEndofunctor.Exists(self.variable)
     newVariable = Variable()
-    result = formula.ExpandWellDefined(self.variable, newVariable, self.relation).compose(result)
-    return result
+    andInDomain = basicEndofunctor.And(side = right, other = self.inDomain.translate())
+    existsV = basicEndofunctor.Exists(self.variable)
+    wd = formula.ExpandWellDefined(self.variable, newVariable, self.relation)
+
+    return andInDomain.compose(wd).compose(existsV)
 
   def render(self, context):
     # TODO Render in a clearer way.
@@ -204,7 +207,7 @@ class WelldefinedVariableBinding(VariableBinding):
 
   def search(self, spec):
     # TODO consider allow to search for more.
-    return [claim for claim in [formula.InDomain(self.variable, self.relation)]
+    return [claim for claim in [self.inDomain]
         if spec.valid(claim)]
 
 class Exists(Endofunctor):
@@ -344,7 +347,7 @@ class WellDefinedFunctor(Endofunctor):
     self.expanded = formula.ExpandWellDefined(variable, newVariable, equivalence)
 
   def search(self, spec):
-    inDomain = formula.inDomain(self.variable, self.equivalence)
+    inDomain = formula.InDomain(self.variable, self.equivalence)
     return [claim for claim in [inDomain] if spec.valid(claim)]
 
   def onObject(self, object):

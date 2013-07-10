@@ -290,7 +290,6 @@ def ExpandWellDefined(variable, newVariable, equivalence):
             basicEndofunctor.not_functor))
   return basicBifunctor.and_functor.precomposeRight(F).join()
 
-
 class Conjunction(Formula):
   def __init__(self, values):
     for i in range(len(values)):

@@ -508,13 +508,15 @@ class SubstituteVariable(Endofunctor):
   def __init__(self, oldVariable, newVariable):
     self.oldVariable = oldVariable
     self.newVariable = newVariable
+  def __repr__(self):
+    return "Sub(%s->%s)"%(self.oldVariable, self.newVariable)
   def variables(self):
     return []
   def _import(self, B):
     free = B.freeVariables()
     if self.oldVariable in free or self.newVariable in free:
-      # TODO Investigate whether this is necessary.
-      raise UnliftableException(self, B)
+      # This check appears to be necessary and has helped catch a bug.
+      raise UnimportableException(B, self)
     else:
       return (lambda x: formula.And(B, self.onObject(x)).identity())
   def lift(self, B):
