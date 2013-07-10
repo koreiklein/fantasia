@@ -145,11 +145,14 @@ class BoundedVariableBinding(VariableBinding):
     self.domain = ApplySymbolVariable(self.relation, common_symbols.domainSymbol)
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
+    
+  def __repr__(self):
+    return "%s : %s"%(self.variable, self.relation)
 
   def translate(self):
-    return basicEndofunctor.Exists(self.variable).compose(
-        basicEndofunctor.And(side = right,
-          other = self.inDomain.translate()))
+    return basicEndofunctor.And(side = right,
+                                other = self.inDomain.translate()).compose(
+            basicEndofunctor.Exists(self.variable))
 
   def search(self, spec):
     return [claim for claim in [self.inDomain] if spec.valid(claim)]
