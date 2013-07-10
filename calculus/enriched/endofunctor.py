@@ -33,6 +33,12 @@ class Endofunctor:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+  # spec: a SearchSpec instance.
+  # return: if self.covariant(): a list of claims importable at self matching spec
+  #         otherwise:  a list of claims exportable at self matching spec
+  def search(self, spec):
+    raise Exception("Abstract superclass.")
+
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
   # and a is "as small as possible".
@@ -65,9 +71,21 @@ class Endofunctor:
     return is_identity_functor(self)
 
 class Composite(Endofunctor):
+  # if right is covariant, self will represent (left o right)
+  # otherwise secod is contravariant, and self will represent (oppositeFunctor(left) o right)
   def __init__(self, left, right):
+    assert(isinstance(left, Endofunctor))
+    assert(isinstance(right, Endofunctor))
     self.left = left
     self.right = right
+
+  def search(self, spec):
+    # Note: It surprising how simple the below code needs to be.
+    # koreiklein was able to conclude that this implementation was correct only after reasoning
+    # through all 4 possible combinations of variances of left and right.
+    result = list(self.right.search(spec))
+    result.extend(self.left.search(spec))
+    return result
 
   def onObject(self, object):
     return self.right.onObject(self.left.onObject(object))
@@ -115,17 +133,26 @@ class VariableBinding:
   def render(self, context):
     return gl.newTextualGLStack(colors.variableColor, repr(self))
 
+  # spec: a SearchSpec instance
+  # return: a list of claims importable from the translation of self.
+  def search(self, spec):
+    raise Exception("Abstract superclass.")
+
 class BoundedVariableBinding(VariableBinding):
   def __init__(self, variable, relation):
     self.variable = variable
     self.relation = relation
     self.domain = ApplySymbolVariable(self.relation, common_symbols.domainSymbol)
+    self.inDomain = formula.Always(formula.Holds(held = self.variable,
+      holding = self.domain))
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable).compose(
         basicEndofunctor.And(side = right,
-          other = basicFormula.Holds(held = self.variable,
-            holding = self.domain)))
+          other = self.inDomain.translate()))
+
+  def search(self, spec):
+    return [claim for claim in [self.inDomain] if spec.valid(claim)]
 
   def render(self, context):
     return (renderBoundedVariableBinding(self.variable, self.domain), context)
@@ -149,6 +176,9 @@ class OrdinaryVariableBinding(VariableBinding):
   def render(self, context):
     return (self.variable.render(), context)
 
+  def search(self, spec):
+    return []
+
 class WelldefinedVariableBinding(VariableBinding):
   # variable: a variable
   # relation: an equivalence relation
@@ -169,6 +199,11 @@ class WelldefinedVariableBinding(VariableBinding):
     # TODO Render in a clearer way.
     return (self.variable.render(), context)
 
+  def search(self, spec):
+    # TODO consider allow to search for more.
+    return [claim for claim in [formula.InDomain(self.variable, self.relation)]
+        if spec.valid(claim)]
+
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
@@ -188,6 +223,12 @@ class Exists(Endofunctor):
       result = result.compose(binding.translate())
     return result
 
+  def search(self, spec):
+    result = []
+    for binding in self.bindings:
+      result.extend(binding.search(spec))
+    return result
+
 class DirectTranslate(Endofunctor):
   def __init__(self, basicEndofunctor, _onObject):
     self.basicEndofunctor = basicEndofunctor
@@ -196,6 +237,8 @@ class DirectTranslate(Endofunctor):
     return "direct(%s)"%(self.basicEndofunctor,)
   def translate(self):
     return self.basicEndofunctor
+  def search(self, spec):
+    return []
   def covariant(self):
     return self.basicEndofunctor.covariant()
   def onObject(self, object):
@@ -230,6 +273,12 @@ class Conjunction(Endofunctor):
     self.index = index
     self.first = values[:index]
     self.rest = values[index:]
+  
+  def __repr__(self):
+    values = [repr(value) for value in self.values]
+    values.insert(self.index, '.')
+    result = self.name() + "[ " + ','.join(values) + " ]"
+    return result
 
   def covariant(self):
     return True
@@ -259,16 +308,30 @@ class And(Conjunction):
   def is_and_functor(self):
     return True
 
+  def name(self):
+    return 'AND'
+
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def multiOp(self):
     return formula.And
 
+  def search(self, spec):
+    result = []
+    for value in self.values:
+      result.extend(value.search(spec))
+    return result
+
 class Or(Conjunction):
+  def name(self):
+    return 'OR'
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def multiOp(self):
     return formula.Or
+
+  def search(self, spec):
+    return []
 
 class WellDefinedFunctor(Endofunctor):
   def __init__(self, variable, newVariable, equivalence):
@@ -276,6 +339,10 @@ class WellDefinedFunctor(Endofunctor):
     self.newVariable = newVariable
     self.equivalence = equivalence
     self.expanded = formula.ExpandWellDefined(variable, newVariable, equivalence)
+
+  def search(self, spec):
+    inDomain = formula.inDomain(self.variable, self.equivalence)
+    return [claim for claim in [inDomain] if spec.valid(claim)]
 
   def onObject(self, object):
     return formula.WellDefined(

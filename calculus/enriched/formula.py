@@ -15,6 +15,11 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  # spec: a SearchSpec instance.
+  # return: a list of claims importable from self matching spec
+  def search(self, spec):
+    return []
+
   def forwardSimplify(self):
     return self.identity()
   def backwardSimplify(self):
@@ -87,7 +92,7 @@ class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
-    
+
   def __repr__(self):
     return "%s : %s"%(self.held, self.holding)
 
@@ -211,6 +216,12 @@ class Exists(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+  def search(self, spec):
+    result = []
+    if spec.valid(self):
+      result.append(self)
+    result.extend(self.value.search(spec))
+    return result
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Always(arrow.tgt),
@@ -270,8 +281,8 @@ class WellDefined(Formula):
 
 def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
-        basicFormula.Always(InDomain(newVariable, equivalence)),
-        basicFormula.Always(Equal(newVariable, variable, equivalence)))
+        InDomain(newVariable, equivalence).translate(),
+        Equal(newVariable, variable, equivalence).translate())
   F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
       basicEndofunctor.not_functor.compose(
         basicEndofunctor.Exists(newVariable)).compose(
@@ -411,7 +422,13 @@ class Conjunction(Formula):
 class And(Conjunction):
   def is_and(self):
     return True
-  
+
+  def search(self, spec):
+    result = []
+    for value in self.values:
+      result.extend(value.search(spec))
+    return result
+
   def name(self):
     return 'And'
 
@@ -468,6 +485,12 @@ class Hidden(Formula):
   def __init__(self, base, name):
     self.base = base
     self.name = name
+
+  def search(self, spec):
+    if spec.search_hidden_formula(self.name):
+      return self.base.search(spec)
+    else:
+      return []
 
   def __repr__(self):
     return "<<" + self.name + ">>"
