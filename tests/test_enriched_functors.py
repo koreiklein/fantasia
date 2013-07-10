@@ -2,7 +2,7 @@
 
 
 import unittest
-from calculus.enriched import endofunctor, bifunctor, formula, constructors
+from calculus.enriched import endofunctor, bifunctor, formula, constructors, spec
 from calculus import variable
 from lib import common_vars
 
@@ -22,10 +22,44 @@ class CommonObjects:
     self.Y = constructors.Holds(self.a, self.d)
     self.Z = constructors.Holds(self.a, self.e)
 
+    self.and_W = endofunctor.And(values = [self.W], index = 0)
+    self.W_and = endofunctor.And(values = [self.W], index = 1)
+    self.X_and_and_Y = endofunctor.And(values = [self.X, self.Y], index = 1)
+
     self.exists_d = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.d)])
     self.exists_e = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.e)])
     self.exists_d_e = endofunctor.Exists([ constructors.OrdinaryVariableBinding(self.d)
                                          , constructors.OrdinaryVariableBinding(self.e)])
+
+class AbstractSearchTest(unittest.TestCase):
+  def assert_exact_search_fails(self, functor, claim):
+    self.assert_exact_search_succeeds(functor = functor, claim = claim, intended_result = [])
+
+  def assert_exact_search_succeeds_once(self, functor, claim):
+    self.assert_exact_search_succeeds(functor = functor, claim = claim, intended_result = [claim])
+
+  def assert_exact_search_succeeds(self, functor, claim, intended_result):
+    result = functor.search(spec.equal_translates_search_spec(claim))
+    self.assertEqual(intended_result, result)
+
+class SearchTest(AbstractSearchTest, CommonObjects):
+  def setUp(self):
+    self.add_common_objects()
+
+  def test_search_and(self):
+    self.assert_exact_search_succeeds_once(self.and_W, self.W)
+    self.assert_exact_search_succeeds_once(self.W_and, self.W)
+    self.assert_exact_search_succeeds_once(self.X_and_and_Y, self.X)
+    self.assert_exact_search_succeeds_once(self.X_and_and_Y, self.Y)
+
+  def test_search_and_fails(self):
+    self.assert_exact_search_fails(self.X_and_and_Y, self.W)
+    self.assert_exact_search_fails(self.and_W, self.X)
+
+  def test_search_composite(self):
+    self.assert_exact_search_succeeds_once(self.W_and.compose(self.X_and_and_Y), self.W)
+    self.assert_exact_search_succeeds_once(self.W_and.compose(self.X_and_and_Y), self.X)
+    self.assert_exact_search_succeeds_once(self.W_and.compose(self.X_and_and_Y), self.Y)
 
 class AbstractTransportTest(unittest.TestCase):
   def assertEnrichedEqual(self, a, b):

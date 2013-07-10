@@ -87,7 +87,7 @@ class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
-    
+
   def __repr__(self):
     return "%s : %s"%(self.held, self.holding)
 
@@ -270,8 +270,8 @@ class WellDefined(Formula):
 
 def ExpandWellDefined(variable, newVariable, equivalence):
   isEqual = basicFormula.And(
-        basicFormula.Always(InDomain(newVariable, equivalence)),
-        basicFormula.Always(Equal(newVariable, variable, equivalence)))
+        InDomain(newVariable, equivalence).translate(),
+        Equal(newVariable, variable, equivalence).translate())
   F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
       basicEndofunctor.not_functor.compose(
         basicEndofunctor.Exists(newVariable)).compose(
