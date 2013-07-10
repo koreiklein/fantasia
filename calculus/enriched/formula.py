@@ -486,6 +486,12 @@ class Hidden(Formula):
     self.base = base
     self.name = name
 
+  def search(self, spec):
+    if spec.search_hidden_formula(self.name):
+      return self.base.search(spec)
+    else:
+      return []
+
   def __repr__(self):
     return "<<" + self.name + ">>"
   def translate(self):

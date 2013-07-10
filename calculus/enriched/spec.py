@@ -3,6 +3,8 @@
 class SearchSpec:
   def valid(self, formula):
     raise Exception("Abstract superclass.")
+  def search_hidden_formula(self, name):
+    raise Exception("Abstract superclass.")
 
 class SimpleSearchSpec(SearchSpec):
   def __init__(self, f):
@@ -10,6 +12,9 @@ class SimpleSearchSpec(SearchSpec):
 
   def valid(self, formula):
     return self.f(formula)
+
+  def search_hidden_formula(self, name):
+    return True
 
 def equal_translates_search_spec(formula):
   t = formula.translate()
