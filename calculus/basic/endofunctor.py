@@ -10,9 +10,17 @@ class UnliftableException(Exception):
   def __str__(self):
     return "%s does not move past %s"%(self.B, self.functor)
 
+class UnimportableException(Exception):
+  def __init__(self, formula, endofunctor):
+    self.formula = formula
+    self.endofunctor = endofunctor
+  def __str__(self):
+    return "UnimportableException: can import %s through %s"%(self.formula, self.endofunctor)
+
 class Endofunctor:
   def variables(self):
     raise Exception("Abstract superclass.")
+
   # self must be covariant()
   # f takes each object x to a list f(x)
   # return a list of all triples [(B, nt, y)] such that
@@ -79,6 +87,25 @@ class Endofunctor:
       return self
     else:
       return Composite(left = self, right = other)
+
+  # self must be covariant()
+  # formula: a formula
+  # return: a a natural transform self -> (B|.) o self
+  #    or raise an UnimportableException if no such natural transform exists.
+  def importExactly(self, formula):
+    def f(x):
+      if x == formula:
+        return ['dummy']
+      else:
+        return []
+    result = self.importFiltered(f)
+    if len(result) == 0:
+      raise UnimportableException(formula = formula, endofunctor = self)
+    else:
+      (B, nt, y) = result[0]
+      assert(B == formula)
+      return nt
+
 
 class Exists(Endofunctor):
   def __init__(self, variable):

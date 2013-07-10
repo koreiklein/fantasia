@@ -5,31 +5,7 @@ import unittest
 from calculus.enriched import endofunctor, bifunctor, formula, constructors, spec
 from calculus import variable
 from lib import common_vars
-
-class CommonObjects:
-  def add_common_objects(self):
-    self.a = common_vars.a()
-    self.b = common_vars.b()
-    self.c = common_vars.c()
-    self.d = common_vars.d()
-    self.e = common_vars.e()
-
-    self.A = constructors.Holds(self.a, self.a)
-    self.B = constructors.Always(constructors.Holds(self.b, self.b))
-
-    self.W = constructors.Holds(self.a, self.b)
-    self.X = constructors.Holds(self.a, self.c)
-    self.Y = constructors.Holds(self.a, self.d)
-    self.Z = constructors.Holds(self.a, self.e)
-
-    self.and_W = endofunctor.And(values = [self.W], index = 0)
-    self.W_and = endofunctor.And(values = [self.W], index = 1)
-    self.X_and_and_Y = endofunctor.And(values = [self.X, self.Y], index = 1)
-
-    self.exists_d = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.d)])
-    self.exists_e = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.e)])
-    self.exists_d_e = endofunctor.Exists([ constructors.OrdinaryVariableBinding(self.d)
-                                         , constructors.OrdinaryVariableBinding(self.e)])
+from tests.common_enriched_objects import CommonObjects
 
 class AbstractSearchTest(unittest.TestCase):
   def assert_exact_search_fails(self, functor, claim):
@@ -195,4 +171,6 @@ class TransportTest(AbstractTransportTest, CommonObjects):
           left = left))
 
 def suite():
-  return unittest.makeSuite(TransportTest)
+  return unittest.TestSuite( [ unittest.makeSuite(TransportTest)
+                             , unittest.makeSuite(SearchTest)
+                             ])

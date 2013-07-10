@@ -74,6 +74,8 @@ class Composite(Endofunctor):
   # if right is covariant, self will represent (left o right)
   # otherwise secod is contravariant, and self will represent (oppositeFunctor(left) o right)
   def __init__(self, left, right):
+    assert(isinstance(left, Endofunctor))
+    assert(isinstance(right, Endofunctor))
     self.left = left
     self.right = right
 
@@ -81,8 +83,8 @@ class Composite(Endofunctor):
     # Note: It surprising how simple the below code needs to be.
     # koreiklein was able to conclude that this implementation was correct only after reasoning
     # through all 4 possible combinations of variances of left and right.
-    result = list(right.search(spec))
-    result.extend(left.search(spec))
+    result = list(self.right.search(spec))
+    result.extend(self.left.search(spec))
     return result
 
   def onObject(self, object):
@@ -271,6 +273,12 @@ class Conjunction(Endofunctor):
     self.index = index
     self.first = values[:index]
     self.rest = values[index:]
+  
+  def __repr__(self):
+    values = [repr(value) for value in self.values]
+    values.insert(self.index, '.')
+    result = self.name() + "[ " + ','.join(values) + " ]"
+    return result
 
   def covariant(self):
     return True
@@ -300,15 +308,23 @@ class And(Conjunction):
   def is_and_functor(self):
     return True
 
+  def name(self):
+    return 'AND'
+
   def basicEndofunctor(self):
     return basicEndofunctor.And
   def multiOp(self):
     return formula.And
 
   def search(self, spec):
-    return [value for value in self.values if spec.valid(value)]
+    result = []
+    for value in self.values:
+      result.extend(value.search(spec))
+    return result
 
 class Or(Conjunction):
+  def name(self):
+    return 'OR'
   def basicEndofunctor(self):
     return basicEndofunctor.Or
   def multiOp(self):

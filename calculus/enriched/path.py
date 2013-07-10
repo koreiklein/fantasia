@@ -33,6 +33,21 @@ class Path:
     self.formula = formula
     self.endofunctor = endofunctor
 
+  # self.endofunctor must be covariant.
+  # spec: a SearchSpec instance.
+  # return: a list of pairs (B, f) such that spec.valid(B) and
+  # f() is a an arrow :
+  #   self -> Path(formula = And([B, self.formula]), endofunctor = self.endofunctor)
+  def search(self, spec):
+    assert(self.endofunctor.covariant())
+    return [( B
+            , lambda B=B, nt=nt: newArrow(src = self,
+              tgt = Path(formula = formula.And([B, self.formula]),
+                endofunctor = self.endofunctor),
+              basicArrow = nt(self.formula.translate())) )
+      for B in self.endofunctor.search(spec)
+      for nt in [self.endofunctor.translate().importExactly(B.translate())]]
+
   def bottom(self):
     return self.formula
   def top(self):

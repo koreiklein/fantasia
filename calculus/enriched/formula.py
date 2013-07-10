@@ -15,6 +15,11 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  # spec: a SearchSpec instance.
+  # return: a list of claims importable from self matching spec
+  def search(self, spec):
+    return []
+
   def forwardSimplify(self):
     return self.identity()
   def backwardSimplify(self):
@@ -211,6 +216,12 @@ class Exists(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+  def search(self, spec):
+    result = []
+    if spec.valid(self):
+      result.append(self)
+    result.extend(self.value.search(spec))
+    return result
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Always(arrow.tgt),
@@ -411,7 +422,13 @@ class Conjunction(Formula):
 class And(Conjunction):
   def is_and(self):
     return True
-  
+
+  def search(self, spec):
+    result = []
+    for value in self.values:
+      result.extend(value.search(spec))
+    return result
+
   def name(self):
     return 'And'
 
