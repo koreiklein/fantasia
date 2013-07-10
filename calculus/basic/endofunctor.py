@@ -106,7 +106,6 @@ class Endofunctor:
       assert(B == formula)
       return nt
 
-
 class Exists(Endofunctor):
   def __init__(self, variable):
     self.variable = variable
@@ -365,7 +364,6 @@ class Composite(Endofunctor):
       return self.exportFilteredContravariantCovariant(f)
     else:
       return self.exportFilteredCovariantContravariant(f)
-
 
   def variables(self):
     result = list(self.left.variables())
