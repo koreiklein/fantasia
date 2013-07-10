@@ -194,7 +194,7 @@ class WelldefinedVariableBinding(VariableBinding):
 
   def translate(self):
     result = basicEndofunctor.Exists(self.variable)
-    newVariable = variable.Variable()
+    newVariable = Variable()
     result = formula.ExpandWellDefined(self.variable, newVariable, self.relation).compose(result)
     return result
 

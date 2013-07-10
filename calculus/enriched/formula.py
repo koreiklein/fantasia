@@ -285,8 +285,8 @@ def ExpandWellDefined(variable, newVariable, equivalence):
         Equal(newVariable, variable, equivalence).translate())
   F = basicEndofunctor.SubstituteVariable(variable, newVariable).compose(
       basicEndofunctor.not_functor.compose(
-        basicEndofunctor.Exists(newVariable)).compose(
-          basicEndofunctor.And(side = right, other = isEqual)).compose(
+        basicEndofunctor.And(side = right, other = isEqual)).compose(
+          basicEndofunctor.Exists(newVariable)).compose(
             basicEndofunctor.not_functor))
   return basicBifunctor.and_functor.precomposeRight(F).join()
 

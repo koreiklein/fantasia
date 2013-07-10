@@ -90,7 +90,7 @@ class Bifunctor:
 class Commute(Bifunctor):
   def __init__(self, bifunctor):
     self.bifunctor = bifunctor
-    
+
   def __repr__(self):
     return "commute %s"%(self.bifunctor,)
 
@@ -311,6 +311,9 @@ class PrecompositeBifunctor(Bifunctor):
 class Join(endofunctor.Endofunctor):
   def __init__(self, bifunctor):
     self.bifunctor = bifunctor
+
+  def __repr__(self):
+    return "JoinBifunctor(%s)"%(self.bifunctor,)
 
   # self must be covariant()
   # f takes each object x to a list f(x)

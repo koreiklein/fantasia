@@ -668,6 +668,9 @@ class InverseArrow(Isomorphism):
     self.src = arrow.tgt
     self.tgt = arrow.src
 
+  def substituteVariable(self, a, b):
+    return InverseArrow(arrow = self.arrow.substituteVariable(a, b))
+
   def __repr__(self):
     return "%s inverse"%(self.arrow,)
 
@@ -724,6 +727,10 @@ class Composite(Arrow):
     self.src = left.src
     self.tgt = right.tgt
     self.validate()
+
+  def substituteVariable(self, a, b):
+    return Composite(left = self.left.substituteVariable(a, b),
+        right =self.right.substituteVariable(a, b))
 
   def compress(self):
     return self.rightAssociate()._compress_rightAssocitaed()
@@ -965,9 +972,7 @@ class FunctorialArrow(Arrow):
     return self.reprAround('\n'.join(['  ' + l for l in repr(self.arrow).split('\n')]))
 
   def substituteVariable(self, a, b):
-    return self.__class__(src = self.src.substituteVariable(a, b),
-        tgt = self.tgt.substituteVariable(a, b),
-        arrow = self.arrow.substituteVariable(a, b))
+    return self.__class__(arrow = self.arrow.substituteVariable(a, b))
 
   def compress(self):
     arrow = self.arrow.compress()
@@ -1005,7 +1010,7 @@ class OnConjunction(FunctorialArrow):
   def substituteVariable(self, a, b):
     return self.__class__(
         leftArrow = self.leftArrow.substituteVariable(a, b),
-        rightArrow = self.right.Arrow.substituteVariable(a, b),
+        rightArrow = self.rightArrow.substituteVariable(a, b),
         src = self.src.substituteVariable(a, b),
         tgt = self.tgt.substituteVariable(a, b))
 

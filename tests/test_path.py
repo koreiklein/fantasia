@@ -63,6 +63,9 @@ class PathSearchTest(AbstractPathSearchTest, CommonObjects):
     self.EP0 = path.new_path(self.exists_a_in_domain_b_X_and_Y_and_Z)
     self.EP1 = self.EP0.advance().tgt.advance().tgt.advance(1).tgt
 
+    self.WDEP0 = path.new_path(formula.And([self.B, self.exists_wd_a_in_domain_b_X_and_Y_and_Z]))
+    self.WDEP1 = self.WDEP0.advance(1).tgt.advance().tgt.advance().tgt.advance(1).tgt
+
   def test_search_P1(self):
     self.assert_exact_path_search_succeeds_once(src_path = self.P1,
         formula = self.X_and_Y_and_Z)
@@ -75,7 +78,9 @@ class PathSearchTest(AbstractPathSearchTest, CommonObjects):
     self.assert_exact_path_search_succeeds_once(src_path = self.EP1,
         formula = self.a_in_domain_b)
 
-
+  def test_search_past_wd_exists(self):
+    self.assert_exact_path_search_succeeds_once(src_path = self.WDEP1,
+        formula = self.B)
 
 def suite():
   return unittest.makeSuite(PathSearchTest)
