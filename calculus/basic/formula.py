@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import symbol
+from calculus.variable import Variable
 from lib import common_symbols
 
 from sets import Set
@@ -21,7 +22,13 @@ class Formula:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+  # a, b: variables.
   def substituteVariable(self, a, b):
+    raise Exception("Abstract superclass.")
+
+  # a, b: variables.
+  # return: a DependentArrow from self to self.substituteVariable(a, b)
+  def substitutionDependentArrow(self, a, b):
     raise Exception("Abstract superclass.")
 
   def freeVariables(self):
@@ -69,6 +76,10 @@ class Holds(Formula):
     self.held = held
     self.holding = holding
 
+  def substitutionDependentArrow(self, a, b):
+    # FIXME
+    raise Exception("Substition of Holds is unimpletemented.")
+
   def __eq__(self, other):
     return (self.__class__ == other.__class__
         and self.holding == other.holding
@@ -98,6 +109,7 @@ def isExistentialOfLength(n, existential):
 
 class Exists(Formula):
   def __init__(self, variable, value):
+    assert(isinstance(variable, Variable))
     self.variable = variable
     self.value = value
 
@@ -158,10 +170,15 @@ class Exists(Formula):
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
-    assert(a != self.variable)
-    assert(b != self.variable)
+    assert(self.variable not in a.freeVariables())
+    assert(self.variable not in b.freeVariables())
     return Exists(variable = self.variable,
         value = self.value.substituteVariable(a, b))
+
+  def substitutionDependentArrow(self, a, b):
+    assert(self.variable not in a.freeVariables())
+    assert(self.variable not in b.freeVariables())
+    return self.value.substitutionDependentArrow(a, b).exists(self.variable)
 
   def freeVariables(self):
     return self.value.freeVariables().difference(Set([self.variable]))
@@ -321,6 +338,10 @@ class And(Conjunction):
     else:
       raise Exception("Can't simplify once.")
 
+  def substitutionDependentArrow(self, a, b):
+    return self.left.substitutionDependentArrow(a, b).dependent_arrow_and(
+           self.right.substitutionDependentArrow(a, b))
+
   def simplify(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
@@ -414,6 +435,10 @@ class Or(Conjunction):
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
+  def substitutionDependentArrow(self, a, b):
+    return self.left.substitutionDependentArrow(a, b).dependent_arrow_or(
+           self.right.substitutionDependentArrow(a, b))
+
   def backwardAdmitLeft(self):
     return Admit(tgt = self, src = self.right)
   def backwardAdmitRight(self):
@@ -447,6 +472,9 @@ class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
+
+  def substitutionDependentArrow(self, a, b):
+    return self.value.substitutionDependentArrow(a, b).dependent_arrow_not()
 
   def simplify(self):
     return self.forwardOnNot(self.value.simplify().invert())
@@ -498,6 +526,9 @@ class Not(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+
+  def substitutionDependentArrow(self, a, b):
+    return self.value.substitutionDependentArrow(a, b).always()
 
   def simplify(self):
     return self.forwardOnAlways(self.value.simplify())
@@ -571,6 +602,9 @@ class Unit(Formula):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
+
+  def substitutionDependentArrow(self, a, b):
+    return identity_dependent_arrow(self)
 
   def updateVariables(self):
     return self
@@ -1110,3 +1144,131 @@ def _hconcat(left, right):
         r = ''
       result.append('  ' + l + ' | ' + r)
     return '\n'.join(result)
+
+class Assumption:
+  # return: the corresponding formula.
+  def as_formula(self):
+    raise Exception("Abstract superclass.")
+
+  # an arrow self.as_formula() --> Always(self.as_formula())
+  def add_always(self):
+    raise Exception("Abstract superclass.")
+
+  # return a natural transform: endofunctor -> (self.as_formula()|.) o endofunctor
+  # throw an UnimportableException if the import in not possible.
+  def import_assumption(self, endofunctor):
+    raise Exception("Abstract superclass.")
+
+class SingleAssumption:
+  def __init__(self, formula):
+    assert(formula.__class__ == Always)
+    self.formula
+  def as_formula(self):
+    return self.formula
+
+  def add_always(self):
+    return self.as_formula().forwardCojoin()
+
+  def import_assumption(self, endofunctor):
+    return endofunctor.importExactly(self)
+
+class CombinedAssumption(Assumption):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+  def as_formula(self):
+    return And(self.left.as_formula(), self.right.as_formula())
+
+  def add_always(self):
+    return self.as_formula().forwardOnConjunction(
+        leftArrow = self.left.add_always(),
+        rightArrow = self.right.add_always()).forwardFollow(lambda x:
+            x.forwardZip())
+
+  def import_assumption(self, endofunctor):
+    nt_left = self.left.import_assumption(endofunctor)
+    nt_right = self.right.import_assumption(endofunctor)
+    right_as_formula = self.right.as_formula()
+    left_as_formula = self.left.as_formula()
+    return (lambda x:
+        nt_right(x).forwardCompose(nt_left(And(right_as_formula, x))).forwardCompose(
+          endofunctor.onArrow(
+            And( left_as_formula
+               , And(right_as_formula, x)).forwardAssociateOther())))
+
+def identity_dependent_arrow(formula):
+  return DependentArrow(src = formula, tgt = formula,
+      assumption = SingleAssumption(Always(true)),
+      arrow = And(Always(true), formula).forwardForgetLeft())
+
+class DependentArrow:
+  # src, tgt: formulas
+  # assumption: an Assumption instance.
+  # arrow: an arrow: And(assumption.as_formula(), src) -> tgt
+  def __init__(self, src, tgt, assumption, arrow):
+    self.src = src
+    self.tgt = tgt
+    self.assumption = assumption
+    self.arrow = arrow
+
+  def dependent_arrow_not(self):
+    src = Not(self.tgt)
+    return DependentArrow(src = src, tgt = Not(self.src), assumption = self.assumption,
+        arrow = And(self.assumption.as_formula(), src).forwardOnRightFollow(lambda x:
+          x.forwardOnNot(self.arrow)).forwardApply())
+
+  def always(self):
+    src = Always(self.src)
+    return DependentArrow(src = self.src, tgt = Not(self.tgt), assumption = self.assumption,
+        arrow = And(self.assumption.as_formula(), src).forwardOnLeft(
+          self.assumption.add_always()).forwardFollow(lambda x:
+            x.forwardZip().forwardFollow(lambda x:
+              x.forwardOnAlways(self.arrow))))
+
+  def exists(self, variable):
+    src = Exists(variable, self.src)
+    return DependentArrow(src = src, tgt = Exists(variable, self.tgt), assumption = self.assumption,
+        arrow = And(self.assumption.as_formula(), src).forwardAndPastExists().forwardFollow(lambda x:
+          x.forwardOnBody(self.arrow)))
+
+  def compose(self, other):
+    # TODO Find formulas that appear in both self.assumption and other.assumption.
+    #      and be sure not to assume them twice.
+    assert(self.tgt == other.src)
+    assumption = CombinedAssumption(other.assumption, self.assumption)
+    return DependentArrow(src = self.src, tgt = other.tgt,
+        assumption = assumption,
+        arrow = And(assumption.as_formula(), self.src).forwardAssociate().forwardFollow(lambda x:
+          x.forwardOnRight(self.arrow).forwardCompose(other.arrow)))
+
+  def dependent_arrow_and(self, other):
+    # TODO Find formulas that appear in both self.assumption and other.assumption.
+    #      and be sure not to assume them twice.
+    assumption = CombinedAssumption(other.assumption, self.assumption)
+    src = And(self.src, other.src)
+    return DependentArrow(src = src, tgt = And(self.tgt, other.tgt),
+        assumption = assumption,
+        arrow = And(assumption.as_formula(), src).forwardAssociate().forwardFollow(lambda x:
+          x.forwardOnRightFollow(lambda x:
+            x.forwardAssociateOther().forwardFollow(lambda x:
+              x.forwardOnLeft(self.arrow).forwardFollow(lambda x:
+                x.forwardCommute())))).forwardFollow(lambda x:
+                  x.forwardAssociateOther().forwardFollow(lambda x:
+                    x.forwardOnLeft(other.arrow).forwardFollow(lambda x:
+                      x.forwardCommute()))))
+
+  def dependent_arrow_or(self, other):
+    # TODO Find formulas that appear in both self.assumption and other.assumption.
+    #      and be sure not to assume them twice.
+    assumption = CombinedAssumption(other.assumption, self.assumption)
+    src = Or(self.src, other.src)
+    return DependentArrow(src = src, tgt = Or(self.tgt, other.tgt),
+        assumption = assumption,
+        arrow = And(assumption.as_formula(), src).forwardAssociate().forwardFollow(lambda x:
+          x.forwardOnRightFollow(lambda x:
+            x.forwardDistributeLeft().forwardFollow(lambda x:
+              x.forwardOnLeft(self.arrow)))).forwardFollow(lambda x:
+                x.forwardDistributeRight().forwardFollow(lambda x:
+                  x.forwardOnRight(other.arrow))))
+
