@@ -530,3 +530,43 @@ class SubstituteVariable(Endofunctor):
     return arrow.substituteVariable(self.oldVariable, self.newVariable)
   def negations(self):
     return 0
+
+# endofunctor: an endofunctor
+# x: a formula
+# a, b: variables
+# return: an arrow: endofunctor.onObject(x) -> endofunctor.onObject(x.substituteVariable(a, b))
+def substitutionArrow(endofunctor, x, a, b):
+  if x.__class__ == formula.And:
+    left_functor = And(side = left, other = x.right).compose(endofunctor)
+    right_functor = And(side = right, other = x.left.substituteVariable(a, b)).compose(endofunctor)
+    return substitutionArrow(left_functor, x.left, a, b).forwardCompose(
+        substitutionArrow(right_functor, x.right, a, b))
+  elif x.__class__ == formula.Or:
+    left_functor = Or(side = left, other = x.right).compose(endofunctor)
+    right_functor = Or(side = right, other = x.left.substituteVariable(a, b)).compose(endofunctor)
+    return substitutionArrow(left_functor, x.left, a, b).forwardCompose(
+        substitutionArrow(right_functor, x.right, a, b))
+  elif x.__class__ == formula.Not:
+    return substitutionArrow(not_functor.compose(endofunctor), x.value, a, b)
+  elif x.__class__ == formula.Always:
+    return substitutionArrow(always_functor.compose(endofunctor), x.value, a, b)
+  elif x.__class__ == formula.Exists:
+    assert(x.variable not in a.freeVariables())
+    assert(x.variable not in b.freeVariables())
+    return substitutionArrow(Exists(x.variable).compose(endofunctor), x.value, a, b)
+  elif x.__class__ == formula.Unit:
+    return endofunctor.onObject(x).identity()
+  elif x.__class__ == formula.Holds:
+    return holdsSubstitutionArrow(endofunctor, x, a, b)
+  else:
+    raise Exception("Unrecognized basic formula %s"%(x,))
+
+# endofunctor: an endofunctor
+# x: a holds formula
+# a, b: variables
+# return: an arrow: endofunctor.onObject(x) -> endofunctor.onObject(x.substituteVariable(a, b))
+def holdsSubstitutionArrow(endofunctor, holds, a, b):
+  assert(a not in holds.holding.freeVariables())
+  raise Exception("Not Yet Implemented.")
+
+
