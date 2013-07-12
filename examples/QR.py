@@ -1,5 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from calculus.enriched import constructors
 from calculus.enriched.constructors import *
 from calculus import variable
 from lib import natural, library, common_vars, equivalence, function, common_symbols, common_formulas
@@ -25,7 +26,7 @@ plus = variable.StringVariable('+')
 
 def Plus(a, b):
   return variable.ApplySymbolVariable(
-      variables.ProductVariable(
+      variable.ProductVariable(
         [ (common_symbols.leftSymbol, a)
         , (common_symbols.rightSymbol, b) ]), plus)
 
@@ -46,11 +47,11 @@ define_plus = Iff(
     right = ExpandPlus(a, b, c))
 
 # define multiplication
-times = variables.StringVariable('*')
+times = variable.StringVariable('*')
 
 def Times(a, b):
   return variable.ApplySymbolVariable(
-      variables.ProductVariable(
+      variable.ProductVariable(
         [ (common_symbols.leftSymbol, a)
         , (common_symbols.rightSymbol, b) ]), times)
 
@@ -65,7 +66,7 @@ b = common_vars.b()
 c = common_vars.c()
 define_times = Iff(
     left = Equal(Times(a, b), c),
-    righht = ExpandTimes(a, b, c))
+    right = ExpandTimes(a, b, c))
 
 supplementals = And([])
 
@@ -77,12 +78,14 @@ q = common_vars.a()
 r = common_vars.b()
 
 claim = ForallNatural([a, b],
-    Implies(Not(Equal(b, natural.zero)),
-      ExistsNatural([q, r], And([natural.Less(r, b), Equal(Plus(r, Time(q,b)), a)]))))
+    Implies([Not(Equal(b, natural.zero))],
+      ExistsNatural([q, r], And([natural.Less(r, b), Equal(Plus(r, Times(q,b)), a)]))))
 
-proof = natural.lib.beginProof().forwardFollow(lambda p:
-    p.onPathFollow(lambda x:
-      constructors.assume(x, claim)))
+proof = natural.lib.beginProof()
+
+#proof = natural.lib.beginProof().forwardFollow(lambda p:
+#    p.onPathFollow(lambda x:
+#      constructors.assume(x, claim)))
 
 #proof = proof.forwardFollow(lambda p:
 #    p.onPathFollow(lambda x:

@@ -3,8 +3,7 @@
 from sets import Set
 from calculus import symbol
 
-from ui.render.gl import primitives, colors, distances
-from ui.stack import gl
+from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
 class GeneralizedVariable:
@@ -55,7 +54,7 @@ class StringVariable(Variable):
     self.infix = infix
 
   def render(self):
-    return gl.newTextualGLStack(colors.variableColor, repr(self))
+    return primitives.newTextStack(colors.variableColor, repr(self))
 
   def name(self):
     return self._name
@@ -91,17 +90,13 @@ class ApplySymbolVariable(GeneralizedVariable):
       symbolStack = self.symbol.render()
     else:
       symbolStack = renderSymbol(self.symbol)
-    return self.variable.render().stack(0, primitives.projectDot).stack(0, symbolStack)
+    return self.variable.render().stack(0, primitives.dot).stack(0, symbolStack)
 
 def colors_for_symbol(symbol):
   if isinstance(symbol, Variable):
     return (colors.callSymbolBackgroundColor, colors.callVariableBackgroundColor)
-  elif symbol.type == symbol.projection:
-    return (colors.projectionSymbolBackgroundColor, colors.projectionVariableBackgroundColor)
-  elif symbol.type == symbol.coinjection:
-    return (colors.injectionSymbolBackgroundColor, colors.injectionVariableBackgroundColor)
   else:
-    raise Exception("Unrecognized symbol type %s"%(type,))
+    return (colors.symbolBackgroundColor, colors.symbolForegroundColor)
 
 # A more elaborate syntax for VARIABLES!!! These construct are under no means
 # meant to be used for objects, nether have they any sort of computational manifestation.
@@ -160,7 +155,7 @@ def renderSymbol(s):
     raise Exception("Unrecognized symbol %s"%(s,))
 
 def renderStringSymbol(s):
-  return gl.newTextualGLStack(colors.symbolColor, repr(s))
+  return primitives.newTextStack(colors.symbolColor, repr(s))
 
 def renderWithBackground(s, border_width, color):
   widths = [x + 2 * border_width for x in s.widths()]

@@ -20,7 +20,11 @@ class Backend:
   def null():
     raise Exception("Abstract superclass.")
 
-def stackAll(dimension, xs, spacing = 0.0):
+  def stacks(self):
+    return False
+
+
+def stackAll(dimension, xs, spacing = 0):
   assert(len(xs) > 0)
   res = xs[0]
   for x in xs[1:]:
@@ -71,20 +75,31 @@ class Stack:
         self._backend)
 
   # Return a new stack with other drawn just dimension of self.
-  def stack(self, dimension, other, spacing = 0.0):
-    offset = [0 for i in range(self.dimension())]
-    offset[dimension] = self.widths()[dimension] + spacing
-    return self.below(other.shift(offset))
+  def stack(self, dimension, other, spacing = 0):
+    if self._backend.stacks():
+      offset = [0 for i in range(self.dimension())]
+      offset[dimension] = spacing
+      coords = list(self._coords)
+      for i in range(len(coords)):
+        if i == dimension:
+          coords[i] += spacing + other._coords[i]
+        else:
+          coords[i] = max(coords[i], other._coords[i])
+      return Stack(coords, self._backend.stack(dimension, other._backend.shift(offset)))
+    else:
+      offset = [0 for i in range(self.dimension())]
+      offset[dimension] = self.widths()[dimension] + spacing
+      return self.below(other.shift(offset))
 
-  def stackCentered(self, dimension, other, spacing = 0.0):
+  def stackCentered(self, dimension, other, spacing = 0):
     assert(self.dimension() == other.dimension())
     offsetSelf = [0 for i in range(self.dimension())]
     offsetOther = [0 for i in range(self.dimension())]
     for i in range(self.dimension()):
       if i != dimension:
         m = max(self.widths()[i], other.widths()[i])
-        offsetSelf[i] = (m - self.widths()[i]) / 2.0
-        offsetOther[i] = (m - other.widths()[i]) / 2.0
+        offsetSelf[i] = (m - self.widths()[i]) / 2
+        offsetOther[i] = (m - other.widths()[i]) / 2
       else:
         assert(i == dimension)
         offsetOther[i] = self.widths()[i] + spacing

@@ -7,9 +7,8 @@ from calculus import variable
 from calculus.variable import Variable
 from calculus.basic import formula as basicFormula, endofunctor as basicEndofunctor, bifunctor as basicBifunctor
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
-from ui.stack import gl
 from ui.stack import stack
-from ui.render.gl import primitives, distances, colors
+from ui.render.text import primitives, distances, colors
 
 class Formula:
   def translate(self):
@@ -34,7 +33,7 @@ class Formula:
     return self.render(RenderingContext(covariant = True))
 
   def render(self, context):
-    return gl.newTextualGLStack(colors.genericColor, repr(self))
+    return primitives.newTextStack(colors.genericColor, repr(self))
 
   def substituteVariable(self, a, b):
     raise Exception("Abstract superclass.")
@@ -196,7 +195,7 @@ class Exists(Formula):
     quantifierStackingDimension = _dimension_for_variance(context.covariant)
     variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
     if len(self.bindings) == 0:
-      variablesStack = gl.nullStack
+      variablesStack = primitives.nullStack
     else:
       variablesStack, context = self.bindings[0].render(context)
       for binding in self.bindings[1:]:
@@ -585,7 +584,6 @@ def getInfix(holds):
 
 def renderWithBackground(s, border_width, color):
   widths = [x + 2 * border_width for x in s.widths()]
-  widths[2] = 0.0
   return primitives.solidSquare(color, widths).stackCentered(2, s,
       spacing = distances.epsilon )
 

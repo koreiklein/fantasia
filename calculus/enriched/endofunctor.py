@@ -10,8 +10,7 @@ from calculus.basic import bifunctor as basicBifunctor
 from lib import common_symbols
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
-from ui.render.gl import primitives, colors, distances
-from ui.stack import gl
+from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
 def Maps(a, b, f):
@@ -131,7 +130,7 @@ class VariableBinding:
   def translate(self):
     raise Exception("Abstract superclass.")
   def render(self, context):
-    return gl.newTextualGLStack(colors.variableColor, repr(self))
+    return primitives.newTextStack(colors.variableColor, repr(self))
 
   # spec: a SearchSpec instance
   # return: a list of claims importable from the translation of self.
@@ -145,7 +144,7 @@ class BoundedVariableBinding(VariableBinding):
     self.domain = ApplySymbolVariable(self.relation, common_symbols.domainSymbol)
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
-    
+
   def __repr__(self):
     return "%s : %s"%(self.variable, self.relation)
 
@@ -161,9 +160,9 @@ class BoundedVariableBinding(VariableBinding):
     return (renderBoundedVariableBinding(self.variable, self.domain), context)
 
 def renderBoundedVariableBinding(variable, domain):
-  middleStack = gl.newTextualGLStack(colors.variableColor, ":")
-  return variable.render({}).stack(0, middleStack,
-      spacing = distances.variable_binding_spacing).stackCentered(0, domain.render({}),
+  middleStack = primitives.newTextStack(colors.variableColor, ":")
+  return variable.render().stack(0, middleStack,
+      spacing = distances.variable_binding_spacing).stackCentered(0, domain.render(),
           spacing = distances.variable_binding_spacing)
 
 class OrdinaryVariableBinding(VariableBinding):
