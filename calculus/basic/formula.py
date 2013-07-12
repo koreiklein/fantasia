@@ -26,11 +26,6 @@ class Formula:
   def substituteVariable(self, a, b):
     raise Exception("Abstract superclass.")
 
-  # a, b: variables.
-  # return: a DependentArrow from self to self.substituteVariable(a, b)
-  def substitutionDependentArrow(self, a, b):
-    raise Exception("Abstract superclass.")
-
   def freeVariables(self):
     raise Exception("Abstract superclass.")
 
@@ -75,10 +70,6 @@ class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
-
-  def substitutionDependentArrow(self, a, b):
-    # FIXME
-    raise Exception("Substition of Holds is unimpletemented.")
 
   def __eq__(self, other):
     return (self.__class__ == other.__class__
@@ -174,11 +165,6 @@ class Exists(Formula):
     assert(self.variable not in b.freeVariables())
     return Exists(variable = self.variable,
         value = self.value.substituteVariable(a, b))
-
-  def substitutionDependentArrow(self, a, b):
-    assert(self.variable not in a.freeVariables())
-    assert(self.variable not in b.freeVariables())
-    return self.value.substitutionDependentArrow(a, b).exists(self.variable)
 
   def freeVariables(self):
     return self.value.freeVariables().difference(Set([self.variable]))
@@ -338,10 +324,6 @@ class And(Conjunction):
     else:
       raise Exception("Can't simplify once.")
 
-  def substitutionDependentArrow(self, a, b):
-    return self.left.substitutionDependentArrow(a, b).dependent_arrow_and(
-           self.right.substitutionDependentArrow(a, b))
-
   def simplify(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
@@ -351,6 +333,12 @@ class And(Conjunction):
           x.simplify())
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
+
+  def forwardSubstituteIdentical(self, a, b):
+    I = self.left
+    assert(I.__class__ == Identical)
+    assert((I.left == a and I.right == b) or (I.left == b and I.left == a))
+    return SubstituteArrow(src = self, tgt = self.right.substituteVariable(a, b))
 
   def forwardApply(self):
     assert(self.right.__class__ == Not)
@@ -435,10 +423,6 @@ class Or(Conjunction):
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
-  def substitutionDependentArrow(self, a, b):
-    return self.left.substitutionDependentArrow(a, b).dependent_arrow_or(
-           self.right.substitutionDependentArrow(a, b))
-
   def backwardAdmitLeft(self):
     return Admit(tgt = self, src = self.right)
   def backwardAdmitRight(self):
@@ -472,9 +456,6 @@ class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
-
-  def substitutionDependentArrow(self, a, b):
-    return self.value.substitutionDependentArrow(a, b).dependent_arrow_not()
 
   def simplify(self):
     return self.forwardOnNot(self.value.simplify().invert())
@@ -526,9 +507,6 @@ class Not(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
-
-  def substitutionDependentArrow(self, a, b):
-    return self.value.substitutionDependentArrow(a, b).always()
 
   def simplify(self):
     return self.forwardOnAlways(self.value.simplify())
@@ -603,9 +581,6 @@ class Unit(Formula):
   def __ne__(self, other):
     return not(self == other)
 
-  def substitutionDependentArrow(self, a, b):
-    return identity_dependent_arrow(self)
-
   def updateVariables(self):
     return self
 
@@ -635,6 +610,24 @@ class OrUnit(Unit):
 
 true = AndUnit()
 false = OrUnit()
+
+# In contexts where Identical(a, b) or Identical(b, a) can be concluded, it must be the case
+# that each formula F involving a has the EXACT same set of representations as
+# the formula F.substituteVariable(a, b)
+class Identical(Formula):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+  def updateVariables(self):
+    return self
+  def substituteVariable(self, a, b):
+    return Identical(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
+  def freeVariables(self):
+    result = Set()
+    result.union_update(self.left.freeVariables())
+    result.union_update(self.right.freeVariables())
+    return result
 
 def unit_for_conjunction(conjunction):
   if conjunction == And:
@@ -999,6 +992,19 @@ class RemoveExists(Arrow):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
     assert(self.src.variable not in self.tgt.freeVariables())
+
+# a === b | A --> A.substituteVariable(a, b)
+# a === b | A --> A.substituteVariable(b, a)
+class SubstituteArrow(Arrow):
+  def arrowTitle(self):
+    return "Substitute(%s->%s)"%(self.src.left.left, self.src.left.right)
+  def validate(self):
+    assert(self.src.__class__ == Identical)
+    a = self.src.left.left
+    b = self.src.left.right
+    A = self.src.right
+    assert(A.substituteVariable(a, b) == self.tgt or
+        A.substituteVariable(b, a) == self.tgt)
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
