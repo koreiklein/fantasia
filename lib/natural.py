@@ -5,7 +5,7 @@ from calculus.enriched import constructors
 from lib import equivalence, library, common_vars, common_symbols, function
 from lib.common_formulas import IsEquivalence, InDomain, Equal
 
-from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, rightSymbol
+from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, rightSymbol, functionPairsSymbol
 
 natural = variable.StringVariable('N')
 
@@ -13,7 +13,8 @@ smaller = symbol.StringSymbol('smaller', type = symbol.projection)
 greater = symbol.StringSymbol('greater', type = symbol.projection)
 natural_less = variable.StringVariable('<', infix = (smaller, greater))
 
-natural_successor = variable.StringVariable('S')
+S = variable.StringVariable('S')
+S_pairs = variable.ApplySymbolVariable(S, functionPairsSymbol)
 
 def Natural(n):
   return InDomain(n, natural)
@@ -21,7 +22,7 @@ def Natural(n):
 def Successor(a, b):
   return constructors.Always(
       constructors.Holds(variable.ProductVariable(
-        [(inputSymbol, a), (outputSymbol, b)]), natural_successor))
+        [(inputSymbol, a), (outputSymbol, b)]), S_pairs))
 
 def Less(a, b):
   return constructors.Always(constructors.Holds(
@@ -29,12 +30,7 @@ def Less(a, b):
 
 naturalIsEquivalence = constructors.Always(IsEquivalence(natural))
 
-natural_successor_function = variable.ProductVariable(
-    [ (common_symbols.functionPairsSymbol, natural_successor)
-    , (common_symbols.srcSymbol, natural)
-    , (common_symbols.tgtSymbol, natural)])
-
-successorIsFunction = function.IsFunction(natural_successor_function)
+successorIsFunction = function.IsFunction(S)
 
 a = common_vars.a()
 b = common_vars.b()
@@ -65,6 +61,6 @@ naturalClaims = constructors.And(allClaims)
 lib = library.Library(
     name = "Natural",
     claims = [naturalClaims],
-    variables = [natural, zero, natural_less, natural_successor],
+    variables = [natural, zero, natural_less, S],
     sub_libraries = [function.lib])
 

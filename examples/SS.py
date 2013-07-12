@@ -10,8 +10,8 @@ a = common_vars.a()
 b = common_vars.b()
 
 claim = natural.Less(natural.zero,
-    constructors.Apply( constructors.Apply(natural.zero, natural.natural_successor)
-                      , natural.natural_successor))
+    constructors.Apply( constructors.Apply(natural.zero, natural.S)
+                      , natural.S))
 
 proof = natural.lib.beginProof().forwardFollow(lambda p:
     p.onPathFollow(lambda x:

@@ -500,6 +500,18 @@ class Hidden(Formula):
   def substituteVariable(self, a, b):
     return Hidden(base = self.base.substituteVariable(a, b), name = self.name)
 
+class Identical(Formula):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+  def translate(self):
+    return basicFormula.Identical(self.left, self.right)
+  def updateVariables(self):
+    return self
+  def substituteVariable(self, a, b):
+    return Identical(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
+
 def InDomain(x, e):
   return Always(Holds(x, variable.ApplySymbolVariable(e, domainSymbol)))
 

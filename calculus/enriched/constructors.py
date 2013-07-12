@@ -17,6 +17,9 @@ def Not(value):
 def Apply(v, x):
   return variable.ApplySymbolVariable(v, x)
 
+def Identical(left, right):
+  return formula.Identical(left, right)
+
 def OrdinaryVariableBinding(variable):
   return endofunctor.OrdinaryVariableBinding(variable)
 def BoundedVariableBinding(variable, relation):

@@ -618,6 +618,10 @@ class Identical(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def __eq__(self, other):
+    return other.__class__ == Identical and self.left == other.left and self.right == other.right
+  def __ne__(self, other):
+    return not(self == other)
   def updateVariables(self):
     return self
   def substituteVariable(self, a, b):
