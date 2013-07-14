@@ -53,8 +53,12 @@ class Path:
   def top(self):
     return self.endofunctor.onObject(self.formula)
   def onPath(self, enrichedArrow):
+    if self.endofunctor.covariant():
+      formula = enrichedArrow.tgt
+    else:
+      formula = enrichedArrow.src
     return newArrow(src = self,
-        tgt = Path(formula = enrichedArrow.tgt, endofunctor = self.endofunctor),
+        tgt = Path(formula = formula, endofunctor = self.endofunctor),
         basicArrow = self.endofunctor.translate().onArrow(enrichedArrow.translate()))
   def onPathFollow(self, f):
     return self.onPath(f(self.bottom()))

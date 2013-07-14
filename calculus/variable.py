@@ -56,7 +56,7 @@ class StringVariable(Variable):
     self.infix = infix
 
   def relatedVariable(self):
-    return StringVariable(name = self.name + "'", infix = self.infix)
+    return StringVariable(name = self.name() + "'", infix = self.infix)
 
   def render(self):
     return primitives.newTextStack(colors.variableColor, repr(self))

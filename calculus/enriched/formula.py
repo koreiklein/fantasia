@@ -168,6 +168,11 @@ class Exists(Formula):
   def __init__(self, bindings, value):
     self.bindings = bindings
     self.value = value
+  def substituteVariable(self, a, b):
+    for binding in self.bindings:
+      assert(binding.variable not in a.freeVariables())
+      assert(binding.variable not in b.freeVariables())
+    return Exists(self.bindings, self.value.substituteVariable(a, b))
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Exists(bindings = self.bindings, value = arrow.tgt),
@@ -192,14 +197,14 @@ class Exists(Formula):
 
   def forwardPushAndSplit(self, i):
     assert(0 <= i)
-    assert(i < len(self.variables))
+    assert(i < len(self.bindings))
     a = self.identity()
-    while i+1 < len(self.variables):
+    while i+1 < len(self.bindings):
       a = a.forwardFollow(lambda e:
           e.forwardPush(i))
       i += 1
     a = a.forwardFollow(lambda e:
-        e.forwardSplit(len(self.variables) - 1))
+        e.forwardSplit(len(self.bindings) - 1))
     return a
 
   # i: an index such that self.bindings[i] and self.bindings[i+1] both exist.
@@ -217,7 +222,7 @@ class Exists(Formula):
     x = self.value.translate()
     for binding in D[::-1]:
       x = binding.translate().onObject(x)
-    a = c.commute(d)(x)
+    a = c.commute(b)(x)
     for binding in A[::-1]:
       a = binding.translate().onArrow(a)
     return Arrow(src = self, tgt = Exists(bindings, self.value),

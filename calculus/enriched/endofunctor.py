@@ -54,7 +54,7 @@ class Endofunctor:
     if self.is_identity():
       return arrow
     else:
-      basicArrow = self.translate().onArrow(arrow)
+      basicArrow = self.translate().onArrow(arrow.translate())
       if self.covariant():
         src = self.onObject(arrow.src)
         tgt = self.onObject(arrow.tgt)
@@ -139,20 +139,35 @@ class VariableBinding:
   # other: a VariableBinding instance.
   # return: an arrow representing a basic natural transform: self o other --> other o self
   def commute(self, other):
-    # E v . A | (E w . B | C) --> E v . (E w . A | (B | C))
-    # --> E v . E w . A | (C | B) --> E v . E w . (A | C) | B --> E v . E w . B | (A | C)
-    # --> E w . E v . B | (A | C) --> E w . B | (E v . A | C)
-    return (lambda x:
-        self.compose(other).translate().onObject(x).forwardOnBodyFollow(lambda x:
-          x.forwardAndPastExists().forwardFollow(lambda x:
+    if self.__class__ == BoundedVariableBinding and other.__class__ == BoundedVariableBinding:
+      # E v . A | (E w . B | C) --> E v . (E w . A | (B | C))
+      # --> E v . E w . A | (C | B) --> E v . E w . (A | C) | B --> E v . E w . B | (A | C)
+      # --> E w . E v . B | (A | C) --> E w . B | (E v . A | C)
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardOnBodyFollow(lambda x:
+            x.forwardAndPastExists().forwardFollow(lambda x:
+              x.forwardOnBodyFollow(lambda x:
+                x.forwardOnRightFollow(lambda x:
+                  x.forwardCommute()).forwardFollow(lambda x:
+                    x.forwardAssociateOther().forwardFollow(lambda x:
+                      x.forwardCommute()))))).forwardFollow(lambda x:
+                        x.forwardCommuteExists()).forwardFollow(lambda x:
+                          x.forwardOnBodyFollow(lambda x:
+                            x.forwardExistsPastAnd())))
+    elif self.__class__ == BoundedVariableBinding and other.__class__ == OrdinaryVariableBinding:
+      # E v . E w . B | C --> E w . E v . B | C --> E w . (B | E v . C)
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardCommuteExists().forwardFollow(lambda x:
             x.forwardOnBodyFollow(lambda x:
-              x.forwardOnRightFollow(lambda x:
-                x.forwardCommute()).forwardFollow(lambda x:
-                  x.forwardAssociateOther().forwardFollow(lambda x:
-                    x.forwardCommute()))))).forwardFollow(lambda x:
-                      x.forwardCommuteExists()).forwardFollow(lambda x:
-                        x.forwardOnBodyFollow(lambda x:
-                          x.forwardExistsPastAnd())))
+              x.forwardExistsPastAnd())))
+    elif self.__class__ == OrdinaryVariableBinding and other.__class__ == BoundedVariableBinding:
+      # E v . A | (E w . C) --> E v . E w . A | C --> E w . E v . A | C
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardOnBodyFollow(lambda x:
+            x.forwardAndPastExists()).forwardFollow(lambda x:
+              x.forwardCommuteExists()))
+    else:
+      raise Exception("Unrecognized pair of bindings (%s, %s)"%(self, other))
 
 
   # spec: a SearchSpec instance

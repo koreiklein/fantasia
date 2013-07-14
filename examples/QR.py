@@ -93,3 +93,22 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:
       x.forwardSimplify()))
+
+proof = proof.forwardFollow(lambda p:
+    p.advance().forwardFollow(lambda p:
+      p.advance(0).forwardFollow(lambda p:
+        p.advance())))
+
+
+def g(p):
+  return p.onPathFollow(lambda x:
+      common_formulas.forwardInductionOnIExists(x, 0))
+
+proof = proof.forwardFollow(lambda p:
+    g(p))
+
+def f(x):
+  return x.identity()
+
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x: f(x)))

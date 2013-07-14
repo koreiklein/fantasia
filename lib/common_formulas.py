@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus.enriched import formula, constructors, endofunctor
+from calculus.basic import formula as basicFormula
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol, inputSymbol, outputSymbol, functionPairsSymbol
 from lib import common_vars
 from calculus import variable
@@ -41,29 +42,47 @@ def Induction(var, claim):
   return constructors.Implies([InductionBase(var, claim), InductionStep(var, claim)],
       InductionConclusion(var, claim))
 
-def forwardInduction(x, var, claim):
-  assert(x.__class__ == formula.And)
-  assert(len(x.values) == 2)
-  assert(x.values[0] == common_formulas.InductionBase(var, claim))
-  assert(x.values[1] == common_formulas.InductionStep(var, claim))
-  conclusion = common_formulas.InductionConclusion(var, claim)
-  return Arrow(src = x, tgt = conclusion,
-      basicArrow = basicFormula.Induction(src = x.translate(),
-        tgt = conclusion.translate()))
+def _forwardImportInduction(x, var, claim):
+  hypotheses = InductionHypotheses(var, claim)
+  conclusion = InductionConclusion(var, claim)
+  return constructors.assume(x, hypotheses).forwardFollow(lambda x:
+      formula.Arrow(src = x,
+        tgt = constructors.Not(
+          constructors.And([hypotheses, constructors.Not(constructors.And([conclusion, x]))])),
+        basicArrow = x.translate().forwardOnNotFollow(lambda x:
+          x.backwardOnRightFollow(lambda x:
+            x.backwardOnNotFollow(lambda x:
+              x.forwardOnLeftFollow(lambda x:
+                basicFormula.Induction(src = x, tgt = conclusion.translate())))))))
 
-def backwardInduction(x):
+def forwardImportInductionAndContradict(x, var, claim):
   assert(x.__class__ == formula.Exists)
-  assert(len(x.bindings) == 1)
-  binding = x.bindings[0]
-  binding.assertBoundedNatural()
-  var = binding.variable
-  claim = x.value
-  hypotheses = common_formulas.InductionHypotheses(var, claim)
-  return Arrow(src = hypotheses, tgt = x,
-      basicArrow = basicFormula.Induction(src = hypothesis.translate(), tgt = x.translate()))
+  hypotheses = InductionHypotheses(var, claim)
+  conclusion = InductionConclusion(var, claim)
+  def h(x):
+    raise Exception("HAHAHA %s"%(x,))
+  return constructors.assume(x, hypotheses).forwardFollow(lambda x:
+      formula.Arrow(src = x, tgt = constructors.Not(hypotheses),
+        basicArrow = x.translate().forwardOnNotFollow(lambda x:
+          x.backwardOnRightFollow(lambda x:
+            x.backwardOnNotFollow(lambda x:
+              x.forwardOnLeftFollow(lambda x:
+                basicFormula.Induction(src = x, tgt = conclusion.translate())).forwardFollow(lambda x:
+                  x.forwardCommute().forwardFollow(lambda x:
+                    x.forwardOnLeftFollow(lambda x:
+                      x.forwardOnBodyFollow(lambda x:
+                        x.forwardOnRightFollow(lambda x:
+                          x.forwardDoubleDual())))).forwardFollow(lambda x:
+                            x.forwardContradict())))).backwardFollow(lambda x:
+                              x.backwardOnRightFollow(lambda x:
+                                x.backwardNotFalseIsTrue()).backwardFollow(lambda x:
+                                  x.backwardIntroUnitLeft())))))
 
-def backwardInductionOnI(x, i):
-  a = x.forwardPushAndSplit(i).invert()
-  a = a.backwardFollow(lambda x:
-      endofunctor.Exists(x.bindings).onArrow(backwardInduction(x.value)))
+def forwardInductionOnIExists(x, i):
+  var = x.bindings[i].variable
+  claim = constructors.Not(x.value)
+  a = x.forwardPushAndSplit(i)
+  a = a.forwardFollow(lambda x:
+      endofunctor.Exists(x.bindings).onArrow(forwardImportInductionAndContradict(x.value, var, claim)))
   return a
+

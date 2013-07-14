@@ -156,16 +156,18 @@ class Exists(Formula):
 
   def forwardCommuteExists(self):
     assert(self.value.__class__ == Exists)
+    return CommuteExists(src = self,
+        tgt = Exists(self.value.variable, Exists(self.variable, self.value.value)))
     return self.forwardOnBodyFollow(lambda x:
         x.forwardOnBodyFollow(lambda x:
           x.forwardIntroExists(self.variable, self.variable))).forwardFollow(lambda x:
               x.forwardRemoveExists())
 
+  # Exists x. (A|B) --> (A|Exists x. B)
   def forwardExistsPastAnd(self):
-    return self.forwardOnBodyFollow(lambda x:
-        x.forwardOnRightFollow(lambda x:
-          x.forwardIntroExists(self.variable, self.variable))).forwardFollow(lambda x:
-              x.forwardRemoveExists())
+    assert(self.value.__class__ == And)
+    return AndPastExists(src = And(self.value.left, Exists(self.variable, self.value.right)),
+        tgt = self).invert()
 
   def updateVariables(self):
     variable = self.variable.updateVariables()
@@ -174,8 +176,11 @@ class Exists(Formula):
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
-    assert(self.variable not in a.freeVariables())
-    assert(self.variable not in b.freeVariables())
+    if not(self.variable not in a.freeVariables()):
+      raise Exception("%s should not be in %s"%(self.variable, a.freeVariables()))
+    if not(self.variable not in b.freeVariables()):
+      raise Exception("%s should not be in %s"%(self.variable, b.freeVariables()))
+
     return Exists(variable = self.variable,
         value = self.value.substituteVariable(a, b))
 
@@ -347,6 +352,9 @@ class And(Conjunction):
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
+  # A | 1 <-- A
+  def backwardIntroUnitLeft(self):
+    return UnitIdentity(tgt = self, src = self.left)
   def forwardSubstituteIdentical(self, a, b):
     I = self.left
     assert(I.__class__ == Identical)
@@ -357,6 +365,14 @@ class And(Conjunction):
     assert(self.right.__class__ == Not)
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
+
+  # A | ~A --> A | ~(A|1) --> ~1 --> -
+  def forwardContradict(self):
+    return self.forwardOnRightFollow(lambda x:
+        x.forwardOnNotFollow(lambda x:
+          x.backwardForgetRight(true))).forwardFollow(lambda x:
+              x.forwardApply()).forwardFollow(lambda x:
+                  x.forwardNotTrueIsFalse())
 
   def forwardZip(self):
     # !A | !B --> !(A|B)
@@ -468,6 +484,11 @@ class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
+
+  def forwardNotTrueIsFalse(self):
+    return NotTrueIsFalse(src = self, tgt = false)
+  def backwardNotFalseIsTrue(self):
+    return NotFalseIsTrue(src = self, tgt = true).invert()
 
   def simplify(self):
     return self.forwardOnNot(self.value.simplify().invert())
@@ -644,6 +665,8 @@ class Identical(Formula):
     result.union_update(self.left.freeVariables())
     result.union_update(self.right.freeVariables())
     return result
+  def __repr__(self):
+    return "< %s === %s >"%(self.left, self.right)
 
 def unit_for_conjunction(conjunction):
   if conjunction == And:
@@ -929,7 +952,8 @@ class Apply(Arrow):
     assert(self.src.__class__ == And)
     assert(self.src.right.__class__ == Not)
     assert(self.src.right.value.__class__ == And)
-    assert(self.src.left == self.src.right.value.left)
+    if not(self.src.left == self.src.right.value.left):
+      raise Exception("self.src.left =\n%s\nself.src.right.value.left =\n%s"%(self.src.left, self.src.right.value.left))
     assert(self.src.right.value.right == self.tgt.value)
 
 # !A --> !!A
@@ -997,6 +1021,18 @@ class AndPastExists(Isomorphism):
     assert(self.src.left == self.tgt.value.left)
     assert(self.src.right.variable == self.tgt.variable)
 
+# Exists x . Exists y . A --> Exists y . Exists x . A
+class CommuteExists(Isomorphism):
+  def arrowTitle(self):
+    return "CommuteExists"
+  def validate(self):
+    assert(self.src.__class__ == Exists)
+    assert(self.src.value.__class__ == Exists)
+    assert(self.tgt.__class__ == Exists)
+    assert(self.tgt.value.__class__ == Exists)
+    assert(self.src.variable == self.tgt.value.variable)
+    assert(self.src.value.variable == self.tgt.variable)
+
 # !(Exists x . B) --> Exists x . !B
 class AlwaysPastExists(Isomorphism):
   def arrowTitle(self):
@@ -1016,6 +1052,24 @@ class RemoveExists(Arrow):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
     assert(self.src.variable not in self.tgt.freeVariables())
+
+# ~1 <--> -
+class NotTrueIsFalse(Isomorphism):
+  def arrowTitle(self):
+    return "NotTrueIsFalse"
+  def validate(self):
+    assert(self.tgt == false)
+    assert(self.src.__class__ == Not)
+    assert(self.src.value == true)
+
+# ~0 <--> 1
+class NotFalseIsTrue(Isomorphism):
+  def arrowTitle(self):
+    return "NotTrueIsFalse"
+  def validate(self):
+    assert(self.tgt == true)
+    assert(self.src.__class__ == Not)
+    assert(self.src.value == false)
 
 # a === b | A --> A.substituteVariable(a, b)
 # a === b | A --> A.substituteVariable(b, a)
