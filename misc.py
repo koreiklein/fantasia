@@ -14,8 +14,9 @@ def _interleave(a, xs):
   if len(xs) == 0:
     return [a]
   result = []
-  for x in xs:
+  for x in xs[:-1]:
     result.append(x)
     result.append(a)
+  result.append(xs[-1])
   return result
 

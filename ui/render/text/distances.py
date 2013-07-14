@@ -2,7 +2,7 @@
 
 epsilon = 0
 
-divider_spacing = 1
+divider_spacing = 0
 
 notThickness = 1
 notShiftThickness = notThickness + 1
