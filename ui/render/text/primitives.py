@@ -52,8 +52,6 @@ def andDivider(covariant):
   def f(length):
     r = divider(colors.andColor, _dual_dimension(_dimension_for_variance(covariant)),
         length, distances.conjunctiveDividerWidth)
-    if not covariant:
-      r = newTextStack(None, '|').stack(0, r).stack(0, newTextStack(None, '|'))
     return r
   return f
 
@@ -61,8 +59,7 @@ def orDivider(covariant):
   def f(length):
     r = divider(colors.orColor, _dimension_for_variance(covariant),
         length, distances.conjunctiveDividerWidth)
-    if not covariant:
-      r = newTextStack(None, '-').stack(1, r).stack(1, newTextStack(None, '-'))
+    r = newTextStack(None, '-').stack(1, r).stack(1, newTextStack(None, '-'))
     return r
   return f
 
