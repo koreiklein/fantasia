@@ -102,28 +102,17 @@ class Holds(Formula):
   def render(self, context):
     infix = getInfix(self)
     if infix is not None:
-      (firstSymbol, secondSymbol) = infix
-      assert(len(self.held.symbol_variable_pairs) == 2)
-      (aSymbol, aVariable) = self.held.symbol_variable_pairs[0]
-      (bSymbol, bVariable) = self.held.symbol_variable_pairs[1]
-      if aSymbol == secondSymbol:
-        assert(bSymbol == firstSymbol)
-        (firstSymbol, secondSymbol) = (secondSymbol, firstSymbol)
-      else:
-        assert(aSymbol == firstSymbol)
-        assert(bSymbol == secondSymbol)
-      # Now aSymbol == firstSymbol and bSymbol == secondSymbol
-      holds =  stack.stackAll(0, [ aVariable.render()
-                                 , self.holding.render()
-                                 , bVariable.render()],
-                                 spacing = distances.infixSpacing)
+      holds = variable.renderInfix(productVariable = self.held,
+          infixSymbols = infix, infixVariable = self.holding)
     else:
       holds = stack.stackAll(0, [ self.held.render()
                                 , primitives.holds()
                                 , self.holding.render()],
                                 spacing = distances.holdsSpacing)
-
-    return holds
+    if context.covariant:
+      return holds
+    else:
+      return primitives.surroundWithNot(holds)
 
   def substituteVariable(self, a, b):
     return Holds(held = self.held.substituteVariable(a, b),
@@ -179,18 +168,20 @@ class Exists(Formula):
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Exists(bindings = self.bindings, value = arrow.tgt),
-        basicArrow = basicFormula.OnBody(arrow.basicArrow))
+        basicArrow = self._endofunctor_translate().onArrow(arrow.basicArrow))
   def backwardSimplify(self):
     arrow = self.value.backwardSimplify()
     return Arrow(src = Exists(bindings = self.bindings, value = arrow.src), tgt = self,
-        basicArrow = basicFormula.OnBody(arrow.basicArrow))
+        basicArrow = self._endofunctor_translate().onArrow(arrow.basicArrow))
   def __repr__(self):
     return "Exists(%s) . %s"%(self.bindings, self.value)
-  def translate(self):
+  def _endofunctor_translate(self):
     result = basicEndofunctor.identity_functor
     for binding in self.bindings[::-1]:
       result = result.compose(binding.translate())
-    return result.onObject(self.value.translate())
+    return result
+  def translate(self):
+    return self._endofunctor_translate().onObject(self.value.translate())
   def render(self, context):
     quantifierStackingDimension = _dimension_for_variance(context.covariant)
     variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)
@@ -207,8 +198,8 @@ class Exists(Formula):
     divider = primitives.quantifierDivider(context.covariant,
         max(kid.widths()[variableStackingDimension],
           variablesStack.widths()[variableStackingDimension]))
-    return variablesStack.stackCentered(quantifierStackingDimension, divider,
-        spacing = distances.quantifier_before_divider_spacing).stackCentered(
+    return variablesStack.stack(quantifierStackingDimension, divider,
+        spacing = distances.quantifier_before_divider_spacing).stack(
         quantifierStackingDimension, kid,
         spacing = distances.quantifier_after_divider_spacing)
 
@@ -510,6 +501,9 @@ class Identical(Formula):
   def substituteVariable(self, a, b):
     return Identical(left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
+  def render(self, context):
+    return self.left.render().stack(0, primitives.identical(context.covariant)).stack(0,
+        self.right.render())
 
 def InDomain(x, e):
   return Always(Holds(x, variable.ApplySymbolVariable(e, domainSymbol)))
@@ -583,6 +577,7 @@ def getInfix(holds):
     return None
 
 def renderWithBackground(s, border_width, color):
+  return s
   widths = [x + 2 * border_width for x in s.widths()]
   return primitives.solidSquare(color, widths).stackCentered(2, s,
       spacing = distances.epsilon )

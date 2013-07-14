@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus import symbol
+from calculus import symbol, variable
 
 
 leftSymbol = symbol.StringSymbol('left', type = symbol.projection)

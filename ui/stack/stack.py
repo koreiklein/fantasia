@@ -23,6 +23,8 @@ class Backend:
   def stacks(self):
     return False
 
+  def uses_epsilon(self):
+    return True
 
 def stackAll(dimension, xs, spacing = 0):
   assert(len(xs) > 0)
@@ -44,6 +46,9 @@ class Stack:
   def __init__(self, coords, backend):
     self._coords = coords
     self._backend = backend
+
+  def uses_epsilon(self):
+    return self._backend.uses_epsilon()
 
   def flip(self):
     coords = list(self.coords)

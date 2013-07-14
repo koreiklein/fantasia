@@ -65,6 +65,22 @@ class StringVariable(Variable):
   def updateVariables(self):
     return StringVariable(self.name())
 
+def renderInfix(productVariable, infixSymbols, infixVariable):
+  (firstSymbol, secondSymbol) = infixSymbols
+  assert(len(productVariable.symbol_variable_pairs) == 2)
+  (aSymbol, aVariable) = productVariable.symbol_variable_pairs[0]
+  (bSymbol, bVariable) = productVariable.symbol_variable_pairs[1]
+  if aSymbol == secondSymbol:
+    assert(bSymbol == firstSymbol)
+    (firstSymbol, secondSymbol) = (secondSymbol, firstSymbol)
+  else:
+    assert(aSymbol == firstSymbol)
+    assert(bSymbol == secondSymbol)
+  return stack.stackAll(0, [ aVariable.render()
+                           , infixVariable.render()
+                           , bVariable.render()],
+                           spacing = distances.infixSpacing)
+
 class ApplySymbolVariable(GeneralizedVariable):
   def __init__(self, variable, symbol):
     self.variable = variable
@@ -87,10 +103,14 @@ class ApplySymbolVariable(GeneralizedVariable):
   def render(self):
     symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(self.symbol)
     if isinstance(self.symbol, Variable):
-      symbolStack = self.symbol.render()
+      if self.symbol.infix is not None:
+        return renderInfix(self.variable, self.symbol.infix, self.symbol)
+      else:
+        symbolStack = self.symbol.render()
+        return self.variable.render().stack(0, primitives.dot).stack(0, symbolStack)
     else:
       symbolStack = renderSymbol(self.symbol)
-    return self.variable.render().stack(0, primitives.dot).stack(0, symbolStack)
+      return self.variable.render().stack(0, primitives.dot).stack(0, symbolStack)
 
 def colors_for_symbol(symbol):
   if isinstance(symbol, Variable):
@@ -158,8 +178,11 @@ def renderStringSymbol(s):
   return primitives.newTextStack(colors.symbolColor, repr(s))
 
 def renderWithBackground(s, border_width, color):
-  widths = [x + 2 * border_width for x in s.widths()]
-  widths[2] = 0.0
-  return primitives.solidSquare(color, widths).stackCentered(2, s,
-      spacing = distances.epsilon )
+  if s.uses_epsilon():
+    widths = [x + 2 * border_width for x in s.widths()]
+    widths[2] = 0.0
+    return primitives.solidSquare(color, widths).stackCentered(2, s,
+        spacing = distances.epsilon )
+  else:
+    return s
 

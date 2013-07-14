@@ -22,7 +22,7 @@ def Equal(a, b):
   return Identical(a, b)
 
 # define addition
-plus = variable.StringVariable('+')
+plus = variable.StringVariable('+', infix = (common_symbols.leftSymbol, common_symbols.rightSymbol))
 
 def Plus(a, b):
   return variable.ApplySymbolVariable(
@@ -47,7 +47,7 @@ define_plus = Iff(
     right = ExpandPlus(a, b, c))
 
 # define multiplication
-times = variable.StringVariable('*')
+times = variable.StringVariable('*', infix = (common_symbols.leftSymbol, common_symbols.rightSymbol))
 
 def Times(a, b):
   return variable.ApplySymbolVariable(
@@ -74,19 +74,20 @@ supplementals = And([])
 a = common_vars.a()
 b = common_vars.b()
 
-q = common_vars.a()
-r = common_vars.b()
+q = common_vars.q()
+r = common_vars.r()
 
 claim = ForallNatural([a, b],
     Implies([Not(Equal(b, natural.zero))],
-      ExistsNatural([q, r], And([natural.Less(r, b), Equal(Plus(r, Times(q,b)), a)]))))
+      ExistsNatural([q, r], And([ natural.Less(r, b)
+                                , Equal(Plus(r, Times(q,b)), a)]))))
 
 proof = natural.lib.beginProof()
 
-#proof = natural.lib.beginProof().forwardFollow(lambda p:
-#    p.onPathFollow(lambda x:
-#      constructors.assume(x, claim)))
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      constructors.assume(x, claim)))
 
-#proof = proof.forwardFollow(lambda p:
-#    p.onPathFollow(lambda x:
-#      x.forwardSimplify()))
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      x.forwardSimplify()))

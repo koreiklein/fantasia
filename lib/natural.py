@@ -7,14 +7,13 @@ from lib.common_formulas import IsEquivalence, InDomain, Equal
 
 from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, rightSymbol, functionPairsSymbol
 
-natural = variable.StringVariable('N')
-
 smaller = symbol.StringSymbol('smaller', type = symbol.projection)
 greater = symbol.StringSymbol('greater', type = symbol.projection)
 natural_less = variable.StringVariable('<', infix = (smaller, greater))
 
-S = variable.StringVariable('S')
-S_pairs = variable.ApplySymbolVariable(S, functionPairsSymbol)
+natural = common_vars.natural
+S = common_vars.S
+S_pairs = common_vars.S_pairs
 
 def Natural(n):
   return InDomain(n, natural)

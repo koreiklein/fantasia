@@ -1,6 +1,8 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from calculus import variable
 from calculus.variable import StringVariable
+from lib.common_symbols import functionPairsSymbol
 
 p = lambda: StringVariable('p')
 n = lambda: StringVariable('n')
@@ -42,3 +44,9 @@ equivalence = StringVariable('equivalence')
 function = StringVariable('function')
 
 tmp = lambda: StringVariable('tmp')
+
+natural = variable.StringVariable('N')
+
+S = variable.StringVariable('S')
+S_pairs = variable.ApplySymbolVariable(S, functionPairsSymbol)
+
