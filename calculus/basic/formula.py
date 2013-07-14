@@ -842,6 +842,14 @@ class Distribute(Arrow):
     assert(self.src.right.left == self.tgt.left.right)
     assert(self.src.right.right == self.tgt.right.right)
 
+# And(base, step) --> claim
+class Induction(Arrow):
+  def arrowTitle(self):
+    return "Induction"
+  def validate(self):
+    #TODO Check induction arrows more carefully.
+    pass
+
 # A | B --> A,  A | B --> B
 class Forget(Arrow):
   def arrowTitle(self):
