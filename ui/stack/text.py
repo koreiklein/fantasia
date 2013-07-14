@@ -85,7 +85,7 @@ class TextBackend(stack.Backend):
       m = len(strings[0])
     for i in range(offset[1]):
       strings.append(blank * m)
-    strings = [blank * offset[0] + s for s in self.strings]
+    strings = [blank * offset[0] + s for s in strings]
     return TextBackend(strings)
 
   def __repr__(self):

@@ -46,6 +46,7 @@ class Stack:
   def __init__(self, coords, backend):
     self._coords = coords
     self._backend = backend
+    assert(coords[1] == len(backend.strings))
 
   def uses_epsilon(self):
     return self._backend.uses_epsilon()

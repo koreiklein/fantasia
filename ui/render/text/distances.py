@@ -9,10 +9,10 @@ notShiftThickness = notThickness + 1
 # Amount by which to shift the value contained inside a Not.
 notShiftOffset = [notShiftThickness + 1, notShiftThickness]
 
-quantifier_variables_spacing = 1
+quantifier_variables_spacing = 0
 variable_binding_spacing = 1
-quantifier_before_divider_spacing = 1
-quantifier_after_divider_spacing = 1
+quantifier_before_divider_spacing = 0
+quantifier_after_divider_spacing = 0
 
 infixSpacing = 1
 applySpacing = 1
