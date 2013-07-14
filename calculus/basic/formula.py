@@ -154,6 +154,19 @@ class Exists(Formula):
   def backwardIntroExists(self, newVariable):
     return IntroExists(src = self.value.substituteVariable(self.variable, newVariable), tgt = self)
 
+  def forwardCommuteExists(self):
+    assert(self.value.__class__ == Exists)
+    return self.forwardOnBodyFollow(lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardIntroExists(self.variable, self.variable))).forwardFollow(lambda x:
+              x.forwardRemoveExists())
+
+  def forwardExistsPastAnd(self):
+    return self.forwardOnBodyFollow(lambda x:
+        x.forwardOnRightFollow(lambda x:
+          x.forwardIntroExists(self.variable, self.variable))).forwardFollow(lambda x:
+              x.forwardRemoveExists())
+
   def updateVariables(self):
     variable = self.variable.updateVariables()
     return Exists(variable = variable,
@@ -354,7 +367,6 @@ class And(Conjunction):
   def forwardAndPastExists(self):
     # (A|Exists xs. B) --> Exists xs. (A|B)
     assert(self.right.__class__ == Exists)
-    v = self.right.variable.updateVariables()
     return AndPastExists(src = self,
         tgt = Exists(variable = self.right.variable,
           value = And(left = self.left, right = self.right.value)))

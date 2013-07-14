@@ -73,6 +73,9 @@ class Arrow:
   def translate(self):
     return self.basicArrow
 
+  def invert(self):
+    return Arrow(src = self.tgt, tgt = self.src, basicArrow = self.basicArrow.invert())
+
   def forwardCompose(self, arrow):
     return Arrow(src = self.src, tgt = arrow.tgt,
         basicArrow = self.basicArrow.forwardCompose(arrow.basicArrow))
@@ -182,6 +185,44 @@ class Exists(Formula):
     return result
   def translate(self):
     return self._endofunctor_translate().onObject(self.value.translate())
+  def forwardSplit(self, i):
+    return Arrow(src = self, tgt = Exists(bindings = self.bindings[:i],
+      value = Exists(bindings = self.bindings[i:], value = self.value)),
+      basicArrow = self.translate().identity())
+
+  def forwardPushAndSplit(self, i):
+    assert(0 <= i)
+    assert(i < len(self.variables))
+    a = self.identity()
+    while i+1 < len(self.variables):
+      a = a.forwardFollow(lambda e:
+          e.forwardPush(i))
+      i += 1
+    a = a.forwardFollow(lambda e:
+        e.forwardSplit(len(self.variables) - 1))
+    return a
+
+  # i: an index such that self.bindings[i] and self.bindings[i+1] both exist.
+  # return: an enriched arrow commuting self.bindings[i] with self.bindings[i+1]
+  def forwardPush(self, i):
+    A = self.bindings[:i]
+    b = self.bindings[i]
+    c = self.bindings[i+1]
+    D = self.bindings[i+2:]
+    bindings = []
+    bindings.extend(A)
+    bindings.append(c)
+    bindings.append(b)
+    bindings.extend(D)
+    x = self.value.translate()
+    for binding in D[::-1]:
+      x = binding.translate().onObject(x)
+    a = c.commute(d)(x)
+    for binding in A[::-1]:
+      a = binding.translate().onArrow(a)
+    return Arrow(src = self, tgt = Exists(bindings, self.value),
+        basicArrow = a)
+
   def render(self, context):
     quantifierStackingDimension = _dimension_for_variance(context.covariant)
     variableStackingDimension = primitives._dual_dimension(quantifierStackingDimension)

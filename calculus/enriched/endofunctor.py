@@ -136,6 +136,25 @@ class VariableBinding:
     assert(self.__class__ == BoundedVariableBinding)
     assert(self.relation == common_vars.natural)
 
+  # other: a VariableBinding instance.
+  # return: an arrow representing a basic natural transform: self o other --> other o self
+  def commute(self, other):
+    # E v . A | (E w . B | C) --> E v . (E w . A | (B | C))
+    # --> E v . E w . A | (C | B) --> E v . E w . (A | C) | B --> E v . E w . B | (A | C)
+    # --> E w . E v . B | (A | C) --> E w . B | (E v . A | C)
+    return (lambda x:
+        self.compose(other).translate().onObject(x).forwardOnBodyFollow(lambda x:
+          x.forwardAndPastExists().forwardFollow(lambda x:
+            x.forwardOnBodyFollow(lambda x:
+              x.forwardOnRightFollow(lambda x:
+                x.forwardCommute()).forwardFollow(lambda x:
+                  x.forwardAssociateOther().forwardFollow(lambda x:
+                    x.forwardCommute()))))).forwardFollow(lambda x:
+                      x.forwardCommuteExists()).forwardFollow(lambda x:
+                        x.forwardOnBodyFollow(lambda x:
+                          x.forwardExistsPastAnd())))
+
+
   # spec: a SearchSpec instance
   # return: a list of claims importable from the translation of self.
   def search(self, spec):
@@ -252,13 +271,6 @@ class DirectTranslate(Endofunctor):
     return self.basicEndofunctor.covariant()
   def onObject(self, object):
     return self._onObject(object)
-  def onArrow(self, arrow):
-    if self.covariant():
-      return formula.Arrow(src = self.onObject(arrow.src), tgt = self.onObject(arrow.tgt),
-          basicArrow = self.basicEndofunctor.onArrow(arrow.translate()))
-    else:
-      return formula.Arrow(src = self.onObject(arrow.tgt), tgt = self.onObject(arrow.src),
-          basicArrow = self.basicEndofunctor.onArrow(arrow.translate()))
   def factor_left(self):
     if is_identity_functor(self):
       raise Exception("Can't factor the identity functor.")

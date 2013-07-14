@@ -62,3 +62,8 @@ def backwardInduction(x):
   return Arrow(src = hypotheses, tgt = x,
       basicArrow = basicFormula.Induction(src = hypothesis.translate(), tgt = x.translate()))
 
+def backwardInductionOnI(x, i):
+  a = x.forwardPushAndSplit(i).invert()
+  a = a.backwardFollow(lambda x:
+      endofunctor.Exists(x.bindings).onArrow(backwardInduction(x.value)))
+  return a
