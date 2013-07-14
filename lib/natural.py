@@ -38,7 +38,7 @@ successorIsGreater = constructors.Forall(
     , constructors.BoundedVariableBinding(b, natural)],
     constructors.Implies(predicates = [Successor(a, b)], consequent = Less(a, b)))
 
-zero = variable.StringVariable('zero')
+zero = common_vars.zero
 zeroNatural = Natural(zero)
 
 n = common_vars.n()
@@ -58,7 +58,7 @@ allClaims = [ successorIsGreater
 naturalClaims = constructors.And(allClaims)
 
 lib = library.Library(
-    name = "Natural",
+    name = "Nat",
     claims = [naturalClaims],
     variables = [natural, zero, natural_less, S],
     sub_libraries = [function.lib])

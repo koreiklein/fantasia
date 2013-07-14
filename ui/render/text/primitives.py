@@ -7,6 +7,9 @@ from ui.render.text import colors, distances
 def newTextStack(color, s):
   return stack.Stack([len(s), 1], TextBackend([s]))
 
+def wrapVariableInfix(s):
+  return newTextStack(None, "(").stack(0, s).stack(0, newTextStack(None, ")"))
+
 dot = newTextStack(None, '.')
 
 nullStack = newTextStack(None, '')
@@ -28,6 +31,9 @@ def identical(covariant):
   else:
     s = ' != '
   return newTextStack(None, s)
+
+def iff():
+  return newTextStack(None, " <==> ")
 
 def _dimension_for_variance(covariant):
   if covariant:
@@ -58,7 +64,7 @@ def orDivider(covariant):
     if not covariant:
       r = newTextStack(None, '-').stack(1, r).stack(1, newTextStack(None, '-'))
     return r
-  return r
+  return f
 
 def quantifierDivider(covariant, length):
   return divider(colors.quantifierDividerColor, _dimension_for_variance(not covariant),

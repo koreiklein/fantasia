@@ -19,3 +19,21 @@ def IsFunction(f):
 
 InDomain = formula.InDomain
 Equal = formula.Equal
+
+def InductionBase(var, claim):
+  return claim.substituteVariable(var, common_vars.zero)
+
+def InductionStep(var, claim):
+  newVar = var.relatedVariable()
+  return constructors.Forall([constructors.BoundedVariableBinding(newVar, common_vars.natural)],
+      constructors.Implies([claim.substituteVariable(var, newVar)],
+        claim.substituteVariable(var, variable.ApplySymbolVariable(newVar, common_vars.S))))
+
+def InductionConclusion(var, claim):
+  newVar = var.relatedVariable()
+  return constructors.Forall([constructors.BoundedVariableBinding(newVar, common_vars.natural)],
+      claim.substituteVariable(var, newVar))
+
+def Induction(var, claim):
+  return constructors.Implies([InductionBase(var, claim), InductionStep(var, claim)],
+      InductionConclusion(var, claim))

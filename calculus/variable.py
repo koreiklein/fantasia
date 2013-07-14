@@ -12,6 +12,8 @@ class GeneralizedVariable:
     return self
   def render(self):
     raise Exception("Abstract superclass.")
+  def relatedVariable(self):
+    return StringVariable('z')
 
 n_variables = 0
 class Variable(GeneralizedVariable):
@@ -52,6 +54,9 @@ class StringVariable(Variable):
     self._generate_id()
     self._name = name
     self.infix = infix
+
+  def relatedVariable(self):
+    return StringVariable(name = self.name + "'", infix = self.infix)
 
   def render(self):
     return primitives.newTextStack(colors.variableColor, repr(self))
@@ -104,7 +109,7 @@ class ApplySymbolVariable(GeneralizedVariable):
     symbolBackgroundColor, variableBackgroundColor = colors_for_symbol(self.symbol)
     if isinstance(self.symbol, Variable):
       if self.symbol.infix is not None:
-        return renderInfix(self.variable, self.symbol.infix, self.symbol)
+        return primitives.wrapVariableInfix(renderInfix(self.variable, self.symbol.infix, self.symbol))
       else:
         symbolStack = self.symbol.render()
         return self.variable.render().stack(0, primitives.dot).stack(0, symbolStack)

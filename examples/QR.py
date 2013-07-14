@@ -32,7 +32,7 @@ def Plus(a, b):
 
 def ExpandPlus(a, b, c):
   base = And([Equal(a, natural.zero),
-    Equal(c, natural.zero)])
+    Equal(b, c)])
   z = common_vars.z()
   step = ExistsNatural([z],
       And([Equal(S(z), a),
@@ -58,7 +58,8 @@ def Times(a, b):
 def ExpandTimes(a, b, c):
   base = And([Equal(a, natural.zero), Equal(c, natural.zero)])
   z = common_vars.z()
-  step = And([Equal(S(z), a), Equal(Plus(b, Times(z, b)), c)])
+  step =ExistsNatural([z],
+      And([Equal(S(z), a), Equal(Plus(b, Times(z, b)), c)]))
   return Or([base, step])
 
 a = common_vars.a()
@@ -68,7 +69,7 @@ define_times = Iff(
     left = Equal(Times(a, b), c),
     right = ExpandTimes(a, b, c))
 
-supplementals = And([])
+supplementals = [define_plus, define_times]
 
 # A proof that forall a : N, b : N . if b != 0 then exists q : N, r : N . r < b | r + q*b = a
 a = common_vars.a()
@@ -82,7 +83,8 @@ claim = ForallNatural([a, b],
       ExistsNatural([q, r], And([ natural.Less(r, b)
                                 , Equal(Plus(r, Times(q,b)), a)]))))
 
-proof = natural.lib.beginProof()
+lib = library.Library(claims = supplementals, variables = [plus, times], sub_libraries =[natural.lib], name = "+/*")
+proof = lib.beginProof()
 
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:

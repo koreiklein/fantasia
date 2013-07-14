@@ -391,12 +391,13 @@ class Conjunction(Formula):
     return self.__class__(values = [v.updateVariables() for v in self.values])
 
   def render(self, context):
-    if context.covariant:
-      dimension = 0
-      other_dimension = 1
-    else:
-      dimension = 1
-      other_dimension = 0
+    dimension = 0
+    if not context.covariant:
+      dimension += 1
+    if self.__class__ == Or:
+      dimension += 1
+    other_dimension = primitives._dual_dimension(dimension)
+    dimension = dimension % 2
 
     length = distances.min_unit_divider_length
     values = []

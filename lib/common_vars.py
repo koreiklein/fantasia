@@ -50,3 +50,4 @@ natural = variable.StringVariable('N')
 S = variable.StringVariable('S')
 S_pairs = variable.ApplySymbolVariable(S, functionPairsSymbol)
 
+zero = variable.StringVariable('0')
