@@ -21,6 +21,8 @@ def IsFunction(f):
 InDomain = formula.InDomain
 Equal = formula.Equal
 
+Identical = formula.Identical
+
 def InductionBase(var, claim):
   return claim.substituteVariable(var, common_vars.zero)
 

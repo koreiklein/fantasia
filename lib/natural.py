@@ -3,7 +3,7 @@
 from calculus import symbol, variable
 from calculus.enriched import constructors
 from lib import equivalence, library, common_vars, common_symbols, function
-from lib.common_formulas import IsEquivalence, InDomain, Equal
+from lib.common_formulas import IsEquivalence, InDomain, Identical
 
 from common_symbols import inputSymbol, outputSymbol, domainSymbol, leftSymbol, rightSymbol, functionPairsSymbol
 
@@ -27,33 +27,63 @@ def Less(a, b):
   return constructors.Always(constructors.Holds(
       variable.ProductVariable([(smaller, a), (greater, b)]), natural_less))
 
+def ForallNatural(variables, value):
+  return constructors.Forall(
+      [constructors.BoundedVariableBinding(var, natural) for var in variables],
+      value)
+
+def ExistsNatural(variables, value):
+  return constructors.Exists(
+      [constructors.BoundedVariableBinding(var, natural) for var in variables],
+      value)
+
 naturalIsEquivalence = constructors.Always(IsEquivalence(natural))
 
 successorIsFunction = function.IsFunction(S)
 
 a = common_vars.a()
 b = common_vars.b()
-successorIsGreater = constructors.Forall(
-    [ constructors.BoundedVariableBinding(a, natural)
-    , constructors.BoundedVariableBinding(b, natural)],
-    constructors.Implies(predicates = [Successor(a, b)], consequent = Less(a, b)))
+successorIsGreater = ForallNatural([a], Less(a, constructors.S(a)))
 
 zero = common_vars.zero
 zeroNatural = Natural(zero)
 
+a = common_vars.a()
+zeroOrLess = ForallNatural([a],
+    constructors.Or([Identical(zero, a), Less(zero, a)]))
+
 n = common_vars.n()
 m = common_vars.m()
-zeroFirst = constructors.Forall(
-    [ constructors.BoundedVariableBinding(n, natural)
-    , constructors.BoundedVariableBinding(m, natural)],
-    constructors.Implies(predicates = [Successor(n, m)],
-      consequent = constructors.Not(Equal(m, zero, natural))))
+zeroFirst = ForallNatural([n], constructors.Not(Identical(zero, constructors.S(n))))
 
-allClaims = [ successorIsGreater
-            , naturalIsEquivalence
+a = common_vars.a()
+b = common_vars.b()
+c = common_vars.c()
+transitivity = ForallNatural([a, b, c],
+    constructors.Implies([ Less(a, b), Less(b, c) ],
+      Less(a, c)))
+
+a = common_vars.a()
+b = common_vars.b()
+trichotomy = ForallNatural([a, b],
+    constructors.Or([ Less(a, b), Identical(a, b), Less(b, a) ]))
+
+a = common_vars.a()
+z = common_vars.z()
+discrete = ForallNatural([a, z],
+    constructors.Not(constructors.And([Less(a, z), Less(z, constructors.S(a))])))
+
+
+allClaims = [ naturalIsEquivalence
+            , successorIsFunction
             , zeroNatural
             , zeroFirst
-            , successorIsFunction]
+            , zeroOrLess
+            , successorIsGreater
+            , transitivity
+            , trichotomy
+            , discrete
+            ]
 
 naturalClaims = constructors.And(allClaims)
 

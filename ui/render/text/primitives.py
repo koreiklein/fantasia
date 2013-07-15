@@ -59,7 +59,10 @@ def orDivider(covariant):
   def f(length):
     r = divider(colors.orColor, _dimension_for_variance(covariant),
         length, distances.conjunctiveDividerWidth)
-    r = newTextStack(None, '-').stack(1, r).stack(1, newTextStack(None, '-'))
+    if covariant:
+      r = newTextStack(None, '|').stack(0, r).stack(0, newTextStack(None, '|'))
+    else:
+      r = newTextStack(None, '-').stack(1, r).stack(1, newTextStack(None, '-'))
     return r
   return f
 

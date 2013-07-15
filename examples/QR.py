@@ -15,12 +15,6 @@ def ExistsNatural(xs, value):
       [BoundedVariableBinding(x, natural.natural) for x in xs],
       value)
 
-def S(a):
-  return variable.ApplySymbolVariable(a, natural.S)
-
-def Equal(a, b):
-  return Identical(a, b)
-
 # define addition
 plus = variable.StringVariable('+', infix = (common_symbols.leftSymbol, common_symbols.rightSymbol))
 

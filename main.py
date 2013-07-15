@@ -16,9 +16,5 @@ from sys import setrecursionlimit
 setrecursionlimit(50000000)
 
 
-#print QR.proof.arrow.tgt.top()
-#print Forall([BoundedVariableBinding(common_vars.a(), common_vars.b())], And([])).render(RenderingContext(True))._backend
+#static.run(natural.lib.beginProof())
 static.run(QR.proof)
-#print And([Or([]), And([Or([]), And([])])]).render(RenderingContext(True))._backend
-#print QR.claim.render(RenderingContext(True))._backend
-#print Holds(common_vars.a(), common_vars.b())

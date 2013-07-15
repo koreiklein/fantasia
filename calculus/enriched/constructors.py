@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import variable
+from lib import common_vars
 from calculus.enriched import formula, endofunctor
 
 def Holds(held, holding):
@@ -43,6 +44,12 @@ def Implies(predicates, consequent):
   values = list(predicates)
   values.append(Not(consequent))
   return Not(And(values))
+
+def Equal(a, b):
+  return formula.Identical(a, b)
+
+def S(a):
+  return variable.ApplySymbolVariable(a, common_vars.S)
 
 def Iff(left, right):
   return formula.Iff(left, right)
