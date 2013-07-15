@@ -2,6 +2,7 @@
 
 from misc import *
 from calculus.basic import formula
+from calculus.basic.instantiator import FinishedInstantiatingException
 
 class UnliftableException(Exception):
   def __init__(self, functor, B):
@@ -116,24 +117,57 @@ class Endofunctor:
         return ['dummy']
       else:
         return []
-      result = self.exportFiltered(f)
-      if len(result) == 0:
-        raise UnimportableException(formula = formula, endofunctor = self)
-      else:
-        (B, nt, y) = result[0]
-        assert(B == formula)
-        return nt
+    result = self.exportFiltered(f)
+    if len(result) == 0:
+      raise UnimportableException(formula = formula, endofunctor = self)
+    else:
+      (B, nt, y) = result[0]
+      assert(B == formula)
+      return nt
 
   def exportLeft(self, x):
-    assert(self.covariant())
+    assert(not self.covariant())
     assert(x.__class__ == formula.And)
-    return self.exportExactly(x)(x.right)
+    return self.exportExactly(x.left)(x.right)
 
   def exportRight(self, x):
     assert(not self.covariant())
     assert(x.__class__ == formula.And)
     return self.onArrow(x.backwardCommute()).forwardCompose(
         self.exportLeft(formula.And(x.right, x.left)))
+
+  def exportSide(self, side, x):
+    if side == left:
+      return self.exportLeft(x)
+    else:
+      assert(side == right)
+      return self.exportRight(x)
+
+  # instantiator: an instantiator instance
+  # formula: a basic formula
+  # return: an arrow: self(formula) --> self(t) where variables are substituted in t
+  #   and claims are exported from t according to instantiator.
+  def exportRecursively(self, instantiator, x):
+    assert(not self.covariant())
+    if x.__class__ == formula.Not:
+      return self.onArrow(x.identity())
+    elif x.__class__ == formula.Exists:
+      try:
+        v = instantiator.instantiate(x.variable, self, x.value)
+      except FinishedInstantiatingException:
+        return self.onArrow(x.identity())
+      arrow = x.backwardIntroExists(v)
+      return self.onArrow(arrow).forwardCompose(
+          self.exportRecursively(instantiator, arrow.src))
+    elif x.__class__ == formula.And:
+      try:
+        side = instantiator.exportSide(x, self)
+      except FinishedInstantiatingException:
+        return self.onArrow(x.identity())
+      return self.exportSide(side, x).forwardCompose(
+          self.exportRecursively(instantiator, x.getOtherSide(side)))
+    else:
+      return self.onArrow(x.identity())
 
 class Exists(Endofunctor):
   def __init__(self, variable):

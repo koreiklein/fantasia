@@ -1,5 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from misc import left, right
 from calculus import symbol
 from calculus.variable import Variable
 from lib import common_symbols
@@ -334,6 +335,20 @@ class And(Conjunction):
           x.forwardAssociate()), X) for a, X in self.left.produceFiltered(f)])
     return result
 
+  def getSide(self, side):
+    if side == left:
+      return self.left
+    else:
+      assert(side == right)
+      return self.right
+
+  def getOtherSide(self, side):
+    if side == left:
+      return self.right
+    else:
+      assert(side == right)
+      return self.left
+
   def simplifyOnce(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert()
@@ -591,10 +606,13 @@ class Always(Formula):
 
   # !(A|B) --> !A | !B
   def forwardDistributeAlways(self):
+    assert(self.value.__class__ == And)
     # !(A|B) --> !(A|B) | !(A|B) --> !A | !(A|B) --> !A | !B
     return self.forwardCopy().forwardFollow(lambda x:
-        x.forwardOnLeftFollow(lambda x: x.forwardForgetRight()).forwardFollow(lambda x:
-          x.forwardOnRightFollow(lambda x: x.forwardForgetLeft())))
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardOnAlwaysFollow(lambda x: x.forwardForgetRight())).forwardFollow(lambda x:
+        x.forwardOnRightFollow(lambda x:
+          x.forwardOnAlwaysFollow(lambda x: x.forwardForgetLeft()))))
 
   def forwardCojoin(self):
     return Cojoin(src = self, tgt = Always(self))

@@ -7,6 +7,7 @@ from calculus.enriched import formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basicEndofunctor
 from calculus.basic import bifunctor as basicBifunctor
+from calculus.basic import instantiator
 from lib import common_symbols, common_vars
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
@@ -68,6 +69,32 @@ class Endofunctor:
 
   def is_identity(self):
     return is_identity_functor(self)
+
+  # self must be contravariant
+  # formula: an Exists formula.
+  # variables: a list of variable in scope in self.
+  # return: an arrow that instantiates the exists formula with the given variables.
+  def instantiateInOrder(self, variables, x):
+    assert(not self.covariant())
+    assert(x.__class__ == formula.Exists)
+    assert(len(variables) == len(x.bindings))
+    value = fully_substituted(variables, x)
+    ins = instantiator.InOrderInstantiator(variables)
+    basicArrow = self.translate().exportRecursively(ins, x.translate())
+    if not ins.complete():
+      raise Exception("Instantiation did not complete.")
+    assert(ins.exports == 2)
+    result = formula.Arrow(src = self.onObject(x),
+        tgt = self.onObject(value),
+        basicArrow = basicArrow)
+    return (result, value)
+
+def fully_substituted(variables, x):
+  assert(x.__class__ == formula.Exists)
+  value = x.value
+  for i in range(len(variables)):
+    value = value.substituteVariable(x.bindings[i].variable, variables[i])
+  return value
 
 class Composite(Endofunctor):
   # if right is covariant, self will represent (left o right)

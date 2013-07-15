@@ -106,7 +106,11 @@ proof = proof.forwardFollow(lambda p:
       common_formulas.forwardInductionOnIExists(x, 0)))
 
 proof = proof.forwardFollow(lambda p:
-    p.advanceAll([None, None, 0, None, 1]))
+    p.advanceAll([None, None, 0, None, 1, None]))
+
+proof = proof.forwardFollow(lambda p:
+    p.onFormulaAndEndofunctorFollow(lambda x, e:
+      e.instantiateInOrder(variables = [natural.zero, natural.zero], x = x)))
 
 def f(e, x):
   print "Class = ", x.__class__

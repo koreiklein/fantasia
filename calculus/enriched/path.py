@@ -62,6 +62,13 @@ class Path:
     return newArrow(src = self,
         tgt = Path(formula = formula, endofunctor = self.endofunctor),
         basicArrow = self.endofunctor.translate().onArrow(enrichedArrow.translate()))
+
+  def onFormulaAndEndofunctorFollow(self, f):
+    enrichedArrow, newFormula = f(self.formula, self.endofunctor)
+    return Arrow(src = self,
+        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
+        enrichedArrow = enrichedArrow)
+
   def onPathFollow(self, f):
     return self.onPath(f(self.bottom()))
 
