@@ -100,15 +100,20 @@ proof = proof.forwardFollow(lambda p:
         p.advance())))
 
 
-def g(p):
-  return p.onPathFollow(lambda x:
-      common_formulas.forwardInductionOnIExists(x, 0))
 
 proof = proof.forwardFollow(lambda p:
-    g(p))
+    p.onPathFollow(lambda x:
+      common_formulas.forwardInductionOnIExists(x, 0)))
 
-def f(x):
+proof = proof.forwardFollow(lambda p:
+    p.advanceAll([None, None, 0, None, 1]))
+
+def f(e, x):
+  print "Class = ", x.__class__
+  print "Covariant" if e.covariant() else "Contravariant"
+  print x.top_level_render()._backend
+  print '==========================================================='
   return x.identity()
 
 proof = proof.forwardFollow(lambda p:
-    p.onPathFollow(lambda x: f(x)))
+    p.onPathFollow(lambda x: f(p.endofunctor, x)))

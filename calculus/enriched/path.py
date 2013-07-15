@@ -52,6 +52,8 @@ class Path:
     return self.formula
   def top(self):
     return self.endofunctor.onObject(self.formula)
+  def identity(self):
+    return newIdentityArrow(src = self, tgt = self)
   def onPath(self, enrichedArrow):
     if self.endofunctor.covariant():
       formula = enrichedArrow.tgt
@@ -67,12 +69,18 @@ class Path:
     return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
         p.advance(0))
 
-  def retreat(self):
-    if self.endofunctor.is_identity_functor(self.endofunctor):
-      raise Exception("Can't retreat any more.")
+  def retreat(self, n = None):
+    if n is None:
+      if self.endofunctor.is_identity_functor(self.endofunctor):
+        raise Exception("Can't retreat any more.")
+      else:
+        (a, b) = self.endofunctor.factor_left()
+        return Path(formula = a.onObject(self.formula), endofunctor = b)
     else:
-      (a, b) = self.endofunctor.factor_left()
-      return Path(formula = a.onObject(self.formula), endofunctor = b)
+      a = self.identity()
+      for i in range(n):
+        a = a.forwardFollow(lambda p: p.retreat())
+      return a
 
   def _factor_for_advance(self, index):
     if index is not None:
@@ -118,3 +126,9 @@ class Path:
     return newIdentityArrow(src = self,
         tgt = Path(formula = a, endofunctor = b.compose(self.endofunctor)))
 
+  def advanceAll(self, indices):
+    a = self.identity()
+    for index in indices:
+      a = a.forwardFollow(lambda p:
+          p.advance(index))
+    return a
