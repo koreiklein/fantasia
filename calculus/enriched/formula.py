@@ -47,6 +47,12 @@ class Formula:
   def compress(self):
     return self
 
+  def backwardUndoubleDual(self):
+    src = Not(Not(self))
+    return Arrow(tgt = self,
+        src = src,
+        basicArrow = src.translate().forwardUndoubleDual())
+
   def forwardAndTrue(self):
     values = [And([])]
     if self.is_and():
@@ -173,6 +179,12 @@ class Exists(Formula):
       assert(binding.variable not in a.freeVariables())
       assert(binding.variable not in b.freeVariables())
     return Exists(self.bindings, self.value.substituteVariable(a, b))
+  def substituteAllVariablesInBody(self, variables):
+    assert(len(self.bindings) == len(variables))
+    result = self.value
+    for i in range(len(self.bindings)):
+      result = result.substituteVariable(self.bindings[i].variable, variables[i])
+    return result
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Exists(bindings = self.bindings, value = arrow.tgt),
@@ -442,8 +454,8 @@ class Conjunction(Formula):
       dimension += 1
     if self.__class__ == Or:
       dimension += 1
-    other_dimension = primitives._dual_dimension(dimension)
     dimension = dimension % 2
+    other_dimension = primitives._dual_dimension(dimension)
 
     length = distances.min_unit_divider_length
     values = []

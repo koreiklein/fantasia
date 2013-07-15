@@ -3,7 +3,7 @@
 from misc import *
 import misc
 from calculus.variable import ApplySymbolVariable, ProductVariable, StringVariable, Variable
-from calculus.enriched import formula as formula
+from calculus.enriched import spec, formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basicEndofunctor
 from calculus.basic import bifunctor as basicBifunctor
@@ -73,7 +73,8 @@ class Endofunctor:
   # self must be contravariant
   # formula: an Exists formula.
   # variables: a list of variable in scope in self.
-  # return: an arrow that instantiates the exists formula with the given variables.
+  # return: a pair (arrow, value) such that arrow.tgt == self.onObject(value) and arrow instantiates the exists formula
+  #         with the given variables.
   def instantiateInOrder(self, variables, x):
     assert(not self.covariant())
     assert(x.__class__ == formula.Exists)
@@ -83,7 +84,6 @@ class Endofunctor:
     basicArrow = self.translate().exportRecursively(ins, x.translate())
     if not ins.complete():
       raise Exception("Instantiation did not complete.")
-    assert(ins.exports == 2)
     result = formula.Arrow(src = self.onObject(x),
         tgt = self.onObject(value),
         basicArrow = basicArrow)
@@ -105,6 +105,58 @@ class Endofunctor:
     result = formula.Arrow(src = self.onObject(x), tgt = self.onObject(newX),
         basicArrow = basicArrow)
     return result, newX
+
+  def importExactly(self, B):
+    assert(self.covariant())
+    return (lambda x:
+        formula.Arrow(src = self.onObject(x),
+          tgt = self.onObject(formula.And([B, x])),
+          basicArrow = self.translate().importExactly(B.translate())(x.translate())))
+
+  # self must be covariant
+  # variables: a list of variable in scope at self.
+  # f: a function from a list of variables bindings and a formula to a boolean.
+  # g: a function from a list of formulas to an index into that list.
+  # x: a formula
+  #
+  # search this endofunctor for claims at covariant spots of the form:
+  #  Forall(xs, Y) such that len(xs) == len(variables) and f(xs, Y) == True
+  # pass the list L of substituted formulas to g to get an index I, and return a pair
+  # (arrow, value) such that arrow imports and instantiates to get L[I]
+  # and self.onObject(value) == arrow.tgt
+  #   self -> L[i]
+  def importAbout(self, variables, f, g, x):
+    assert(self.covariant())
+    # TODO Improve performance once it becomes important.
+    class S(spec.SearchSpec):
+      def search_hidden_formula(self, name):
+        return True
+      def valid(self, e):
+        result = (e.__class__ == formula.Always
+            and e.value.__class__ == formula.Not
+            and e.value.value.__class__ == formula.Exists
+            and len(e.value.value.bindings) == len(variables)
+            and e.value.value.value.__class__ == formula.Not
+            and f(e.value.value.bindings, e.value.value.value.value))
+        return result
+    importable_claims = self.search(S())
+    xs = [ claim.value.value.substituteAllVariablesInBody(variables).value
+        for claim in importable_claims ]
+    index = g(xs)
+    claim = importable_claims[index]
+    substituted_claim = xs[index]
+
+    import_arrow = self.importExactly(claim)(x)
+    larger_functor = not_functor.compose(always_functor).compose(And(index = 0, values = [x])).compose(self)
+    instantiate_arrow, also_substituted_claim = larger_functor.instantiateInOrder(variables, claim.value.value)
+    assert(substituted_claim.translate() == also_substituted_claim.value.translate())
+    B = formula.Always(formula.Not(formula.Not(substituted_claim)))
+    return import_arrow.forwardCompose(instantiate_arrow), formula.And([B, x])
+
+  def importAboutNegating(self, variables, f, g, x):
+    assert(not self.covariant())
+    arrow, value = not_functor.compose(self).importAbout(variables, f, g, formula.Not(x))
+    return self.onArrow(x.backwardUndoubleDual()).forwardCompose(arrow), formula.Not(value)
 
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)

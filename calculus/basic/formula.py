@@ -135,7 +135,7 @@ class Exists(Formula):
                                    AndPastExists(src = And(B, self), tgt = x).invert()), X)
             for a, X in self.value.produceFiltered(f)
             for B in [a.tgt.left]
-            if self.variable not in B.freeVariables]
+            if self.variable not in B.freeVariables()]
 
   def forwardOnBody(self, arrow):
     assert(isinstance(arrow, Arrow))
@@ -866,7 +866,7 @@ class Composite(Arrow):
       raise Exception(("Invalid composite.\n"
         "left %s\nright %s\nleft.src = %s\n"
         "left.tgt =%s\nright.src =%s\nright.tgt = %s\n"
-          )%(self.left, self.right, self.left.src, self.left.tgt, self.right.src, self.right.tgt))
+          )%(self.left.compress(), self.right.compress(), self.left.src, self.left.tgt, self.right.src, self.right.tgt))
 
   # May throw an exception.
   def invert(self):

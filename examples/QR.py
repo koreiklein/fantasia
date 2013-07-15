@@ -109,6 +109,16 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.advanceAll([0]))
 
+def G(xs):
+  return 0
+
+proof = proof.forwardFollow(lambda p:
+    p.onFormulaAndEndofunctorFollow(lambda x, e:
+      e.importAboutNegating(variables = [b],
+        f = lambda bindings, value: natural.natural_less in value.translate().freeVariables(),
+        g = G,
+        x = x)))
+
 def f(e, x):
   print "Class = ", x.__class__
   print "Covariant" if e.covariant() else "Contravariant"

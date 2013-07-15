@@ -43,35 +43,36 @@ successorIsFunction = function.IsFunction(S)
 
 a = common_vars.a()
 b = common_vars.b()
-successorIsGreater = ForallNatural([a], Less(a, constructors.S(a)))
+successorIsGreater = constructors.Always(ForallNatural([a], Less(a, constructors.S(a))))
 
 zero = common_vars.zero
 zeroNatural = Natural(zero)
 
 a = common_vars.a()
-zeroOrLess = ForallNatural([a],
-    constructors.Or([Identical(zero, a), Less(zero, a)]))
+zeroOrLess = constructors.Always(ForallNatural([a],
+    constructors.Or([Identical(zero, a), Less(zero, a)])))
 
 n = common_vars.n()
 m = common_vars.m()
-zeroFirst = ForallNatural([n], constructors.Not(Identical(zero, constructors.S(n))))
+zeroFirst = constructors.Always(ForallNatural([n],
+  constructors.Not(Identical(zero, constructors.S(n)))))
 
 a = common_vars.a()
 b = common_vars.b()
 c = common_vars.c()
-transitivity = ForallNatural([a, b, c],
+transitivity = constructors.Always(ForallNatural([a, b, c],
     constructors.Implies([ Less(a, b), Less(b, c) ],
-      Less(a, c)))
+      Less(a, c))))
 
 a = common_vars.a()
 b = common_vars.b()
-trichotomy = ForallNatural([a, b],
-    constructors.Or([ Less(a, b), Identical(a, b), Less(b, a) ]))
+trichotomy = constructors.Always(ForallNatural([a, b],
+    constructors.Or([ Less(a, b), Identical(a, b), Less(b, a) ])))
 
 a = common_vars.a()
 z = common_vars.z()
-discrete = ForallNatural([a, z],
-    constructors.Not(constructors.And([Less(a, z), Less(z, constructors.S(a))])))
+discrete = constructors.Always(ForallNatural([a, z],
+    constructors.Not(constructors.And([Less(a, z), Less(z, constructors.S(a))]))))
 
 
 allClaims = [ naturalIsEquivalence
