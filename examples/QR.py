@@ -107,8 +107,7 @@ proof = proof.forwardFollow(lambda p:
       e.instantiateInOrder(variables = [natural.zero, natural.zero], x = x)))
 
 proof = proof.forwardFollow(lambda p:
-    p.onFormulaAndEndofunctorFollow(lambda x, e:
-      e.exportAutomaticallFromAnd(x)))
+    p.advanceAll([0]))
 
 def f(e, x):
   print "Class = ", x.__class__
