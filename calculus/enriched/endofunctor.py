@@ -87,7 +87,24 @@ class Endofunctor:
     result = formula.Arrow(src = self.onObject(x),
         tgt = self.onObject(value),
         basicArrow = basicArrow)
-    return (result, value)
+    return result, value
+
+  def exportAutomaticallFromAnd(self, x):
+    assert(not self.covariant())
+    def try_export(y):
+      if y.__class__ == basicFormula.Always:
+        return y.value.__class__ == basicFormula.Holds
+      else:
+        return y.__class__ == basicFormula.Holds
+    xs, basicArrow = self.translate().exportNestedAnd(x.translate(), len(x.values), try_export)
+    newValues = []
+    for i in range(len(x.values)):
+      if xs[i] == False:
+        newValues.append(x.values[i])
+    newX = formula.And(newValues)
+    result = formula.Arrow(src = self.onObject(x), tgt = self.onObject(newX),
+        basicArrow = basicArrow)
+    return result, newX
 
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)

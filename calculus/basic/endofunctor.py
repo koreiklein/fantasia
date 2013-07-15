@@ -107,23 +107,32 @@ class Endofunctor:
       assert(B == formula)
       return nt
 
-  # self must be contravariant()
-  # formula: a formula
+  # self must be contravariant
+  # B: a formula
   # return: a a natural transform (B|.) o self -> self
   #    or raise an UnimportableException if no such natural transform exists.
-  def exportExactly(self, formula):
+  def exportExactly(self, B):
     def f(x):
-      if x == formula:
+      if x == B:
         return ['dummy']
       else:
         return []
     result = self.exportFiltered(f)
     if len(result) == 0:
-      raise UnimportableException(formula = formula, endofunctor = self)
+      raise UnimportableException(formula = B, endofunctor = self)
     else:
-      (B, nt, y) = result[0]
-      assert(B == formula)
+      (also_B, nt, y) = result[0]
+      assert(also_B == B)
       return nt
+
+  # self must be contravariant
+  # x: a formula
+  # return: an arrow self.onObject(x) --> self.onObject(true)
+  #         or raise an UnimportableException if no such arrow exists.
+  def exportBottom(self, x):
+    # x F --> (x|1) F == 1 (x|.) o F --> 1 F
+    return self.onArrow(x.backwardIntroUnitLeft()).forwardCompose(
+        self.exportExactly(x)(formula.true))
 
   def exportLeft(self, x):
     assert(not self.covariant())
@@ -155,7 +164,7 @@ class Endofunctor:
       try:
         v = instantiator.instantiate(x.variable, self, x.value)
       except FinishedInstantiatingException:
-        return self.onArrow(x.identity())
+        return self.onObject(x).identity()
       arrow = x.backwardIntroExists(v)
       return self.onArrow(arrow).forwardCompose(
           self.exportRecursively(instantiator, arrow.src))
@@ -163,11 +172,52 @@ class Endofunctor:
       try:
         side = instantiator.exportSide(x, self)
       except FinishedInstantiatingException:
-        return self.onArrow(x.identity())
+        return self.onObject(x).identity()
       return self.exportSide(side, x).forwardCompose(
           self.exportRecursively(instantiator, x.getOtherSide(side)))
     else:
-      return self.onArrow(x.identity())
+      return self.onObject(x).identity()
+
+  # x: a nested And formula of the form (A|(B|(C|(D|E))))
+  # limit: an integer which is less than or equal to the depth of the nesting.
+  # f: a boolean valued function on formulas
+  # return: a pair (xs, a) where a is an arrow which exports certain of the claims A, B, C, D, E
+  #         where xs is a list of booleans indicating which claims were exported, and where len(xs) <= limit.
+  #         A claim c is exported iff f(c) == True and it is exportable.
+  def exportNestedAnd(self, x, limit, f):
+    assert(not self.covariant())
+    if limit == 0:
+      return [], self.onObject(x).identity()
+    else:
+      if limit > 1:
+        assert(x.__class__ == formula.And)
+        b = f(x.left)
+        try:
+          if b:
+            arrow = self.exportLeft(x)
+          else:
+            raise UnimportableException(x, self)
+        except UnimportableException:
+          larger_functor = And(side = right, other = x.left).compose(self)
+          xs, rest_arrow = larger_functor.exportNestedAnd(x.right, limit-1, f)
+          ys = [False]
+          ys.extend(xs)
+          return ys, rest_arrow
+        xs, rest_arrow = self.exportNestedAnd(x.right, limit-1, f)
+        ys = [True]
+        ys.extend(xs)
+        return ys, arrow.forwardCompose(rest_arrow)
+      else:
+        assert(limit == 1)
+        b = f(x)
+        try:
+          if b:
+            arrow = self.exportBottom(x)
+          else:
+            raise UnimportableException(x, self)
+        except UnimportableException:
+          return [False], self.onObject(x).identity()
+        return [True], arrow
 
 class Exists(Endofunctor):
   def __init__(self, variable):
