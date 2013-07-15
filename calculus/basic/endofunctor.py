@@ -106,6 +106,35 @@ class Endofunctor:
       assert(B == formula)
       return nt
 
+  # self must be contravariant()
+  # formula: a formula
+  # return: a a natural transform (B|.) o self -> self
+  #    or raise an UnimportableException if no such natural transform exists.
+  def exportExactly(self, formula):
+    def f(x):
+      if x == formula:
+        return ['dummy']
+      else:
+        return []
+      result = self.exportFiltered(f)
+      if len(result) == 0:
+        raise UnimportableException(formula = formula, endofunctor = self)
+      else:
+        (B, nt, y) = result[0]
+        assert(B == formula)
+        return nt
+
+  def exportLeft(self, x):
+    assert(self.covariant())
+    assert(x.__class__ == formula.And)
+    return self.exportExactly(x)(x.right)
+
+  def exportRight(self, x):
+    assert(not self.covariant())
+    assert(x.__class__ == formula.And)
+    return self.onArrow(x.backwardCommute()).forwardCompose(
+        self.exportLeft(formula.And(x.right, x.left)))
+
 class Exists(Endofunctor):
   def __init__(self, variable):
     self.variable = variable
