@@ -16,7 +16,7 @@ class UnimportableException(Exception):
     self.formula = formula
     self.endofunctor = endofunctor
   def __str__(self):
-    return "UnimportableException: can import %s from %s"%(self.formula, self.endofunctor)
+    return "UnimportableException: can't import %s from %s"%(self.formula, self.endofunctor)
 
 class Endofunctor:
   def variables(self):

@@ -917,7 +917,7 @@ class Admit(Arrow):
   def arrowTitle(self):
     return "Admit"
   def validate(self):
-    assert(self.src.__class__ == Or)
+    assert(self.tgt.__class__ == Or)
     assert(self.src in [self.tgt.left, self.tgt.right])
 
 class Commute(Isomorphism):

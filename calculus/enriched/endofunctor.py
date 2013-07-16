@@ -80,7 +80,7 @@ class Endofunctor:
     assert(x.__class__ == formula.Exists)
     assert(len(variables) == len(x.bindings))
     value = fully_substituted(variables, x)
-    ins = instantiator.InOrderInstantiator(variables)
+    ins = InOrderInstantiator(variables)
     basicArrow = self.translate().exportRecursively(ins, x.translate())
     if not ins.complete():
       raise Exception("Instantiation did not complete.")
@@ -494,4 +494,69 @@ class WellDefinedFunctor(Endofunctor):
     return True
   def translate(self):
     return self.expanded
+
+def same_structure(x, y):
+  if x.__class__ == formula.Always:
+    return y.__class__ == formula.Always and same_structure(x.value, y.value)
+  elif x.__class__ == formula.Not:
+    return y.__class__ == formula.Not and same_structure(x.value, y.value)
+  elif isinstance(x, formula.Conjunction):
+    return (y.__class__ == x.__class__
+        and len(x.values) == len(y.values)
+        and all([same_structure(x.values[i], x.values[i]) for i in range(len(x.values))]))
+  elif x.__class__ == formula.Identical:
+    return y.__class__ == formula.Identical
+  elif x.__class__ == formula.Holds:
+    return y.__class__ == formula.Holds
+  else:
+    return False
+
+class DefinitionSearchSpec(spec.SearchSpec):
+  def __init__(self, x):
+    self.x = x
+  def valid(self, y):
+    if y.__class__ == formula.Always:
+      if y.value.__class__ == formula.Not:
+        if y.value.value.__class__ == formula.Exists:
+          if y.value.value.value.__class__ == formula.Not:
+            body = y.value.value.value.value
+            if body.__class__ == formula.Iff:
+              left = body.left
+              if same_structure(left, self.x):
+                return True
+    return False
+  def definitons_only(self):
+    return True
+  def search_hidden_formula(self, name):
+    return True
+
+# Statefull.
+class InOrderInstantiator(instantiator.Instantiator):
+  def __init__(self, variables):
+    self.variables = variables
+    self.i = 0
+    self.just_exported = False
+    self.exports = 0
+
+  def complete(self):
+    return self.i == len(self.variables)
+
+  # May throw FinishedInstantiatingException
+  def instantiate(self, variable, endofunctor, formula):
+    if self.complete():
+      raise instantiator.FinishedInstantiatingException()
+    else:
+      result = self.variables[self.i]
+      self.i += 1
+      self.just_exported = False
+      return result
+
+  # May throw FinishedInstantiatingException
+  def exportSide(self, formula, endofunctor):
+    if self.just_exported:
+      raise instantiator.FinishedInstantiatingException()
+    else:
+      self.just_exported = True
+      self.exports += 1
+      return left
 

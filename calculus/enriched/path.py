@@ -80,6 +80,10 @@ class Path:
     return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
         p.advance(0))
 
+  def retreatTotally(self):
+    return newIdentityArrow(src = self,
+        tgt = Path(formula = self.top(), endofunctor = endofunctor.identity_functor))
+
   def retreat(self, n = None):
     if n is None:
       (a, b) = self.endofunctor.factor_left()
@@ -158,6 +162,16 @@ class Path:
   def heavySimplifyWithinAndAtop(self, index = None):
     return self.heavySimplifyWithin(index).forwardFollow(lambda p:
         p.simplifyBottom())
+
+  def importAboutNegating(self, variables, f, g):
+    return self.onFormulaAndEndofunctorFollow(lambda x, e:
+        e.importAboutNegating(variables = variables,
+          f = f, g = g, x = self.bottom()))
+
+  def importAbout(self, variables, f, g):
+    return self.onFormulaAndEndofunctorFollow(lambda x, e:
+        e.importAbout(variables = variables,
+          f = f, g = g, x = self.bottom()))
 
   def maybeExportBottom(self):
     if self.covariant():

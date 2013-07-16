@@ -10,6 +10,8 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 from ui.stack import stack
 from ui.render.text import primitives, distances, colors
 
+from sets import Set
+
 class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
@@ -36,6 +38,9 @@ class Formula:
     return primitives.newTextStack(colors.genericColor, repr(self))
 
   def substituteVariable(self, a, b):
+    raise Exception("Abstract superclass.")
+
+  def applied_variables(self):
     raise Exception("Abstract superclass.")
 
   def updateVariables(self):
@@ -79,6 +84,11 @@ class Arrow:
   def translate(self):
     return self.basicArrow
 
+  def compress(self):
+    return Arrow(src = self.src,
+        tgt = self.tgt,
+        basicArrow = self.basicArrow.compress())
+
   def invert(self):
     return Arrow(src = self.tgt, tgt = self.src, basicArrow = self.basicArrow.invert())
 
@@ -100,6 +110,9 @@ class Holds(Formula):
   def __init__(self, held, holding):
     self.held = held
     self.holding = holding
+
+  def applied_variables(self):
+    return self.held.applied_variables().union(self.holding.applied_variables())
 
   def __repr__(self):
     return "%s : %s"%(self.held, self.holding)
@@ -136,6 +149,9 @@ def _isUnit(x):
 class Not(Formula):
   def __init__(self, value):
     self.value = value
+
+  def applied_variables(self):
+    return self.value.applied_variables()
 
   def forwardSimplify(self):
     arrow = self.value.backwardSimplify()
@@ -207,6 +223,10 @@ class Exists(Formula):
   def __init__(self, bindings, value):
     self.bindings = bindings
     self.value = value
+
+  def applied_variables(self):
+    return self.value.applied_variables()
+
   def substituteVariable(self, a, b):
     for binding in self.bindings:
       assert(binding.variable not in a.freeVariables())
@@ -297,6 +317,8 @@ class Exists(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+  def applied_variables(self):
+    return self.value.applied_variables()
   def search(self, spec):
     result = []
     if spec.valid(self):
@@ -405,7 +427,11 @@ class Conjunction(Formula):
   def translate(self):
     return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
         values = [value.translate() for value in self.values])
-
+  def applied_variables(self):
+    result = Set([])
+    for value in self.values:
+      result.union_update(value.applied_variables())
+    return result
   def forwardSimplify(self):
     if len(self.values) == 0:
       return self.identity()
@@ -604,6 +630,11 @@ class Or(Conjunction):
   def renderDivider(self, covariant, length):
     return primitives.orDivider(covariant)(length)
 
+  def backwardAdmitRight(self):
+    assert(len(self.values) == 2)
+    return Arrow(tgt = self, src = self.values[0],
+        basicArrow = self.translate().backwardAdmitRight())
+
   def basicUnit(self):
     return basicFormula.false
 
@@ -631,6 +662,8 @@ class Iff(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def applied_variables(self):
+    return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
     return "Iff(\n%s\n<==>\n%s\n)"%(self.left, self.right)
   def translate(self):
@@ -642,6 +675,16 @@ class Iff(Formula):
     return Iff(left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
 
+  def forwardLeftToRight(self):
+    return Arrow(src = self,
+        tgt = Always(Not(And([self.left, Not(self.right)]))),
+        basicArrow = self.translate().forwardForgetRight())
+
+  def forwardRightToLeft(self):
+    return Arrow(src = self,
+        tgt = Always(Not(And([self.right, Not(self.left)]))),
+        basicArrow = self.translate().forwardForgetLeft())
+
   def render(self, context):
     kid_context = context.as_covariant()
     res = self.left.render(kid_context).stack(0,
@@ -652,12 +695,15 @@ class Iff(Formula):
     if context.covariant:
       return res
     else:
-      return renderNotWithSymbol(res)
+      return primitives.surroundWithNot(res)
 
 class Hidden(Formula):
   def __init__(self, base, name):
     self.base = base
     self.name = name
+
+  def applied_variables(self):
+    return self.base.applied_variables()
 
   def search(self, spec):
     if spec.search_hidden_formula(self.name):
@@ -678,6 +724,8 @@ class Identical(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def applied_variables(self):
+    return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
     return "%s = %s"%(self.left, self.right)
   def translate(self):

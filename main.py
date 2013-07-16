@@ -1,5 +1,9 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from sys import setrecursionlimit
+
+setrecursionlimit(50000000)
+
 from ui.run.text import static
 from lib import natural, equivalence, common_vars
 from examples import QR
@@ -9,11 +13,8 @@ from calculus.enriched.formula import RenderingContext
 
 import profile
 
-from sys import setrecursionlimit
-
 #from examples.easy_induction import arrow as arrow
 
-setrecursionlimit(50000000)
 
 
 #static.run(natural.lib.beginProof())

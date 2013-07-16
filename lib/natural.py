@@ -48,6 +48,8 @@ successorIsGreater = constructors.Always(ForallNatural([a], Less(a, constructors
 zero = common_vars.zero
 zeroNatural = Natural(zero)
 
+zero_is_zero = constructors.Always(constructors.Identical(zero, zero))
+
 a = common_vars.a()
 zeroOrLess = constructors.Always(ForallNatural([a],
     constructors.Or([constructors.Always(Identical(zero, a)), Less(zero, a)])))
@@ -78,6 +80,7 @@ discrete = constructors.Always(ForallNatural([a, z],
 allClaims = [ naturalIsEquivalence
             , successorIsFunction
             , zeroNatural
+            , zero_is_zero
             , zeroFirst
             , zeroOrLess
             , successorIsGreater

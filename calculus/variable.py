@@ -12,6 +12,8 @@ class GeneralizedVariable:
     return self
   def render(self):
     raise Exception("Abstract superclass.")
+  def applied_variables(self):
+    raise Exception("Abstract superclass.")
   def relatedVariable(self):
     return StringVariable('z')
 
@@ -34,6 +36,9 @@ class Variable(GeneralizedVariable):
     return not(self == other)
   def __hash__(self):
     return hash(self._id)
+
+  def applied_variables(self):
+    return Set([])
 
   def __repr__(self):
     return "<abstract variable %s>"%(self._id,)
@@ -94,6 +99,11 @@ class ApplySymbolVariable(GeneralizedVariable):
     return (other.__class__ == ApplySymbolVariable
         and self.variable == other.variable
         and self.symbol == other.symbol)
+  def applied_variables(self):
+    if isinstance(self.symbol, Variable):
+      return Set([self.symbol]).union(self.variable.applied_variables())
+    else:
+      return self.variable.applied_variables()
   def __ne__(self, other):
     return not (self == other)
   def __repr__(self):
@@ -129,6 +139,12 @@ def colors_for_symbol(symbol):
 class ProductVariable(GeneralizedVariable):
   def __init__(self, symbol_variable_pairs):
     self.symbol_variable_pairs = symbol_variable_pairs
+
+  def applied_variables(self):
+    result = Set([])
+    for symbol, variable in self.symbol_variable_pairs:
+      result.union_update(variable.applied_variables())
+    return result
 
   def __eq__(self, other):
     return (other.__class__ == ProductVariable
