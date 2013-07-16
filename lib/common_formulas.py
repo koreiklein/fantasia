@@ -61,8 +61,6 @@ def forwardImportInductionAndContradict(x, var, claim):
   assert(x.__class__ == formula.Exists)
   hypotheses = InductionHypotheses(var, claim)
   conclusion = InductionConclusion(var, claim)
-  def h(x):
-    raise Exception("HAHAHA %s"%(x,))
   return constructors.assume(x, hypotheses).forwardFollow(lambda x:
       formula.Arrow(src = x, tgt = constructors.Not(hypotheses),
         basicArrow = x.translate().forwardOnNotFollow(lambda x:
@@ -77,7 +75,7 @@ def forwardImportInductionAndContradict(x, var, claim):
                           x.forwardDoubleDual())))).forwardFollow(lambda x:
                             x.forwardContradict())))).backwardFollow(lambda x:
                               x.backwardOnRightFollow(lambda x:
-                                x.backwardNotFalseIsTrue()).backwardFollow(lambda x:
+                                basicFormula.trueIsNotFalse).backwardFollow(lambda x:
                                   x.backwardIntroUnitLeft())))))
 
 def forwardInductionOnIExists(x, i):

@@ -37,8 +37,6 @@ z = lambda: StringVariable('z')
 
 R = lambda: StringVariable('R')
 
-less = lambda: StringVariable('<')
-
 equivalence = StringVariable('equivalence')
 
 function = StringVariable('function')

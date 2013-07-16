@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus.enriched import formula, endofunctor
+from calculus.basic import endofunctor as basicEndofunctor
 
 class Arrow:
   def __init__(self, src, tgt, enrichedArrow):
@@ -72,17 +73,18 @@ class Path:
   def onPathFollow(self, f):
     return self.onPath(f(self.bottom()))
 
+  def covariant(self):
+    return self.endofunctor.covariant()
+
   def forwardAndTrue(self):
     return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
         p.advance(0))
 
   def retreat(self, n = None):
     if n is None:
-      if self.endofunctor.is_identity_functor(self.endofunctor):
-        raise Exception("Can't retreat any more.")
-      else:
-        (a, b) = self.endofunctor.factor_left()
-        return Path(formula = a.onObject(self.formula), endofunctor = b)
+      (a, b) = self.endofunctor.factor_left()
+      return newIdentityArrow(src = self,
+          tgt = Path(formula = a.onObject(self.formula), endofunctor = b))
     else:
       a = self.identity()
       for i in range(n):
@@ -139,3 +141,71 @@ class Path:
       a = a.forwardFollow(lambda p:
           p.advance(index))
     return a
+
+  def simplifyBottom(self):
+    if self.covariant():
+      return self.onPathFollow(lambda x:
+          x.forwardSimplify())
+    else:
+      return self.onPathFollow(lambda x:
+          x.backwardSimplify())
+
+  def heavySimplifyWithin(self, index = None):
+    return self.advance(index).forwardFollow(lambda p:
+        p.heavySimplify().forwardFollow(lambda p:
+          p.retreat()))
+
+  def heavySimplifyWithinAndAtop(self, index = None):
+    return self.heavySimplifyWithin(index).forwardFollow(lambda p:
+        p.simplifyBottom())
+
+  def maybeExportBottom(self):
+    if self.covariant():
+      try:
+        basicArrow = self.endofunctor.translate().contradictBottomCovariant(self.bottom().translate())
+      except basicEndofunctor.UnimportableException:
+        return self.identity()
+      return Arrow(src = self,
+          tgt = Path(endofunctor = self.endofunctor, formula = formula.Or([])),
+          basicArrow = basicArrow)
+    else:
+      try:
+        basicArrow = self.endofunctor.translate().exportBottom(self.bottom().translate())
+      except basicEndofunctor.UnimportableException:
+        return self.identity()
+      return newArrow(src = self,
+          tgt = Path(endofunctor = self.endofunctor, formula = formula.And([])),
+          basicArrow = basicArrow)
+
+  def heavySimplify(self):
+    if self.bottom().__class__ == formula.Not:
+      return self.heavySimplifyWithinAndAtop()
+    elif self.bottom().__class__ == formula.Always:
+      if self.bottom().value.__class__ == formula.Holds or self.bottom().value.__class__ == formula.Identical:
+        return self.maybeExportBottom()
+      else:
+        return self.heavySimplifyWithinAndAtop()
+    elif self.bottom().__class__ == formula.Holds or self.bottom().__class__ == formula.Identical:
+      return self.maybeExportBottom()
+    elif self.bottom().__class__ == formula.Exists:
+      return self.heavySimplifyWithinAndAtop()
+    elif isinstance(self.bottom(), formula.Conjunction):
+      return self.heavySimplifyConjunction(0).forwardFollow(lambda p:
+          p.simplifyBottom())
+    else:
+      raise Exception("Unrecognized formula of class %s"%(self.bottom().__class__,))
+
+  # self.bottom() must be a Conjunction instance.
+  # i: an index into self.bottom().values.
+  # assume that all self.bottom().values[:i] are simplified already.
+  # return: a path arrow simplifying the remaining values of the conjunction.
+  #         ( but not the conjunction itself )
+  def heavySimplifyConjunction(self, i):
+    assert(isinstance(self.bottom(), formula.Conjunction))
+    if i == len(self.bottom().values):
+      return self.identity()
+    else:
+      return self.heavySimplifyWithin(i).forwardFollow(lambda p:
+          p.heavySimplifyConjunction(i+1))
+
+

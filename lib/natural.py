@@ -50,12 +50,12 @@ zeroNatural = Natural(zero)
 
 a = common_vars.a()
 zeroOrLess = constructors.Always(ForallNatural([a],
-    constructors.Or([Identical(zero, a), Less(zero, a)])))
+    constructors.Or([constructors.Always(Identical(zero, a)), Less(zero, a)])))
 
 n = common_vars.n()
 m = common_vars.m()
 zeroFirst = constructors.Always(ForallNatural([n],
-  constructors.Not(Identical(zero, constructors.S(n)))))
+  constructors.Not(constructors.Always(Identical(zero, constructors.S(n))))))
 
 a = common_vars.a()
 b = common_vars.b()
@@ -67,7 +67,7 @@ transitivity = constructors.Always(ForallNatural([a, b, c],
 a = common_vars.a()
 b = common_vars.b()
 trichotomy = constructors.Always(ForallNatural([a, b],
-    constructors.Or([ Less(a, b), Identical(a, b), Less(b, a) ])))
+    constructors.Or([ Less(a, b), constructors.Always(Identical(a, b)), Less(b, a) ])))
 
 a = common_vars.a()
 z = common_vars.z()

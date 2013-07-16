@@ -109,19 +109,44 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.advanceAll([0]))
 
-def G(xs):
-  return 0
-
 proof = proof.forwardFollow(lambda p:
     p.onFormulaAndEndofunctorFollow(lambda x, e:
       e.importAboutNegating(variables = [b],
         f = lambda bindings, value: natural.natural_less in value.translate().freeVariables(),
-        g = G,
+        g = lambda xs: 0,
         x = x)))
+
+proof = proof.forwardFollow(lambda p:
+    p.advanceAll([None, 0]))
+
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      x.forwardSimplify()))
+
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      x.forwardUnalways()))
+
+proof = proof.forwardFollow(lambda p:
+    p.retreat())
+
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x:
+      x.forwardDistributePairOther()))
+
+proof = proof.forwardFollow(lambda p:
+    p.heavySimplify())
+
+proof = proof.forwardFollow(lambda p:
+    p.advance(1))
+
+proof = proof.forwardFollow(lambda p:
+    p.maybeExportBottom())
 
 def f(e, x):
   print "Class = ", x.__class__
   print "Covariant" if e.covariant() else "Contravariant"
+  print x
   print x.top_level_render()._backend
   print '==========================================================='
   return x.identity()

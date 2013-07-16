@@ -46,7 +46,7 @@ def Implies(predicates, consequent):
   return Not(And(values))
 
 def Equal(a, b):
-  return formula.Identical(a, b)
+  return formula.Always(formula.Identical(a, b))
 
 def S(a):
   return variable.ApplySymbolVariable(a, common_vars.S)

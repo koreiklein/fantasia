@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
+# Cwpyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from misc import left, right
 from calculus import symbol
@@ -63,6 +63,10 @@ class Formula:
 
   def forwardHide(self, name):
     return Hide(src = self, tgt = Hidden(self, name))
+
+  def forwardCollapse(self):
+    return self.forwardAndTrue().forwardFollow(lambda x:
+        x.forwardForgetRight())
 
   def identity(self):
     return Id(src = self, tgt = self)
@@ -387,7 +391,7 @@ class And(Conjunction):
         x.forwardOnNotFollow(lambda x:
           x.backwardForgetRight(true))).forwardFollow(lambda x:
               x.forwardApply()).forwardFollow(lambda x:
-                  x.forwardNotTrueIsFalse())
+                  notTrueIsFalse)
 
   def forwardZip(self):
     # !A | !B --> !(A|B)
@@ -450,18 +454,18 @@ class Or(Conjunction):
 
   def simplifyOnce(self):
     if self.left == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.right)
+      return UnitIdentity(tgt = self, src = self.right).invert()
     elif self.right == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.left)
+      return UnitIdentity(tgt = self, src = self.left).invert()
     else:
       raise Exception("Can't simplify once.")
 
   def simplify(self):
     if self.left == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.right).forwardFollow(lambda x:
+      return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
           x.simplify())
     elif self.right == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.left).forwardFollow(lambda x:
+      return UnitIdentity(tgt = self, src = self.left).invert().forwardFollow(lambda x:
           x.simplify())
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
@@ -499,11 +503,6 @@ class Not(Formula):
   def __init__(self, value, rendered = False):
     self.value = value
     self.rendered = rendered
-
-  def forwardNotTrueIsFalse(self):
-    return NotTrueIsFalse(src = self, tgt = false)
-  def backwardNotFalseIsTrue(self):
-    return NotFalseIsTrue(src = self, tgt = true).invert()
 
   def simplify(self):
     return self.forwardOnNot(self.value.simplify().invert())
@@ -1083,11 +1082,16 @@ class NotTrueIsFalse(Isomorphism):
 # ~0 <--> 1
 class NotFalseIsTrue(Isomorphism):
   def arrowTitle(self):
-    return "NotTrueIsFalse"
+    return "NotFalseIsTrue"
   def validate(self):
     assert(self.tgt == true)
     assert(self.src.__class__ == Not)
     assert(self.src.value == false)
+
+notTrueIsFalse = NotTrueIsFalse(src = Not(true), tgt = false)
+falseIsNotTrue = notTrueIsFalse.invert()
+notFalseIsTrue = NotFalseIsTrue(src = Not(false), tgt = true)
+trueIsNotFalse = notFalseIsTrue.invert()
 
 # a === b | A --> A.substituteVariable(a, b)
 # a === b | A --> A.substituteVariable(b, a)

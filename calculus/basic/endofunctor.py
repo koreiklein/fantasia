@@ -93,18 +93,18 @@ class Endofunctor:
   # formula: a formula
   # return: a a natural transform self -> (B|.) o self
   #    or raise an UnimportableException if no such natural transform exists.
-  def importExactly(self, formula):
+  def importExactly(self, e):
     def f(x):
-      if x == formula:
+      if x == e:
         return ['dummy']
       else:
         return []
     result = self.importFiltered(f)
     if len(result) == 0:
-      raise UnimportableException(formula = formula, endofunctor = self)
+      raise UnimportableException(formula = e, endofunctor = self)
     else:
       (B, nt, y) = result[0]
-      assert(B == formula)
+      assert(B == e)
       return nt
 
   # self must be contravariant
@@ -130,9 +130,21 @@ class Endofunctor:
   # return: an arrow self.onObject(x) --> self.onObject(true)
   #         or raise an UnimportableException if no such arrow exists.
   def exportBottom(self, x):
+    assert(not self.covariant())
     # x F --> (x|1) F == 1 (x|.) o F --> 1 F
-    return self.onArrow(x.backwardIntroUnitLeft()).forwardCompose(
+    return self.onArrow(x.backwardForgetRight(formula.true)).forwardCompose(
         self.exportExactly(x)(formula.true))
+
+  # self must be covariant
+  # x: a formula
+  # return: an arrow self.onObject(x) --> self.onObject(false)
+  #         or raise an UnimportableException if no such arrow exists.
+  def contradictBottomCovariant(self, x):
+    assert(self.covariant())
+    # x F --> ((~x) | x) F --> (x | (~x)) F --> - F
+    return self.importExactly(formula.Not(x))(x).forwardCompose(
+        F.onArrow(formula.And(formula.Not(x), x).forwardCommute().forwardFollow(lambda x:
+          x.forwardContradict())))
 
   def exportLeft(self, x):
     assert(not self.covariant())
