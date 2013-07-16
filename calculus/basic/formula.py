@@ -77,6 +77,8 @@ class Holds(Formula):
     self.holding = holding
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.holding == other.holding
         and self.held == other.held)
@@ -113,6 +115,8 @@ class Exists(Formula):
     return OnBody(self.variable, self.value.simplify())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     if self.__class__ != other.__class__:
       return False
     else:
@@ -223,6 +227,8 @@ class Conjunction(Formula):
     return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.left == other.left
         and self.right == other.right)
@@ -508,6 +514,8 @@ class Not(Formula):
     return self.forwardOnNot(self.value.simplify().invert())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
@@ -554,6 +562,7 @@ class Not(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+    self._equal_formulas = Set()
 
   def simplify(self):
     return self.forwardOnAlways(self.value.simplify())
@@ -576,6 +585,8 @@ class Always(Formula):
     return Copy(src = self, tgt = And(self.updateVariables(), self))
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
@@ -669,6 +680,8 @@ class Identical(Formula):
     self.left = left
     self.right = right
   def __eq__(self, other):
+    if self is other:
+      return True
     return other.__class__ == Identical and (
         (self.left == other.left and self.right == other.right)
         or (self.left == other.right and self.right == other.left))
@@ -728,6 +741,8 @@ class Arrow:
     raise Exception("The following arrow is not invertible: %s"%(self,))
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.src == other.src and self.tgt == other.tgt
   def __ne__(self, other):
     return not(self == other)
@@ -874,6 +889,8 @@ class Composite(Arrow):
     return Composite(left = self.right.invert(), right = self.left.invert())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.left == other.left
         and self.right == other.right)

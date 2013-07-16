@@ -107,7 +107,7 @@ claim = ForallNatural([a, b],
                                 , Equal(Plus(r, Times(q,b)), a)]))))
 
 lib = library.Library(claims = supplementals, variables = [plus, times], sub_libraries =[natural.lib], name = "+/*")
-if False:
+if True:
   proof = lib.beginProof()
 
   proof = proof.forwardFollow(lambda p:
@@ -218,7 +218,7 @@ if False:
       p.heavySimplify())
 
   save_filename = "/tmp/saved.proof"
-  sendProofToFile(proof, save_filename)
+  #sendProofToFile(proof, save_filename)
 else:
   save_filename = "/tmp/saved.proof"
   proof = readProofFromFile(save_filename)

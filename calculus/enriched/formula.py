@@ -14,6 +14,13 @@ from sets import Set
 
 class Formula:
   def translate(self):
+    if self.__dict__.has_key('_cached_translate'):
+      return self._cached_translate
+    else:
+      self._cached_translate = self._translate()
+      return self._cached_translate
+
+  def _translate(self):
     raise Exception("Abstract superclass.")
 
   def forwardGatherExistentials(self):
@@ -129,7 +136,7 @@ class Holds(Formula):
   def __repr__(self):
     return "%s : %s"%(self.held, self.holding)
 
-  def translate(self):
+  def _translate(self):
     return basicFormula.Holds(held = self.held,
         holding = self.holding)
 
@@ -222,7 +229,7 @@ class Not(Formula):
 
   def __repr__(self):
     return "~%s"%(self.value,)
-  def translate(self):
+  def _translate(self):
     return basicFormula.Not(self.value.translate())
   def render(self, context):
     return self.value.render(context.negate())
@@ -271,7 +278,7 @@ class Exists(Formula):
     for binding in self.bindings[::-1]:
       result = result.compose(binding.translate())
     return result
-  def translate(self):
+  def _translate(self):
     return self._endofunctor_translate().onObject(self.value.translate())
   def forwardSplit(self, i):
     return Arrow(src = self, tgt = Exists(bindings = self.bindings[:i],
@@ -381,7 +388,7 @@ class Always(Formula):
         basicArrow = self.translate().forwardUnalways())
   def __repr__(self):
     return "!%s"%(self.value,)
-  def translate(self):
+  def _translate(self):
     return basicFormula.Always(self.value.translate())
   def render(self, context):
     return renderWithBackground(self.value.render(context),
@@ -409,7 +416,7 @@ class WellDefined(Formula):
       newVariable = self.newVariable, equivalence = self.equivalence, value = arrow.src),
       tgt = self,
       basicArrow = self.getBasicFunctor().onArrow(arrow.basicArrow))
-  def translate(self):
+  def _translate(self):
     return self.getBasicFunctor().onObject(self.value.translate())
   def getBasicFunctor(self):
     return ExpandWellDefined(self.variable, self.newVariable,
@@ -449,7 +456,7 @@ class Conjunction(Formula):
     self.basicBinop = self.basicBinop()
   def __repr__(self):
     return "%s%s"%(self.name(), self.values)
-  def translate(self):
+  def _translate(self):
     return basicFormula.multiple_conjunction(conjunction = self.basicBinop,
         values = [value.translate() for value in self.values])
   def applied_variables(self):
@@ -729,7 +736,7 @@ class Iff(Formula):
     return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
     return "Iff(\n%s\n<==>\n%s\n)"%(self.left, self.right)
-  def translate(self):
+  def _translate(self):
     return basicFormula.ExpandIff(self.left.translate(), self.right.translate())
   def updateVariables(self):
     return Iff(left = self.left.updateVariables(),
@@ -776,7 +783,7 @@ class Hidden(Formula):
 
   def __repr__(self):
     return "<<" + self.name + ">>"
-  def translate(self):
+  def _translate(self):
     return self.base.translate()
   def updateVariables(self):
     return Hidden(base = self.base.updateVariables(), name = self.name)
@@ -791,7 +798,7 @@ class Identical(Formula):
     return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
     return "%s = %s"%(self.left, self.right)
-  def translate(self):
+  def _translate(self):
     return basicFormula.Identical(self.left, self.right)
   def updateVariables(self):
     return self
@@ -820,7 +827,7 @@ class Unique(Formula):
     else:
       self.newVariable = newVariable
 
-  def translate(self):
+  def _translate(self):
     formulaTranslate = self.formula.translate()
     all_others_are_equal = basicFormula.Not(
         basicFormula.Exists(self.newVariable,
