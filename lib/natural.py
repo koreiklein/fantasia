@@ -42,6 +42,10 @@ naturalIsEquivalence = constructors.Always(IsEquivalence(natural))
 successorIsFunction = function.IsFunction(S)
 
 a = common_vars.a()
+successorIsNatural = constructors.Always(ForallNatural([a],
+  Natural(constructors.S(a))))
+
+a = common_vars.a()
 b = common_vars.b()
 successorIsGreater = constructors.Always(ForallNatural([a], Less(a, constructors.S(a))))
 
@@ -79,6 +83,7 @@ discrete = constructors.Always(ForallNatural([a, z],
 
 allClaims = [ naturalIsEquivalence
             , successorIsFunction
+            , successorIsNatural
             , zeroNatural
             , zero_is_zero
             , zeroFirst

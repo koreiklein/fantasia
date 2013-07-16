@@ -107,7 +107,11 @@ claim = ForallNatural([a, b],
                                 , Equal(Plus(r, Times(q,b)), a)]))))
 
 lib = library.Library(claims = supplementals, variables = [plus, times], sub_libraries =[natural.lib], name = "+/*")
-if True:
+
+def G(xs):
+  raise Exception("%s"%(xs,))
+
+if False:
   proof = lib.beginProof()
 
   proof = proof.forwardFollow(lambda p:
@@ -172,9 +176,6 @@ if True:
   proof = proof.forwardFollow(lambda p:
       p.advanceAll([1, None]))
 
-  def G(xs):
-    raise Exception("%s"%(xs,))
-
   proof = proof.forwardFollow(lambda p:
       p.importAboutNegating(variables = [natural.zero, b],
         f = lambda bindings, value: times in value.applied_variables(),
@@ -218,7 +219,7 @@ if True:
       p.heavySimplify())
 
   save_filename = "/tmp/saved.proof"
-  #sendProofToFile(proof, save_filename)
+  sendProofToFile(proof, save_filename)
 else:
   save_filename = "/tmp/saved.proof"
   proof = readProofFromFile(save_filename)
@@ -236,6 +237,32 @@ else:
   proof = proof.forwardFollow(lambda p:
       p.onPathFollow(lambda x:
         x.forwardGatherExistentials()))
+  proof = proof.forwardFollow(lambda p:
+      p.advance())
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [r],
+        f = lambda bindings, value: natural.S in value.applied_variables(),
+        g = lambda xs: 0))
+
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [constructors.S(r), b],
+        f = lambda bindings, value: natural.natural_less in value.translate().freeVariables(),
+        g = lambda xs: 0))
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
+  proof = proof.forwardFollow(lambda p:
+      p.advanceAll([0, None, 2]))
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [r, b],
+        f = lambda bindings, value: natural.natural_less in value.translate().freeVariables(),
+        g = lambda xs: 1))
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(1))
+  proof = proof.forwardFollow(lambda p:
+      p.heavySimplify())
+
 
 def f(e, x):
   print "Class = ", x.__class__

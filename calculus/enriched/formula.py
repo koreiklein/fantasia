@@ -361,7 +361,7 @@ class Always(Formula):
     if arrow.tgt.__class__ == Always:
       return result.forwardFollow(lambda x:
           x.forwardJoin())
-    elif arrow.tgt.__class__ == And and len(arrow.tgt.values) == 0:
+    elif arrow.tgt.__class__ in [And, Or] and len(arrow.tgt.values) == 0:
       return result.forwardFollow(lambda x:
           x.forwardUnalways())
     else:
