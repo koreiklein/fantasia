@@ -165,7 +165,7 @@ class Path:
         basicArrow = self.endofunctor.translate().contradictBottomCovariant(self.bottom().translate())
       except basicEndofunctor.UnimportableException:
         return self.identity()
-      return Arrow(src = self,
+      return newArrow(src = self,
           tgt = Path(endofunctor = self.endofunctor, formula = formula.Or([])),
           basicArrow = basicArrow)
     else:

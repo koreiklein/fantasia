@@ -141,10 +141,12 @@ class Endofunctor:
   #         or raise an UnimportableException if no such arrow exists.
   def contradictBottomCovariant(self, x):
     assert(self.covariant())
-    # x F --> ((~x) | x) F --> (x | (~x)) F --> - F
-    return self.importExactly(formula.Not(x))(x).forwardCompose(
-        F.onArrow(formula.And(formula.Not(x), x).forwardCommute().forwardFollow(lambda x:
-          x.forwardContradict())))
+    # x F --> ((!~x) | x) F --> ((~x) | x) F --> (x | (~x)) F --> - F
+    return self.importExactly(formula.Always(formula.Not(x)))(x).forwardCompose(
+        self.onArrow(formula.And(formula.Always(formula.Not(x)), x).forwardOnLeftFollow(lambda x:
+          x.forwardUnalways()).forwardFollow(lambda x:
+            x.forwardCommute().forwardFollow(lambda x:
+              x.forwardContradict()))))
 
   def exportLeft(self, x):
     assert(not self.covariant())

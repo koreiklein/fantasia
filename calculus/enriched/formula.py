@@ -178,7 +178,7 @@ class Not(Formula):
         assert(value.__class__ == Or)
         return result.backwardFollow(lambda x:
             Arrow(tgt = x, src = And([]),
-              basicArrow = x.backwardTrueIsNotFalse()))
+              basicArrow = basicFormula.trueIsNotFalse))
     else:
       return result
 
@@ -562,7 +562,10 @@ class And(Conjunction):
     assert(self.values[index].translate() == basicFormula.false)
     def f(i, x):
       if i == index:
-        return x.forwardForgetRight()
+        if i == len(self.values) - 1:
+          return x.identity()
+        else:
+          return x.forwardForgetRight()
       else:
         return x.forwardForgetLeft().forwardFollow(lambda x:
             f(i+1, x))
@@ -675,6 +678,8 @@ class Identical(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def __repr__(self):
+    return "%s = %s"%(self.left, self.right)
   def translate(self):
     return basicFormula.Identical(self.left, self.right)
   def updateVariables(self):

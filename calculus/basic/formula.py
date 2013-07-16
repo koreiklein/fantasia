@@ -669,7 +669,9 @@ class Identical(Formula):
     self.left = left
     self.right = right
   def __eq__(self, other):
-    return other.__class__ == Identical and self.left == other.left and self.right == other.right
+    return other.__class__ == Identical and (
+        (self.left == other.left and self.right == other.right)
+        or (self.left == other.right and self.right == other.left))
   def __ne__(self, other):
     return not(self == other)
   def updateVariables(self):

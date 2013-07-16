@@ -25,7 +25,7 @@ def Plus(a, b):
         , (common_symbols.rightSymbol, b) ]), plus)
 
 def ExpandPlus(a, b, c):
-  base = And([Equal(a, natural.zero),
+  base = And([Equal(natural.zero, a),
     Equal(b, c)])
   z = common_vars.z()
   step = ExistsNatural([z],
@@ -50,7 +50,7 @@ def Times(a, b):
         , (common_symbols.rightSymbol, b) ]), times)
 
 def ExpandTimes(a, b, c):
-  base = And([Equal(a, natural.zero), Equal(c, natural.zero)])
+  base = And([Equal(natural.zero, a), Equal(natural.zero, c)])
   z = common_vars.z()
   step =ExistsNatural([z],
       And([Equal(S(z), a), Equal(Plus(b, Times(z, b)), c)]))
@@ -73,7 +73,7 @@ q = common_vars.q()
 r = common_vars.r()
 
 claim = ForallNatural([a, b],
-    Implies([Not(Equal(b, natural.zero))],
+    Implies([constructors.Always(Not(Equal(natural.zero, b)))],
       ExistsNatural([q, r], And([ natural.Less(r, b)
                                 , Equal(Plus(r, Times(q,b)), a)]))))
 
@@ -135,13 +135,17 @@ proof = proof.forwardFollow(lambda p:
       x.forwardDistributePairOther()))
 
 proof = proof.forwardFollow(lambda p:
+    p.retreat(4))
+
+proof = proof.forwardFollow(lambda p:
     p.heavySimplify())
 
-proof = proof.forwardFollow(lambda p:
-    p.advance(1))
 
-proof = proof.forwardFollow(lambda p:
-    p.maybeExportBottom())
+#proof = proof.forwardFollow(lambda p:
+#    p.advance(1))
+#
+#proof = proof.forwardFollow(lambda p:
+#    p.maybeExportBottom())
 
 def f(e, x):
   print "Class = ", x.__class__
