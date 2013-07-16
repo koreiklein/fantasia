@@ -30,7 +30,7 @@ def InductionStep(var, claim):
   newVar = var.relatedVariable()
   return constructors.Forall([constructors.BoundedVariableBinding(newVar, common_vars.natural)],
       constructors.Implies([claim.substituteVariable(var, newVar)],
-        claim.substituteVariable(var, variable.ApplySymbolVariable(newVar, common_vars.S))))
+        claim.updateVariables().substituteVariable(var, variable.ApplySymbolVariable(newVar, common_vars.S))))
 
 def InductionHypotheses(var, claim):
   return constructors.And([InductionBase(var, claim), InductionStep(var, claim)])
@@ -61,8 +61,8 @@ def forwardImportInductionAndContradict(x, var, claim):
   assert(x.__class__ == formula.Exists)
   hypotheses = InductionHypotheses(var, claim)
   conclusion = InductionConclusion(var, claim)
-  return constructors.assume(x, hypotheses).forwardFollow(lambda x:
-      formula.Arrow(src = x, tgt = constructors.Not(hypotheses),
+  return constructors.assume(x.updateVariables(), hypotheses).forwardFollow(lambda x:
+      formula.Arrow(src = x.updateVariables(), tgt = constructors.Not(hypotheses),
         basicArrow = x.translate().forwardOnNotFollow(lambda x:
           x.backwardOnRightFollow(lambda x:
             x.backwardOnNotFollow(lambda x:

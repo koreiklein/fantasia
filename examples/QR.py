@@ -262,6 +262,10 @@ else:
       p.retreat(1))
   proof = proof.forwardFollow(lambda p:
       p.heavySimplify())
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(2))
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
 
 
 def f(e, x):

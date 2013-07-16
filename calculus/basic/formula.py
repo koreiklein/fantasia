@@ -367,6 +367,13 @@ class And(Conjunction):
     else:
       raise Exception("Can't simplify once.")
 
+  def forwardRemoveRightIfUnit(self):
+    if self.right == true:
+      return UnitIdentity(tgt = self, src = self.left).invert()
+    else:
+      return self.identity()
+
+
   def simplify(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
@@ -465,6 +472,12 @@ class Or(Conjunction):
       return UnitIdentity(tgt = self, src = self.left).invert()
     else:
       raise Exception("Can't simplify once.")
+
+  def forwardRemoveRightIfUnit(self):
+    if self.right == false:
+      return UnitIdentity(tgt = self, src = self.left).invert()
+    else:
+      return self.identity()
 
   def simplify(self):
     if self.left == unit_for_conjunction(Or):
@@ -989,7 +1002,10 @@ class Apply(Arrow):
     assert(self.src.right.__class__ == Not)
     assert(self.src.right.value.__class__ == And)
     if not(self.src.left == self.src.right.value.left):
-      raise Exception("self.src.left =\n%s\nself.src.right.value.left =\n%s"%(self.src.left, self.src.right.value.left))
+      # FIXME
+      a = self.src.right.value.left.variable
+      b = self.src.left.variable
+      raise Exception("self.src.left =\n%s\nself.src.right.value.left =\n%s"%(self.src.left.value, self.src.right.value.left.value.substituteVariable(a, b)))
     assert(self.src.right.value.right == self.tgt.value)
 
 # !A --> !!A

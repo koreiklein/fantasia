@@ -279,6 +279,10 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  def updateVariables(self):
+    return BoundedVariableBinding(variable = self.variable.updateVariables(),
+        relation = self.relation)
+
   def __repr__(self):
     return "%s : %s"%(self.variable, self.relation)
 
@@ -305,6 +309,9 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def __repr__(self):
     return repr(self.variable)
+
+  def updateVariables(self):
+    return OrdinaryVariableBinding(self.variable.updateVariables())
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable)

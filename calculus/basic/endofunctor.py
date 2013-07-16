@@ -251,7 +251,7 @@ class Exists(Endofunctor):
     return "Exists(%s)"%(self.variable,)
   def _import(self, B):
     if self.variable in B.freeVariables():
-      raise Exception("Variable %s should not be free in %s"%(self.variable, B))
+      raise Exception("Variable %s should not be free in %s. When importing through %s"%(self.variable, B, self))
     return (lambda x:
         formula.And(left = B, right = self.onObject(x)).forwardAndPastExists())
   def variables(self):

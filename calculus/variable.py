@@ -73,7 +73,7 @@ class StringVariable(Variable):
     return self.name()
 
   def updateVariables(self):
-    return StringVariable(self.name())
+    return self.relatedVariable()
 
 def renderInfix(productVariable, infixSymbols, infixVariable):
   (firstSymbol, secondSymbol) = infixSymbols

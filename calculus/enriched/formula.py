@@ -252,6 +252,13 @@ class Exists(Formula):
   def applied_variables(self):
     return self.value.applied_variables()
 
+  def updateVariables(self):
+    pairs = [ (binding.variable, binding.updateVariables()) for binding in self.bindings ]
+    value = self.value
+    for variable, binding in pairs[::-1]:
+      value = value.substituteVariable(variable, binding.variable)
+    return Exists([binding for variable, binding in pairs], value.updateVariables())
+
   def substituteVariable(self, a, b):
     for binding in self.bindings:
       assert(binding.variable not in a.freeVariables())
@@ -516,7 +523,47 @@ class Conjunction(Formula):
     return self.backwardIntroduceUnits().backwardFollow(lambda x:
             x.backwardMaybeUnsingleton())
 
+  def myUnit(self, x):
+    return x.__class__ == self.__class__ and len(x.values) == 0
+
   def forwardRemoveUnits(self):
+    if len(self.values) == 0:
+      return self.identity()
+    elif len(self.values) == 1:
+      if self.myUnit(self.values[0]):
+        return Arrow(src = self, tgt = self.values[0],
+            basicArrow = self.translate().identity())
+    else:
+      arrow = self.__class__(self.values[1:]).forwardRemoveUnits()
+      tgt_values = arrow.tgt.values
+      if self.values[0].__class__ == self.__class__:
+        if len(self.values[0].values) == 0:
+          if self.__class__ == And:
+            forgettingArrow = self.translate().simplifyOnce()
+          else:
+            assert(self.__class__ == Or)
+            forgettingArrow = self.translate().simplifyOnce()
+          return Arrow(src = self, tgt = arrow.tgt,
+              basicArrow = forgettingArrow.forwardCompose(arrow.translate()))
+        else:
+          def f(i):
+            if i == len(self.values[0].values) - 1:
+              return (lambda x: x.identity())
+            else:
+              return (lambda x:
+                  x.forwardAssociate().forwardFollow(lambda x:
+                    x.forwardOnRightFollow(f(i+1))))
+          values = list(self.values[0].values)
+          values.extend(tgt_values)
+          return Arrow(src = self, tgt = self.__class__(values),
+              basicArrow = self.translate().forwardOnRight(arrow.translate()).forwardFollow(f(0)))
+      else:
+        values = [self.values[0]]
+        values.extend(tgt_values)
+        return Arrow(src = self, tgt = self.__class__(values),
+            basicArrow = self.translate().forwardOnRight(arrow.translate()).forwardFollow(lambda x:
+              x.forwardRemoveRightIfUnit()))
+
     assert(len(self.values) > 0)
     def f(i):
       if i == len(self.values) - 1:
@@ -537,25 +584,7 @@ class Conjunction(Formula):
       basicArrow = basicArrow)
 
   def backwardIntroduceUnits(self):
-    assert(len(self.values) > 0)
-    def f(i):
-      if i == len(self.values) - 1:
-        return self.values[i].translate().identity()
-      else:
-        def g(x):
-          if x.left == self.basicUnit():
-            return x.simplifyOnce().invert()
-          elif x.right == self.basicUnit():
-            return x.simplifyOnce().invert()
-          else:
-            return x.identity()
-        return self.__class__(self.values[i:]).translate().backwardOnRight(f(i+1)).backwardFollow(g)
-    basicArrow = f(0)
-    assert(basicArrow.tgt == self.translate())
-    return Arrow(tgt = self,
-      src = self.__class__(
-        values = [v for v in self.values if not(v.__class__ == self.__class__ and len(v.values) == 0)]),
-      basicArrow = basicArrow)
+    return self.forwardRemoveUnits().invert()
 
   def forwardOnArrows(self, arrows):
     assert(len(arrows) > 0)
