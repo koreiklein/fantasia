@@ -16,6 +16,18 @@ class Formula:
   def translate(self):
     raise Exception("Abstract superclass.")
 
+  def forwardGatherExistentials(self):
+    arrow, bindings, value = self._forwardGatherExistentials()
+    return Arrow(src = self, tgt = Exists(bindings, value),
+        basicArrow = arrow)
+
+  # return: a triplet (arrow, bindings, value) where
+  #         arrow is a basic arrow with arrow.src == self.translate()
+  #         arrow.tgt == Exists(bindings, value).translate()
+  # attempt to keep bindings as long as possible.
+  def _forwardGatherExistentials(self):
+    return self.translate().identity(), [], self
+
   # spec: a SearchSpec instance.
   # return: a list of claims importable from self matching spec
   def search(self, spec):
@@ -224,6 +236,12 @@ class Exists(Formula):
     self.bindings = bindings
     self.value = value
 
+  def _forwardGatherExistentials(self):
+    arrow, bindings, value = self.value._forwardGatherExistentials()
+    newBindings = list(self.bindings)
+    newBindings.extend(bindings)
+    return self._endofunctor_translate().onArrow(arrow), newBindings, value
+
   def applied_variables(self):
     return self.value.applied_variables()
 
@@ -336,6 +354,9 @@ class Always(Formula):
     if arrow.tgt.__class__ == Always:
       return result.forwardFollow(lambda x:
           x.forwardJoin())
+    elif arrow.tgt.__class__ == And and len(arrow.tgt.values) == 0:
+      return result.forwardFollow(lambda x:
+          x.forwardUnalways())
     else:
       return result
   def backwardCojoin(self):
@@ -349,6 +370,10 @@ class Always(Formula):
     if arrow.src.__class__ == Always:
       return result.backwardFollow(lambda x:
           x.backwardCojoin())
+    elif arrow.src.__class__ == And and len(arrow.src.values) == 0:
+      return result.backwardFollow(lambda x:
+          Arrow(tgt = x, src = x.value,
+            basicArrow = basicFormula.trueAlways))
     else:
       return result
   def forwardUnalways(self):
@@ -572,6 +597,44 @@ class And(Conjunction):
     for value in self.values:
       result.extend(value.search(spec))
     return result
+
+  # return: a triplet (arrow, bindings, value) where
+  #         arrow is a basic arrow with arrow.src == self.translate()
+  #         arrow.tgt == Exists(bindings, value).translate()
+  # attempt to keep bindings as long as possible.
+  def _forwardGatherExistentials(self):
+    def f(i):
+      # return And(self.values[i:])._forwardGatherExistentials()
+      if i == len(self.values):
+        return And([]).translate().identity(), [], And([])
+      elif i == len(self.values) - 1:
+        arrow, bindings, value = self.values[i]._forwardGatherExistentials()
+        return arrow, bindings, And([value])
+      else:
+        rest_arrow, rest_bindings, rest_value = f(i+1)
+        first_arrow, first_bindings, first_value = self.values[i]._forwardGatherExistentials()
+        bindings = list(first_bindings)
+        bindings.extend(rest_bindings)
+        all_values = [first_value]
+        all_values.extend(rest_value.values)
+        arrow = basicFormula.OnAnd(first_arrow, rest_arrow).forwardCompose(
+            And([Exists(first_bindings, first_value), Exists(rest_bindings, rest_value)]).liftBasicExistsBothSides())
+        return arrow, bindings, And(all_values)
+    return f(0)
+
+  # self == And([Exists(xs, X), Exists(ys, Y)])
+  # return: an arrow self.translate() --> Exists(xs..ys, X|Y).translate()
+  def liftBasicExistsBothSides(self):
+    assert(len(self.values) == 2)
+    left_exists = self.values[0]
+    X = left_exists.value.translate()
+    right_exists = self.values[1]
+    Y = right_exists.value.translate()
+    left_functor = left_exists._endofunctor_translate()
+    # And([Exists(xs, X), Exists(ys, Y)]) --> Exists(xs, And([X, Exists(ys, Y)]))
+    return left_functor._importOther(right_exists.translate())(X).forwardCompose(
+        # Exists(xs, And([X, Exists(ys, Y)])) --> Exists(xs, Exists(ys, And([X, Y])))
+        left_functor.onArrow(right_exists._endofunctor_translate()._import(X)(Y)))
 
   def name(self):
     return 'And'

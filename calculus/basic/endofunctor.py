@@ -40,6 +40,17 @@ class Endofunctor:
   # return a function representing a natural transform: F o (B|.) --> (B|.) o F
   def _import(self, B):
     raise Exception("Abstract superclass.")
+
+  # self must be covariant()
+  # return a function representing a natural transform: F o (.|B) --> (.|B) o F
+  def _importOther(self, B):
+    # F(x)|B --> B|F(x) --> F(B|x) --> F(x|B)
+    return (lambda x:
+        formula.And(self.onObject(x), B).forwardCommute().forwardCompose(
+          self._import(B)(x).forwardCompose(
+            self.onArrow(formula.And(B, x).forwardCommute()))))
+
+
   # self must not be covariant()
   # return a function representing some natural transform: (B|.) o F o (B|.) --> F
   def _export(self, B):

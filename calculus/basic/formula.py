@@ -1108,6 +1108,15 @@ class SubstituteArrow(Arrow):
     assert(A.substituteVariable(a, b) == self.tgt or
         A.substituteVariable(b, a) == self.tgt)
 
+class TrueAlways(Isomorphism):
+  def arrowTitle(self):
+    return "TrueAlways"
+  def validate(self):
+    assert(self.src == true)
+    assert(self.tgt == Always(true))
+
+trueAlways = TrueAlways(src = true, tgt = Always(true))
+
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
   def __repr__(self):

@@ -8,6 +8,17 @@ from calculus import variable
 from calculus.enriched.path import new_path, Arrow as PathArrow
 from lib import natural, library, common_vars, equivalence, function, common_symbols, common_formulas
 
+def sendProofToFile(proof, save_filename):
+  pickle.dump(proof.arrow.enrichedArrow.compress(), open(save_filename, 'w'))
+
+def readProofFromFile(save_filename):
+  enrichedArrow = pickle.load(open(save_filename, 'r'))
+  proof = library.Proof(library = lib,
+      arrow = PathArrow(src = new_path(enrichedArrow.src),
+        tgt = new_path(enrichedArrow.tgt),
+        enrichedArrow = enrichedArrow))
+  return proof
+
 def ForallNatural(xs, value):
   return Forall(
       [BoundedVariableBinding(x, natural.natural) for x in xs],
@@ -207,14 +218,24 @@ if False:
       p.heavySimplify())
 
   save_filename = "/tmp/saved.proof"
-  pickle.dump(proof.arrow.enrichedArrow.compress(), open(save_filename, 'w'))
+  sendProofToFile(proof, save_filename)
 else:
   save_filename = "/tmp/saved.proof"
-  enrichedArrow = pickle.load(open(save_filename, 'r'))
-  proof = library.Proof(library = lib,
-      arrow = PathArrow(src = new_path(enrichedArrow.src),
-        tgt = new_path(enrichedArrow.tgt),
-        enrichedArrow = enrichedArrow))
+  proof = readProofFromFile(save_filename)
+
+  proof = proof.forwardFollow(lambda p:
+      p.advanceAll([None, None, 0, None, 0, None, None]))
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
+  proof = proof.forwardFollow(lambda p:
+      p.advanceAll([None]))
+  proof = proof.forwardFollow(lambda p:
+      p.heavySimplify())
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(2))
+  proof = proof.forwardFollow(lambda p:
+      p.onPathFollow(lambda x:
+        x.forwardGatherExistentials()))
 
 def f(e, x):
   print "Class = ", x.__class__
