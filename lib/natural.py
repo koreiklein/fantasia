@@ -97,7 +97,7 @@ allClaims = [ naturalIsEquivalence
 naturalClaims = constructors.And(allClaims)
 
 lib = library.Library(
-    name = "Nat",
+    name = "N",
     claims = [naturalClaims],
     variables = [natural, zero, natural_less, S],
     sub_libraries = [function.lib])

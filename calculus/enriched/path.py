@@ -76,6 +76,11 @@ class Path:
   def covariant(self):
     return self.endofunctor.covariant()
 
+  def instantiateBottomInOrder(self, variables):
+    assert(not self.covariant())
+    return self.onFormulaAndEndofunctorFollow(lambda x, e:
+        e.instantiateInOrder(variables = variables, x = x))
+
   def forwardAndTrue(self):
     return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
         p.advance(0))

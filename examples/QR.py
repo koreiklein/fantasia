@@ -127,8 +127,6 @@ if False:
         p.advance(0).forwardFollow(lambda p:
           p.advance())))
 
-
-
   proof = proof.forwardFollow(lambda p:
       p.onPathFollow(lambda x:
         common_formulas.forwardInductionOnIExists(x, 0)))
@@ -137,8 +135,7 @@ if False:
       p.advanceAll([None, None, 0, None, 1, None]))
 
   proof = proof.forwardFollow(lambda p:
-      p.onFormulaAndEndofunctorFollow(lambda x, e:
-        e.instantiateInOrder(variables = [natural.zero, natural.zero], x = x)))
+      p.instantiateBottomInOrder([natural.zero, natural.zero]))
 
   proof = proof.forwardFollow(lambda p:
       p.advanceAll([0]))
@@ -224,6 +221,7 @@ else:
   save_filename = "/tmp/saved.proof"
   proof = readProofFromFile(save_filename)
 
+
   proof = proof.forwardFollow(lambda p:
       p.advanceAll([None, None, 0, None, 0, None, None]))
   proof = proof.forwardFollow(lambda p:
@@ -237,6 +235,9 @@ else:
   proof = proof.forwardFollow(lambda p:
       p.onPathFollow(lambda x:
         x.forwardGatherExistentials()))
+
+  a_prime = proof.arrow.tgt.bottom().bindings[1].variable
+
   proof = proof.forwardFollow(lambda p:
       p.advance())
   proof = proof.forwardFollow(lambda p:
@@ -276,6 +277,56 @@ else:
   proof = proof.forwardFollow(lambda p:
       p.advanceAll([0, 0, 0, None]))
 
+  proof = proof.forwardFollow(lambda p:
+      p.instantiateBottomInOrder([q, S(r)]))
+  proof = proof.forwardFollow(lambda p:
+      p.heavySimplify())
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(1))
+
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [q, b],
+        f = lambda bindings, value: times in value.applied_variables(),
+        g = lambda x: 0).forwardFollow(lambda p:
+          p.simplifyBottom()))
+  proof = proof.forwardFollow(lambda p:
+      p.advance(1))
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [a_prime],
+        f = lambda bindings, value: natural.S in value.applied_variables(),
+        g = lambda xs: 0).forwardFollow(lambda p:
+          p.simplifyBottom()))
+  proof = proof.forwardFollow(lambda p:
+      p.advance(1))
+
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [S(r), Times(q, b), S(a_prime)],
+        f = lambda bindings, value: plus in value.applied_variables(),
+        g = lambda xs: 0).forwardFollow(lambda p:
+          p.simplifyBottom().forwardFollow(lambda p:
+            p.advanceAll([0, None]))))
+
+  proof = proof.forwardFollow(lambda p:
+      p.onPathFollow(lambda x:
+        x.forwardRightToLeft()))
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(2))
+  proof = proof.forwardFollow(lambda p:
+      p.heavySimplify())
+  proof = proof.forwardFollow(lambda p:
+      p.advanceAll([0, None, None, 0]))
+  proof = proof.forwardFollow(lambda p:
+      p.onPathFollow(lambda x:
+        x.backwardAdmitLeft()))
+  proof = proof.forwardFollow(lambda p:
+      p.instantiateBottomInOrder(variables = [r]))
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(2))
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
+  #      f = lambda bindings, value: natural.S in value.applied_variables(),
+  #      g = lambda xs: 1).forwardFollow(lambda p:
+  #        p.simplifyBottom()))
 
 def f(e, x):
   print "Class = ", x.__class__

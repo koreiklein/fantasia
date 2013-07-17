@@ -788,6 +788,11 @@ class Or(Conjunction):
     return Arrow(tgt = self, src = self.values[0],
         basicArrow = self.translate().backwardAdmitRight())
 
+  def backwardAdmitLeft(self):
+    assert(len(self.values) == 2)
+    return Arrow(tgt = self, src = self.values[1],
+        basicArrow = self.translate().backwardAdmitLeft())
+
   def basicUnit(self):
     return basicFormula.false
 
