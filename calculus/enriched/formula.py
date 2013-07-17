@@ -882,6 +882,9 @@ class Identical(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def forwardSimplify(self):
+    if self.left == self.right:
+      return 
   def applied_variables(self):
     return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
@@ -896,6 +899,20 @@ class Identical(Formula):
   def render(self, context):
     return self.left.render().stack(0, primitives.identical(context.covariant)).stack(0,
         self.right.render())
+  def forwardSimplify(self):
+    if self.left == self.right:
+      return Arrow(src = self, tgt = And([]),
+          basicArrow = basicFormula.IdenticalReflexive(src = self.translate(),
+            tgt = basicFormula.true))
+    else:
+      return self.identity()
+  def backwardSimplify(self):
+    if self.left == self.right:
+      return Arrow(tgt = self, src = And([]),
+          basicArrow = basicFormula.IdenticalReflexive(src = self.translate(),
+            tgt = basicFormula.true).invert())
+    else:
+      return self.identity()
 
 def InDomain(x, e):
   return Always(Holds(x, variable.ApplySymbolVariable(e, domainSymbol)))

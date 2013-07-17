@@ -1150,6 +1150,15 @@ class TrueAlways(Isomorphism):
 
 trueAlways = TrueAlways(src = true, tgt = Always(true))
 
+# a == a <--> ture
+class IdenticalReflexive(Isomorphism):
+  def name(self):
+    return "IdenticalReflexive"
+  def validate(self):
+    assert(self.src.__class__ == Identical)
+    assert(self.tgt == true)
+    assert(self.src.left == self.src.right)
+
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):
   def __repr__(self):
