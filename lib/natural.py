@@ -47,6 +47,13 @@ successorIsNatural = constructors.Always(ForallNatural([a],
 
 a = common_vars.a()
 b = common_vars.b()
+successorWellDefined = constructors.Always(ForallNatural([a, b],
+  constructors.Implies(
+    predicates = [ constructors.Always(Identical(a, b)) ],
+    consequent = constructors.Always(Identical(constructors.S(a), constructors.S(b))))))
+
+a = common_vars.a()
+b = common_vars.b()
 successorIsGreater = constructors.Always(ForallNatural([a], Less(a, constructors.S(a))))
 
 zero = common_vars.zero
@@ -84,6 +91,7 @@ discrete = constructors.Always(ForallNatural([a, z],
 allClaims = [ naturalIsEquivalence
             , successorIsFunction
             , successorIsNatural
+            , successorWellDefined
             , zeroNatural
             , zero_is_zero
             , zeroFirst

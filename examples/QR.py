@@ -324,9 +324,27 @@ else:
       p.retreat(2))
   proof = proof.forwardFollow(lambda p:
       p.simplifyBottom())
-  #      f = lambda bindings, value: natural.S in value.applied_variables(),
-  #      g = lambda xs: 1).forwardFollow(lambda p:
-  #        p.simplifyBottom()))
+
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [r, Times(q, b)],
+        f = lambda bindings, value: plus in value.applied_variables(),
+        g = lambda xs: 0))
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(3))
+  proof = proof.forwardFollow(lambda p:
+      p.simplifyBottom())
+
+  proof = proof.forwardFollow(lambda p:
+      p.importAbout(variables = [Plus(r, Times(q, b)), a_prime],
+        f = lambda bindings, value: natural.S in value.applied_variables(),
+        g = lambda xs: 0))
+
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(3))
+
+  proof = proof.forwardFollow(lambda p:
+      p.heavySimplify())
+
 
 def f(e, x):
   print "Class = ", x.__class__
