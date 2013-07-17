@@ -533,9 +533,16 @@ class Conjunction(Formula):
       if self.myUnit(self.values[0]):
         return Arrow(src = self, tgt = self.values[0],
             basicArrow = self.translate().identity())
+      elif self.values[0].__class__ == self.__class__:
+        return self.forwardMaybeUnsingleton()
+      else:
+        return self.identity()
     else:
       arrow = self.__class__(self.values[1:]).forwardRemoveUnits()
       tgt_values = arrow.tgt.values
+      for value in tgt_values:
+        if not(value.__class__ != self.__class__):
+          raise Exception("values contains another copy like %s self %s"%(self.__class__, tgt_values,))
       if self.values[0].__class__ == self.__class__:
         if len(self.values[0].values) == 0:
           if self.__class__ == And:

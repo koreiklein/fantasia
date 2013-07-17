@@ -264,14 +264,13 @@ else:
       p.heavySimplify())
   proof = proof.forwardFollow(lambda p:
       p.retreat(2))
-  proof = proof.forwardFollow(lambda p:
-      p.simplifyBottom())
 
 
 def f(e, x):
   print "Class = ", x.__class__
   print "Covariant" if e.covariant() else "Contravariant"
   print x
+  print (x.values[1])
   print x.top_level_render()._backend
   print '==========================================================='
   return x.identity()
