@@ -390,7 +390,7 @@ class And(Conjunction):
   def forwardSubstituteIdentical(self, a, b):
     I = self.left
     assert(I.__class__ == Identical)
-    assert((I.left == a and I.right == b) or (I.left == b and I.left == a))
+    assert((I.left == a and I.right == b) or (I.left == b and I.right == a))
     return SubstituteArrow(src = self, tgt = self.right.substituteVariable(a, b))
 
   def forwardApply(self):
@@ -1134,7 +1134,7 @@ class SubstituteArrow(Arrow):
   def arrowTitle(self):
     return "Substitute(%s->%s)"%(self.src.left.left, self.src.left.right)
   def validate(self):
-    assert(self.src.__class__ == Identical)
+    assert(self.src.left.__class__ == Identical)
     a = self.src.left.left
     b = self.src.left.right
     A = self.src.right

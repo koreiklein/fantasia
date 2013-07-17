@@ -270,10 +270,29 @@ class Exists(Formula):
     for i in range(len(self.bindings)):
       result = result.substituteVariable(self.bindings[i].variable, variables[i])
     return result
+  def forwardMaybeCollapse(self):
+    if isinstance(self.value, Conjunction) and len(self.value.values) == 0:
+      def f(i, x):
+        if i == len(self.bindings):
+          return x.identity()
+        else:
+          if self.bindings[i].is_ordinary():
+            return x.forwardRemoveExists().forwardFollow(lambda x:
+                f(i+1, x))
+          else:
+            return x.forwardOnBodyFollow(lambda x:
+                x.forwardForgetLeft().forwardFollow(lambda x:
+                  f(i+1, x))).forwardFollow(lambda x:
+                      x.forwardRemoveExists())
+      return Arrow(src = self, tgt = self.value,
+          basicArrow = f(0, self.translate()))
+    else:
+      return self.identity()
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = Exists(bindings = self.bindings, value = arrow.tgt),
-        basicArrow = self._endofunctor_translate().onArrow(arrow.basicArrow))
+        basicArrow = self._endofunctor_translate().onArrow(arrow.basicArrow)).forwardFollow(lambda x:
+            x.forwardMaybeCollapse())
   def backwardSimplify(self):
     arrow = self.value.backwardSimplify()
     return Arrow(src = Exists(bindings = self.bindings, value = arrow.src), tgt = self,
@@ -653,6 +672,17 @@ class And(Conjunction):
     for value in self.values:
       result.extend(value.search(spec))
     return result
+
+  def forwardSubstituteIdentical(self, a, b):
+    assert(len(self.values) == 2)
+    if self.values[0].__class__ == Identical:
+      return Arrow(src = self, tgt = self.values[1].substituteVariable(a, b),
+          basicArrow = self.translate().forwardSubstituteIdentical(a, b))
+    elif self.values[0].__class__ == Always:
+      return Arrow(src = self, tgt = And([self.values[0].value, self.values[1]]),
+          basicArrow = self.translate().forwardOnLeftFollow(lambda x:
+            x.forwardUnalways())).forwardFollow(lambda x:
+                x.forwardSubstituteIdentical(a, b))
 
   # return: a triplet (arrow, bindings, value) where
   #         arrow is a basic arrow with arrow.src == self.translate()

@@ -113,6 +113,17 @@ class Endofunctor:
           tgt = self.onObject(formula.And([B, x])),
           basicArrow = self.translate().importExactly(B.translate())(x.translate())))
 
+  def importAboutGenerally(self, f, g, x):
+    class S(spec.SearchSpec):
+      def search_hidden_formula(self, name):
+        return True
+      def valid(self, e):
+        return e.__class__ == formula.Always and f([], e.value)
+    importable_claims = self.search(S())
+    claim = importable_claims[g(importable_claims)]
+    import_arrow = self.importExactly(claim)(x)
+    return import_arrow, formula.And([claim, x])
+
   # self must be covariant
   # variables: a list of variable in scope at self.
   # f: a function from a list of variables bindings and a formula to a boolean.
@@ -126,6 +137,8 @@ class Endofunctor:
   # and self.onObject(value) == arrow.tgt
   #   self -> L[i]
   def importAbout(self, variables, f, g, x):
+    if len(variables) == 0:
+      return self.importAboutGenerally(f, g, x)
     assert(self.covariant())
     # TODO Improve performance once it becomes important.
     class S(spec.SearchSpec):
@@ -227,6 +240,8 @@ class VariableBinding:
     raise Exception("Abstract superclass.")
   def render(self, context):
     return primitives.newTextStack(colors.variableColor, repr(self))
+  def is_ordinary(self):
+    return False
 
   def assertBoundedNatural(self):
     assert(self.__class__ == BoundedVariableBinding)
@@ -309,6 +324,9 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def __repr__(self):
     return repr(self.variable)
+
+  def is_ordinary(self):
+    return True
 
   def updateVariables(self):
     return OrdinaryVariableBinding(self.variable.updateVariables())
