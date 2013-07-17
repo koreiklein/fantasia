@@ -571,27 +571,40 @@ class Conjunction(Formula):
             basicArrow = self.translate().forwardOnRight(arrow.translate()).forwardFollow(lambda x:
               x.forwardRemoveRightIfUnit()))
 
-    assert(len(self.values) > 0)
-    def f(i):
-      if i == len(self.values) - 1:
-        return self.values[i].translate().identity()
-      else:
-        def g(x):
-          if x.left == self.basicUnit():
-            return x.simplifyOnce()
-          elif x.right == self.basicUnit():
-            return x.simplifyOnce()
-          else:
-            return x.identity()
-        return self.__class__(self.values[i:]).translate().forwardOnRight(f(i+1)).forwardFollow(g)
-    basicArrow = f(0)
-    return Arrow(src = self,
-      tgt = self.__class__(
-        values = [v for v in self.values if not(v.__class__ == self.__class__ and len(v.values) == 0)]),
-      basicArrow = basicArrow)
-
   def backwardIntroduceUnits(self):
     return self.forwardRemoveUnits().invert()
+
+  def forwardMoveBack(self, i, amount):
+    values = list(self.values)
+    a = values.pop(i)
+    values.insert(i - amount, a)
+    return self.__class__(values).forwardMoveForward(i - amount, amount).invert()
+
+  def forwardMoveForward(self, i, amount):
+    values = list(self.values)
+    a = values.pop(i)
+    values.insert(i + amount, a)
+    def f(j, x):
+      if j == i:
+        def g(k, x):
+          if k == amount:
+            return x.identity()
+          else:
+            if i + amount == len(self.values) - 1 and k+1 == amount:
+              return x.forwardCommute()
+            else:
+              return x.forwardAssociateOther().forwardFollow(lambda x:
+                  x.forwardOnLeftFollow(lambda x:
+                    x.forwardCommute()).forwardFollow(lambda x:
+                      x.forwardAssociate().forwardFollow(lambda x:
+                        x.forwardOnRightFollow(lambda x:
+                          g(k+1, x)))))
+
+        return g(0, x)
+      else:
+        return x.forwardOnRightFollow(lambda x: f(j+1, x))
+    return Arrow(src = self, tgt = self.__class__(values),
+        basicArrow = f(0, self.translate()))
 
   def forwardOnArrows(self, arrows):
     assert(len(arrows) > 0)
@@ -678,6 +691,40 @@ class And(Conjunction):
     return left_functor._importOther(right_exists.translate())(X).forwardCompose(
         # Exists(xs, And([X, Exists(ys, Y)])) --> Exists(xs, Exists(ys, And([X, Y])))
         left_functor.onArrow(right_exists._endofunctor_translate()._import(X)(Y)))
+
+  # distribute i over j
+  def forwardDistribute(self, i, j):
+    assert(i != j)
+    assert(self.values[j].__class__ == Or)
+    if i < j:
+      return self.forwardMoveForward(i, j - (i+1)).forwardFollow(lambda x:
+          x.forwardDistributeToNext(j - 1))
+    else:
+      assert(i > j)
+      return self.forwardMoveBack(i, i - j).forwardFollow(lambda x:
+          x.forwardDistributeToNext(j))
+
+  # distribute i over i+1
+  def forwardDistributeToNext(self, i):
+    assert(self.values[i+1].__class__ == Or)
+    n_or_values = len(self.values[i+1].values)
+    assert(n_or_values > 0)
+    def f(k, x):
+      if k == i:
+        def g(k, x):
+          if k == n_or_values - 1:
+            return x.identity()
+          else:
+            return x.forwardDistibute().forwardFollow(lambda x:
+                x.forwardOnRightFollow(lambda x: g(k+1, x)))
+        return x.forwardAssociateOther().forwardFollow(lambda x:
+            x.forwardOnLeftFollow(lambda x: g(0, x)))
+      else:
+        return x.forwardOnRightFollow(lambda x: f(k+1, x))
+    values = list(self.values)
+    a = values.pop(i)
+    values[i] = Or([And([a, b]) for b in values[i].values])
+    return Arrow(src = self, tgt = And(values), basicArrow = f(0, self.translate()))
 
   def name(self):
     return 'And'

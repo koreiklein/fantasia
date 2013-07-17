@@ -263,14 +263,24 @@ else:
   proof = proof.forwardFollow(lambda p:
       p.heavySimplify())
   proof = proof.forwardFollow(lambda p:
-      p.retreat(2))
+      p.retreat(1))
+  proof = proof.forwardFollow(lambda p:
+      p.onPathFollow(lambda x:
+        x.forwardUnalways()))
+  proof = proof.forwardFollow(lambda p:
+      p.retreat(1))
+
+  proof = proof.forwardFollow(lambda p:
+      p.onPathFollow(lambda x:
+        x.forwardDistribute(5, 0)))
+  proof = proof.forwardFollow(lambda p:
+      p.advanceAll([0, 0, 0, None]))
 
 
 def f(e, x):
   print "Class = ", x.__class__
   print "Covariant" if e.covariant() else "Contravariant"
   print x
-  print (x.values[1])
   print x.top_level_render()._backend
   print '==========================================================='
   return x.identity()
