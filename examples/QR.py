@@ -193,21 +193,11 @@ proof = proof.forwardFollow(lambda p:
       g = lambda xs: 0))
 
 proof = proof.forwardFollow(lambda p:
-    p.retreat(7))
+    p.retreat(9))
 
 proof = proof.forwardFollow(lambda p:
     p.heavySimplify())
 
-proof = proof.forwardFollow(lambda p:
-    p.advanceAll([None, None, 0, None, 0, None, None]))
-proof = proof.forwardFollow(lambda p:
-    p.simplifyBottom())
-proof = proof.forwardFollow(lambda p:
-    p.advanceAll([None]))
-proof = proof.forwardFollow(lambda p:
-    p.heavySimplify())
-proof = proof.forwardFollow(lambda p:
-    p.retreat(10))
 proof = proof.forwardFollow(lambda p:
     p.heavySimplify())
 
