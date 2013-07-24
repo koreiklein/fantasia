@@ -161,7 +161,7 @@ proof = proof.forwardFollow(lambda p:
 
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:
-      x.forwardDistributePairOther()))
+      x.forwardDistribute(1, 0)))
 
 proof = proof.forwardFollow(lambda p:
     p.retreat(4))
@@ -502,7 +502,6 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.heavySimplify())
 
-
 def f(e, x):
   print "Class = ", x.__class__
   print "Covariant" if e.covariant() else "Contravariant"
@@ -511,5 +510,5 @@ def f(e, x):
   print '==========================================================='
   return x.identity()
 
-#proof = proof.forwardFollow(lambda p:
-#    p.onPathFollow(lambda x: f(p.endofunctor, x)))
+proof = proof.forwardFollow(lambda p:
+    p.onPathFollow(lambda x: f(p.endofunctor, x)))

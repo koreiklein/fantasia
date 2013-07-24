@@ -747,8 +747,11 @@ class And(Conjunction):
           else:
             return x.forwardDistribute().forwardFollow(lambda x:
                 x.forwardOnRightFollow(lambda x: g(k+1, x)))
-        return x.forwardAssociateOther().forwardFollow(lambda x:
-            x.forwardOnLeftFollow(lambda x: g(0, x)))
+        if k + 1 == len(self.values) - 1:
+          return g(0, x)
+        else:
+          return x.forwardAssociateOther().forwardFollow(lambda x:
+              x.forwardOnLeftFollow(lambda x: g(0, x)))
       else:
         return x.forwardOnRightFollow(lambda x: f(k+1, x))
     values = list(self.values)
@@ -787,15 +790,9 @@ class And(Conjunction):
         basicArrow = self.translate().forwardCommute())
 
   def forwardDistributePair(self):
-    assert(len(self.values) == 2)
-    assert(self.values[1].__class__ == Or)
-    assert(len(self.values[1].values) == 2)
-    return Arrow(src = self, tgt = Or([And([self.values[0], value]) for value in self.values[1].values]),
-        basicArrow = self.translate().forwardDistribute())
-
+    return self.forwardDistribute(0, 1)
   def forwardDistributePairOther(self):
-    return self.forwardCommutePair().forwardFollow(lambda x:
-        x.forwardDistributePair())
+    return self.forwardDistribute(1, 0)
 
   def backwardTotalCollapse(self, index):
     assert(self.values[index].translate() == basicFormula.false)
