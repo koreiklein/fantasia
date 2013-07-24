@@ -426,7 +426,7 @@ class And(Conjunction):
           x.forwardOnBodyFollow(lambda x:
             x.forwardCommute())))
 
-  def forwardDistibute(self):
+  def forwardDistribute(self):
     # A | (B - C) --> (A | B) - (A | C)
     assert(self.right.__class__ == Or)
     def pairWith(x):
@@ -440,13 +440,13 @@ class And(Conjunction):
 
   def forwardDistributeLeft(self):
     # A | (B - C) --> (A | B) - (A | C) --> (A | B) - C
-    return self.forwardDistibute().forwardFollow(lambda x:
+    return self.forwardDistribute().forwardFollow(lambda x:
         x.forwardOnRightFollow(lambda x:
           x.forwardForgetLeft()))
 
   def forwardDistributeRight(self):
     # A | (B - C) --> (A | B) - (A | C) --> B - (A | C)
-    return self.forwardDistibute().forwardFollow(lambda x:
+    return self.forwardDistribute().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
           x.forwardForgetLeft()))
 

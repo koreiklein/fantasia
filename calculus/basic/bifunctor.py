@@ -173,7 +173,7 @@ class Or(Bifunctor):
   def _import(self, B):
     # B|(x-y) --> (B|x)-(B|y)
     return (lambda x, y:
-        formula.And(B, formula.Or(x, y)).forwardDistibute())
+        formula.And(B, formula.Or(x, y)).forwardDistribute())
 
   def _importLeft(self, B):
     return (lambda x, y:

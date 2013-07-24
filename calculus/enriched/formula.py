@@ -597,9 +597,9 @@ class Conjunction(Formula):
     values = list(self.values)
     a = values.pop(i)
     values.insert(i - amount, a)
-    return self.__class__(values).forwardMoveForward(i - amount, amount).invert()
+    return self.__class__(values)._forwardMoveForward(i - amount, amount).invert()
 
-  def forwardMoveForward(self, i, amount):
+  def _forwardMoveForward(self, i, amount):
     values = list(self.values)
     a = values.pop(i)
     values.insert(i + amount, a)
@@ -727,15 +727,15 @@ class And(Conjunction):
     assert(i != j)
     assert(self.values[j].__class__ == Or)
     if i < j:
-      return self.forwardMoveForward(i, j - (i+1)).forwardFollow(lambda x:
-          x.forwardDistributeToNext(j - 1))
+      return self._forwardMoveForward(i, j - (i+1)).forwardFollow(lambda x:
+          x._forwardDistributeToNext(j - 1))
     else:
       assert(i > j)
       return self.forwardMoveBack(i, i - j).forwardFollow(lambda x:
-          x.forwardDistributeToNext(j))
+          x._forwardDistributeToNext(j))
 
   # distribute i over i+1
-  def forwardDistributeToNext(self, i):
+  def _forwardDistributeToNext(self, i):
     assert(self.values[i+1].__class__ == Or)
     n_or_values = len(self.values[i+1].values)
     assert(n_or_values > 0)
@@ -745,7 +745,7 @@ class And(Conjunction):
           if k == n_or_values - 1:
             return x.identity()
           else:
-            return x.forwardDistibute().forwardFollow(lambda x:
+            return x.forwardDistribute().forwardFollow(lambda x:
                 x.forwardOnRightFollow(lambda x: g(k+1, x)))
         return x.forwardAssociateOther().forwardFollow(lambda x:
             x.forwardOnLeftFollow(lambda x: g(0, x)))
@@ -791,7 +791,7 @@ class And(Conjunction):
     assert(self.values[1].__class__ == Or)
     assert(len(self.values[1].values) == 2)
     return Arrow(src = self, tgt = Or([And([self.values[0], value]) for value in self.values[1].values]),
-        basicArrow = self.translate().forwardDistibute())
+        basicArrow = self.translate().forwardDistribute())
 
   def forwardDistributePairOther(self):
     return self.forwardCommutePair().forwardFollow(lambda x:
