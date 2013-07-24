@@ -164,15 +164,6 @@ class Path:
         tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
         enrichedArrow = enrichedArrow)
 
-  def importAboutNegating(self, variables, f, g):
-    assert(not self.covariant())
-    p = Path(endofunctor = endofunctor.not_functor.compose(self.endofunctor),
-        formula = formula.Not(self.formula))
-    a = p.importAbout(variables, f, g)
-    return self.onPathFollow(lambda x:
-        x.backwardUndoubleDual()).forwardCompose(a).forwardFollow(lambda p:
-            p.simplifyBottom())
-
   def importAboutGenerally(self, f, g):
     class S(spec.SearchSpec):
       def search_hidden_formula(self, name):
@@ -185,6 +176,15 @@ class Path:
     return Arrow(src = self,
         tgt = Path(formula = formula.And([claim, self.formula]), endofunctor = self.endofunctor),
         enrichedArrow = import_arrow)
+
+  def importAboutNegating(self, variables, f, g):
+    assert(not self.covariant())
+    p = Path(endofunctor = endofunctor.not_functor.compose(self.endofunctor),
+        formula = formula.Not(self.formula))
+    a = p.importAbout(variables, f, g)
+    return self.onPathFollow(lambda x:
+        x.backwardUndoubleDual()).forwardCompose(a).forwardFollow(lambda p:
+            p.simplifyBottom())
 
   # TODO these comments are from the endofunctor import, adapt them to paths.
   # self must be covariant

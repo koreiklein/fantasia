@@ -145,20 +145,6 @@ proof = proof.forwardFollow(lambda p:
       g = lambda xs: 0))
 
 proof = proof.forwardFollow(lambda p:
-    p.advanceAll([0]))
-
-proof = proof.forwardFollow(lambda p:
-    p.onPathFollow(lambda x:
-      x.forwardUnalways()))
-
-proof = proof.forwardFollow(lambda p:
-    p.retreat())
-
-proof = proof.forwardFollow(lambda p:
-    p.onPathFollow(lambda x:
-      x.forwardDistribute(1, 0)))
-
-proof = proof.forwardFollow(lambda p:
     p.retreat(4))
 
 proof = proof.forwardFollow(lambda p:
