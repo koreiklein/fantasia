@@ -64,22 +64,11 @@ class Path:
         tgt = Path(formula = formula, endofunctor = self.endofunctor),
         basicArrow = self.endofunctor.translate().onArrow(enrichedArrow.translate()))
 
-  def onFormulaAndEndofunctorFollow(self, f):
-    enrichedArrow, newFormula = f(self.formula, self.endofunctor)
-    return Arrow(src = self,
-        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
-        enrichedArrow = enrichedArrow)
-
   def onPathFollow(self, f):
     return self.onPath(f(self.bottom()))
 
   def covariant(self):
     return self.endofunctor.covariant()
-
-  def instantiateBottomInOrder(self, variables):
-    assert(not self.covariant())
-    return self.onFormulaAndEndofunctorFollow(lambda x, e:
-        e.instantiateInOrder(variables = variables, x = x))
 
   def forwardAndTrue(self):
     return self.onPathFollow(lambda x: x.forwardAndTrue()).forwardFollow(lambda p:
@@ -168,15 +157,26 @@ class Path:
     return self.heavySimplifyWithin(index).forwardFollow(lambda p:
         p.simplifyBottom())
 
+  def instantiateBottomInOrder(self, variables):
+    assert(not self.covariant())
+    enrichedArrow, newFormula = self.endofunctor.instantiateInOrder(variables = variables, x = self.formula)
+    return Arrow(src = self,
+        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
+        enrichedArrow = enrichedArrow)
+
   def importAboutNegating(self, variables, f, g):
-    return self.onFormulaAndEndofunctorFollow(lambda x, e:
-        e.importAboutNegating(variables = variables,
-          f = f, g = g, x = self.bottom()))
+    enrichedArrow, newFormula = self.endofunctor.importAboutNegating(variables = variables,
+        f = f, g = g, x = self.formula)
+    return Arrow(src = self,
+        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
+          enrichedArrow = enrichedArrow)
 
   def importAbout(self, variables, f, g):
-    return self.onFormulaAndEndofunctorFollow(lambda x, e:
-        e.importAbout(variables = variables,
-          f = f, g = g, x = self.bottom()))
+    enrichedArrow, newFormula = self.endofunctor.importAbout(variables = variables,
+        f = f, g = g, x = self.formula)
+    return Arrow(src = self,
+        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
+        enrichedArrow = enrichedArrow)
 
   def maybeExportBottom(self):
     if self.covariant():

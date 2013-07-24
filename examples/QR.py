@@ -119,8 +119,7 @@ proof = proof.forwardFollow(lambda p:
       constructors.assume(x, claim)))
 
 proof = proof.forwardFollow(lambda p:
-    p.onPathFollow(lambda x:
-      x.forwardSimplify()))
+    p.simplifyBottom())
 
 proof = proof.forwardFollow(lambda p:
     p.advance().forwardFollow(lambda p:
@@ -149,8 +148,7 @@ proof = proof.forwardFollow(lambda p:
     p.advanceAll([None, 0]))
 
 proof = proof.forwardFollow(lambda p:
-    p.onPathFollow(lambda x:
-      x.forwardSimplify()))
+    p.simplifyBottom())
 
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:
@@ -199,6 +197,8 @@ proof = proof.forwardFollow(lambda p:
 
 proof = proof.forwardFollow(lambda p:
     p.advanceAll([None, None, 0]))
+
+
 
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:

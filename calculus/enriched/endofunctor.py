@@ -124,8 +124,13 @@ class Endofunctor:
     import_arrow = self.importExactly(claim)(x)
     return import_arrow, formula.And([claim, x])
 
+  def importAboutNegating(self, variables, f, g, x):
+    assert(not self.covariant())
+    arrow, value = not_functor.compose(self).importAbout(variables, f, g, formula.Not(x))
+    return self.onArrow(x.backwardUndoubleDual()).forwardCompose(arrow), formula.Not(value)
+
   # self must be covariant
-  # variables: a list of variable in scope at self.
+  # variables: a list of variables in scope at self.
   # f: a function from a list of variables bindings and a formula to a boolean.
   # g: a function from a list of formulas to an index into that list.
   # x: a formula
@@ -165,11 +170,6 @@ class Endofunctor:
     assert(substituted_claim.translate() == also_substituted_claim.value.translate())
     B = formula.Always(formula.Not(formula.Not(substituted_claim)))
     return import_arrow.forwardCompose(instantiate_arrow), formula.And([B, x])
-
-  def importAboutNegating(self, variables, f, g, x):
-    assert(not self.covariant())
-    arrow, value = not_functor.compose(self).importAbout(variables, f, g, formula.Not(x))
-    return self.onArrow(x.backwardUndoubleDual()).forwardCompose(arrow), formula.Not(value)
 
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)

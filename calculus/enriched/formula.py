@@ -910,8 +910,7 @@ class Identical(Formula):
     self.left = left
     self.right = right
   def forwardSimplify(self):
-    if self.left == self.right:
-      return 
+    return self
   def applied_variables(self):
     return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
