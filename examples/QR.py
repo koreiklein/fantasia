@@ -249,8 +249,6 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.instantiateBottomInOrder([q, S(r)]))
 proof = proof.forwardFollow(lambda p:
-    p.heavySimplify())
-proof = proof.forwardFollow(lambda p:
     p.retreat(1))
 
 proof = proof.forwardFollow(lambda p:
@@ -291,8 +289,6 @@ proof = proof.forwardFollow(lambda p:
     p.instantiateBottomInOrder(variables = [r]))
 proof = proof.forwardFollow(lambda p:
     p.retreat(2))
-proof = proof.forwardFollow(lambda p:
-    p.simplifyBottom())
 
 proof = proof.forwardFollow(lambda p:
     p.importAbout(variables = [r, Times(q, b)],
@@ -398,11 +394,6 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.instantiateBottomInOrder(variables = [q]))
 
-proof = proof.forwardFollow(lambda p:
-    p.retreat(0))
-proof = proof.forwardFollow(lambda p:
-    p.heavySimplify())
-
 def F(bindings, value):
   free = value.translate().freeVariables()
   return r in free and q in free and b in free and a_prime in free
@@ -440,8 +431,7 @@ proof = proof.forwardFollow(lambda p:
 proof = proof.forwardFollow(lambda p:
     p.instantiateBottomInOrder(variables = [r]))
 proof = proof.forwardFollow(lambda p:
-    p.retreat(2).forwardFollow(lambda p:
-      p.heavySimplify()))
+    p.retreat(2))
 
 proof = proof.forwardFollow(lambda p:
     p.importAbout(variables = [r, Times(q, b)],

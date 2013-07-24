@@ -162,7 +162,8 @@ class Path:
     enrichedArrow, newFormula = self.endofunctor.instantiateInOrder(variables = variables, x = self.formula)
     return Arrow(src = self,
         tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
-        enrichedArrow = enrichedArrow)
+        enrichedArrow = enrichedArrow).forwardFollow(lambda p:
+            p.heavySimplify())
 
   def importAboutGenerally(self, f, g):
     class S(spec.SearchSpec):
