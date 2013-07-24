@@ -1,6 +1,6 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-from calculus.enriched import formula, endofunctor
+from calculus.enriched import formula, endofunctor, spec
 from calculus.basic import endofunctor as basicEndofunctor
 
 class Arrow:
@@ -165,18 +165,73 @@ class Path:
         enrichedArrow = enrichedArrow)
 
   def importAboutNegating(self, variables, f, g):
-    enrichedArrow, newFormula = self.endofunctor.importAboutNegating(variables = variables,
-        f = f, g = g, x = self.formula)
-    return Arrow(src = self,
-        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
-          enrichedArrow = enrichedArrow)
+    assert(not self.covariant())
+    p = Path(endofunctor = endofunctor.not_functor.compose(self.endofunctor),
+        formula = formula.Not(self.formula))
+    a = p.importAbout(variables, f, g)
+    return self.onPathFollow(lambda x:
+        x.backwardUndoubleDual()).forwardCompose(a).forwardFollow(lambda p:
+            p.simplifyBottom())
 
-  def importAbout(self, variables, f, g):
-    enrichedArrow, newFormula = self.endofunctor.importAbout(variables = variables,
-        f = f, g = g, x = self.formula)
+  def importAboutGenerally(self, f, g):
+    class S(spec.SearchSpec):
+      def search_hidden_formula(self, name):
+        return True
+      def valid(self, e):
+        return e.__class__ == formula.Always and f([], e.value)
+    importable_claims = self.endofunctor.search(S())
+    claim = importable_claims[g(importable_claims)]
+    import_arrow = self.endofunctor.importExactly(claim)(self.formula)
     return Arrow(src = self,
-        tgt = Path(formula = newFormula, endofunctor = self.endofunctor),
-        enrichedArrow = enrichedArrow)
+        tgt = Path(formula = formula.And([claim, self.formula]), endofunctor = self.endofunctor),
+        enrichedArrow = import_arrow)
+
+  # TODO these comments are from the endofunctor import, adapt them to paths.
+  # self must be covariant
+  # variables: a list of variables in scope at self.
+  # f: a function from a list of variables bindings and a formula to a boolean.
+  # g: a function from a list of formulas to an index into that list.
+  # x: a formula
+  #
+  # search this endofunctor for claims at covariant spots of the form:
+  #  Forall(xs, Y) such that len(xs) == len(variables) and f(xs, Y) == True
+  # pass the list L of substituted formulas to g to get an index I, and return a pair
+  # (arrow, value) such that arrow imports and instantiates to get L[I]
+  # and self.onObject(value) == arrow.tgt
+  #   self -> L[i]
+  def importAbout(self, variables, f, g):
+    if len(variables) == 0:
+      return self.importAboutGenerally(f, g)
+    assert(self.endofunctor.covariant())
+    # TODO Improve performance once it becomes important.
+    class S(spec.SearchSpec):
+      def search_hidden_formula(self, name):
+        return True
+      def valid(self, e):
+        result = (e.__class__ == formula.Always
+            and e.value.__class__ == formula.Not
+            and e.value.value.__class__ == formula.Exists
+            and len(e.value.value.bindings) == len(variables)
+            and e.value.value.value.__class__ == formula.Not
+            and f(e.value.value.bindings, e.value.value.value.value))
+        return result
+    importable_claims = self.endofunctor.search(S())
+    xs = [ claim.value.value.substituteAllVariablesInBody(variables).value
+        for claim in importable_claims ]
+    index = g(xs)
+    claim = importable_claims[index]
+    substituted_claim = xs[index]
+
+    import_arrow = self.endofunctor.importExactly(claim)(self.formula)
+    larger_functor = endofunctor.not_functor.compose(endofunctor.always_functor).compose(
+        endofunctor.And(index = 0, values = [self.formula])).compose(
+            self.endofunctor)
+    instantiate_arrow, also_substituted_claim = larger_functor.instantiateInOrder(variables, claim.value.value)
+    assert(substituted_claim.translate() == also_substituted_claim.value.translate())
+    B = formula.Always(formula.Not(formula.Not(substituted_claim)))
+    return Arrow(src = self,
+        tgt = Path(formula = formula.And([B, self.formula]), endofunctor = self.endofunctor),
+        enrichedArrow = import_arrow.forwardCompose(instantiate_arrow))
 
   def maybeExportBottom(self):
     if self.covariant():

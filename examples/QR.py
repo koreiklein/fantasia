@@ -145,10 +145,7 @@ proof = proof.forwardFollow(lambda p:
       g = lambda xs: 0))
 
 proof = proof.forwardFollow(lambda p:
-    p.advanceAll([None, 0]))
-
-proof = proof.forwardFollow(lambda p:
-    p.simplifyBottom())
+    p.advanceAll([0]))
 
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:
@@ -177,7 +174,7 @@ proof = proof.forwardFollow(lambda p:
       g = lambda xs: 0))
 
 proof = proof.forwardFollow(lambda p:
-    p.retreat(1).forwardFollow(lambda p:
+    p.retreat(3).forwardFollow(lambda p:
       p.simplifyBottom()))
 
 proof = proof.forwardFollow(lambda p:
@@ -409,11 +406,10 @@ proof = proof.forwardFollow(lambda p:
     p.importAboutNegating(variables = [S(q), b, S(a_prime)],
       f = lambda bindings, value: times in value.applied_variables(),
       g = lambda xs: 0))
-proof = proof.forwardFollow(lambda p:
-    p.advanceAll([None, 0, None]))
 
 proof = proof.forwardFollow(lambda p:
-    p.simplifyBottom())
+    p.advanceAll([0, None]))
+
 proof = proof.forwardFollow(lambda p:
     p.onPathFollow(lambda x:
       x.forwardRightToLeft()))
@@ -434,13 +430,11 @@ proof = proof.forwardFollow(lambda p:
 def F(bindings, value):
   free = value.translate().freeVariables()
   return r in free and q in free and b in free and a_prime in free
+
 proof = proof.forwardFollow(lambda p:
     p.importAboutNegating(variables = [],
       f = F,
       g = lambda xs: 0))
-
-proof = proof.forwardFollow(lambda p:
-    p.advance())
 
 proof = proof.forwardFollow(lambda p:
     p.importAbout(variables = [q, b],

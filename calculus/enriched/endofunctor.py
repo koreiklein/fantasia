@@ -113,64 +113,6 @@ class Endofunctor:
           tgt = self.onObject(formula.And([B, x])),
           basicArrow = self.translate().importExactly(B.translate())(x.translate())))
 
-  def importAboutGenerally(self, f, g, x):
-    class S(spec.SearchSpec):
-      def search_hidden_formula(self, name):
-        return True
-      def valid(self, e):
-        return e.__class__ == formula.Always and f([], e.value)
-    importable_claims = self.search(S())
-    claim = importable_claims[g(importable_claims)]
-    import_arrow = self.importExactly(claim)(x)
-    return import_arrow, formula.And([claim, x])
-
-  def importAboutNegating(self, variables, f, g, x):
-    assert(not self.covariant())
-    arrow, value = not_functor.compose(self).importAbout(variables, f, g, formula.Not(x))
-    return self.onArrow(x.backwardUndoubleDual()).forwardCompose(arrow), formula.Not(value)
-
-  # self must be covariant
-  # variables: a list of variables in scope at self.
-  # f: a function from a list of variables bindings and a formula to a boolean.
-  # g: a function from a list of formulas to an index into that list.
-  # x: a formula
-  #
-  # search this endofunctor for claims at covariant spots of the form:
-  #  Forall(xs, Y) such that len(xs) == len(variables) and f(xs, Y) == True
-  # pass the list L of substituted formulas to g to get an index I, and return a pair
-  # (arrow, value) such that arrow imports and instantiates to get L[I]
-  # and self.onObject(value) == arrow.tgt
-  #   self -> L[i]
-  def importAbout(self, variables, f, g, x):
-    if len(variables) == 0:
-      return self.importAboutGenerally(f, g, x)
-    assert(self.covariant())
-    # TODO Improve performance once it becomes important.
-    class S(spec.SearchSpec):
-      def search_hidden_formula(self, name):
-        return True
-      def valid(self, e):
-        result = (e.__class__ == formula.Always
-            and e.value.__class__ == formula.Not
-            and e.value.value.__class__ == formula.Exists
-            and len(e.value.value.bindings) == len(variables)
-            and e.value.value.value.__class__ == formula.Not
-            and f(e.value.value.bindings, e.value.value.value.value))
-        return result
-    importable_claims = self.search(S())
-    xs = [ claim.value.value.substituteAllVariablesInBody(variables).value
-        for claim in importable_claims ]
-    index = g(xs)
-    claim = importable_claims[index]
-    substituted_claim = xs[index]
-
-    import_arrow = self.importExactly(claim)(x)
-    larger_functor = not_functor.compose(always_functor).compose(And(index = 0, values = [x])).compose(self)
-    instantiate_arrow, also_substituted_claim = larger_functor.instantiateInOrder(variables, claim.value.value)
-    assert(substituted_claim.translate() == also_substituted_claim.value.translate())
-    B = formula.Always(formula.Not(formula.Not(substituted_claim)))
-    return import_arrow.forwardCompose(instantiate_arrow), formula.And([B, x])
-
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)
   value = x.value
