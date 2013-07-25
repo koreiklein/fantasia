@@ -57,6 +57,13 @@ def Iff(left, right):
 def Hidden(value, name):
   return formula.Hidden(value, name)
 
+# x: an enriched formula
+# B: an enriched formula that will be assumed
+# return: an arrow with src x, and with a tgt equivalent to (B => And([B, x])).
+#   This arrow is crucial in constructing proofs.  Typically, the first step
+#   of a proof is to pick a claim B to be proven, and use an assume arrow.
+#   Then the user contradicts the first B in the tgt formula to yield a formula
+#   of the form:  And([B, x]).
 def assume(x, B):
   return formula.Arrow(src = x,
       tgt = Not(And([B, Not(And([B, x]))])),

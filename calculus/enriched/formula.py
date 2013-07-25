@@ -23,6 +23,12 @@ class Formula:
   def _translate(self):
     raise Exception("Abstract superclass.")
 
+  # return an arrow from self to Exists(bindings, value) such that
+  #   bindings is as long as reasonably possible.
+  # This method is meant to simplify formulas of the form:
+  #      Exists([x], And([A, B, Exists([y, z], C)]))
+  #  into formulas of the form:
+  #      Exists([x, y, z], And([A, B, C]))
   def forwardGatherExistentials(self):
     arrow, bindings, value = self._forwardGatherExistentials()
     return Arrow(src = self, tgt = Exists(bindings, value),

@@ -78,6 +78,10 @@ def forwardImportInductionAndContradict(x, var, claim):
                                 basicFormula.trueIsNotFalse).backwardFollow(lambda x:
                                   x.backwardIntroUnitLeft())))))
 
+# x: an enriched Exists formula that we desire to contradict.
+# i: an index into x.bindings
+# return: an arrow from x to a different formula consisting of a base case
+#         we must contradict, and an inductive step we must contradict.
 def forwardInductionOnIExists(x, i):
   var = x.bindings[i].variable
   claim = constructors.Not(x.value)
