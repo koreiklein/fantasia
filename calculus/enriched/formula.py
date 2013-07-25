@@ -140,7 +140,7 @@ class Holds(Formula):
     return self.held.applied_variables().union(self.holding.applied_variables())
 
   def __repr__(self):
-    return "%s : %s"%(self.held, self.holding)
+    return "%s IS %s"%(self.held, self.holding)
 
   def _translate(self):
     return basicFormula.Holds(held = self.held,

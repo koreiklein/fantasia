@@ -15,7 +15,7 @@ dot = newTextStack(None, '.')
 nullStack = newTextStack(None, '')
 
 def holds():
-  return newTextStack(None, ':')
+  return newTextStack(None, 'IS')
 
 negationStack = newTextStack(None, "~")
 
