@@ -95,7 +95,7 @@ class Proof:
   def assumption(self):
     return self.library.formula()
   def conclusion(self):
-    return self.arrow.top()
+    return self.arrow.tgt.top()
 
   def translate(self):
     return self.arrow.translate()

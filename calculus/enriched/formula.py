@@ -814,6 +814,17 @@ class And(Conjunction):
             Not(self).translate().forwardCollapse())).forwardFollow(lambda x:
               x.forwardUndoubleDual()))
 
+  def forwardForgetLeft(self):
+    assert(len(self.values) == 2)
+    return Arrow(src = self,
+        tgt = self.values[1],
+        basicArrow = self.translate().forwardForgetLeft())
+  def forwardForgetRight(self):
+    assert(len(self.values) == 2)
+    return Arrow(src = self,
+        tgt = self.values[0],
+        basicArrow = self.translate().forwardForgetRight())
+
 class Or(Conjunction):
   def basicBinop(self):
     return basicFormula.Or

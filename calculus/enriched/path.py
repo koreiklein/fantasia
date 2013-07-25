@@ -67,6 +67,14 @@ class Path:
     self.formula = formula
     self.endofunctor = endofunctor
 
+  def __repr__(self):
+    def shift(x):
+      return '\n'.join(['    ' + s for s in x.split('\n')])
+    return "%s PATH:\ntop =\n%s\nbottom =\n%s"%(
+        'Covariant' if self.covariant() else 'Contravariant',
+        shift(repr(self.top().top_level_render()._backend)),
+        shift(repr(self.bottom().top_level_render()._backend)))
+
   # self.endofunctor must be covariant.
   # spec: a SearchSpec instance. (see calculus.enriched.spec.SearchSpec)
   # return: a list of pairs (B, f) such that spec.valid(B) and
