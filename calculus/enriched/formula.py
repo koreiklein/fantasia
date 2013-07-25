@@ -409,6 +409,7 @@ class Always(Formula):
             basicArrow = basicFormula.trueAlways))
     else:
       return result
+  # return: an arrow from self to self.value
   def forwardUnalways(self):
     return Arrow(src = self, tgt = self.value,
         basicArrow = self.translate().forwardUnalways())
@@ -673,6 +674,9 @@ class And(Conjunction):
       result.extend(value.search(spec))
     return result
 
+  # a, b: variables
+  # self must be of the form And([a === b, X])
+  # return: an arrow from self to X.substituteVariable(a, b)
   def forwardSubstituteIdentical(self, a, b):
     assert(len(self.values) == 2)
     if self.values[0].__class__ == Identical:
@@ -722,7 +726,9 @@ class And(Conjunction):
         # Exists(xs, And([X, Exists(ys, Y)])) --> Exists(xs, Exists(ys, And([X, Y])))
         left_functor.onArrow(right_exists._endofunctor_translate()._import(X)(Y)))
 
-  # distribute i over j
+  # distribute i over j, implementing the law than And distributes over Or.
+  # e.g. And([A, B, Or([C, D]), E]).forwardDistribute(0, 2).tgt ==
+  #      And([B, Or([And([A, C]), And([A, D])]), E])
   def forwardDistribute(self, i, j):
     assert(i != j)
     assert(self.values[j].__class__ == Or)
@@ -810,6 +816,7 @@ class Or(Conjunction):
   def renderDivider(self, covariant, length):
     return primitives.orDivider(covariant)(length)
 
+  # return: an arrow to self from self.values[0]
   def backwardAdmitRight(self):
     assert(len(self.values) == 2)
     return Arrow(tgt = self, src = self.values[0],
@@ -860,11 +867,13 @@ class Iff(Formula):
     return Iff(left = self.left.substituteVariable(a, b),
         right = self.right.substituteVariable(a, b))
 
+  # return: an arrow from self to a claim saying that: self.left implies self.right
   def forwardLeftToRight(self):
     return Arrow(src = self,
         tgt = Always(Not(And([self.left, Not(self.right)]))),
         basicArrow = self.translate().forwardForgetRight())
 
+  # return: an arrow from self to a claim saying that: self.right implies self.left
   def forwardRightToLeft(self):
     return Arrow(src = self,
         tgt = Always(Not(And([self.right, Not(self.left)]))),
