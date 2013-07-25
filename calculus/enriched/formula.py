@@ -94,7 +94,7 @@ class Holds(Formula):
     self.holding = holding
 
   def __repr__(self):
-    return "%s : %s"%(self.held, self.holding)
+    return "%s IS %s"%(self.held, self.holding)
 
   def translate(self):
     return basicFormula.Holds(held = self.held,
