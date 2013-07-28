@@ -65,7 +65,7 @@ claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
       left = IsFunction(A)))
 
 lib = library.Library(
-    name = "Function",
+    name = "F",
     claims = [claim],
     variables = [common_vars.function],
     sub_libraries = [equivalence.lib])

@@ -1,5 +1,6 @@
-# Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
+# Cwpyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from misc import left, right
 from calculus import symbol
 from calculus.variable import Variable
 from lib import common_symbols
@@ -24,11 +25,6 @@ class Formula:
 
   # a, b: variables.
   def substituteVariable(self, a, b):
-    raise Exception("Abstract superclass.")
-
-  # a, b: variables.
-  # return: a DependentArrow from self to self.substituteVariable(a, b)
-  def substitutionDependentArrow(self, a, b):
     raise Exception("Abstract superclass.")
 
   def freeVariables(self):
@@ -68,6 +64,10 @@ class Formula:
   def forwardHide(self, name):
     return Hide(src = self, tgt = Hidden(self, name))
 
+  def forwardCollapse(self):
+    return self.forwardAndTrue().forwardFollow(lambda x:
+        x.forwardForgetRight())
+
   def identity(self):
     return Id(src = self, tgt = self)
 
@@ -76,11 +76,9 @@ class Holds(Formula):
     self.held = held
     self.holding = holding
 
-  def substitutionDependentArrow(self, a, b):
-    # FIXME
-    raise Exception("Substition of Holds is unimpletemented.")
-
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.holding == other.holding
         and self.held == other.held)
@@ -117,6 +115,8 @@ class Exists(Formula):
     return OnBody(self.variable, self.value.simplify())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     if self.__class__ != other.__class__:
       return False
     else:
@@ -143,7 +143,7 @@ class Exists(Formula):
                                    AndPastExists(src = And(B, self), tgt = x).invert()), X)
             for a, X in self.value.produceFiltered(f)
             for B in [a.tgt.left]
-            if self.variable not in B.freeVariables]
+            if self.variable not in B.freeVariables()]
 
   def forwardOnBody(self, arrow):
     assert(isinstance(arrow, Arrow))
@@ -163,6 +163,21 @@ class Exists(Formula):
   def backwardIntroExists(self, newVariable):
     return IntroExists(src = self.value.substituteVariable(self.variable, newVariable), tgt = self)
 
+  def forwardCommuteExists(self):
+    assert(self.value.__class__ == Exists)
+    return CommuteExists(src = self,
+        tgt = Exists(self.value.variable, Exists(self.variable, self.value.value)))
+    return self.forwardOnBodyFollow(lambda x:
+        x.forwardOnBodyFollow(lambda x:
+          x.forwardIntroExists(self.variable, self.variable))).forwardFollow(lambda x:
+              x.forwardRemoveExists())
+
+  # Exists x. (A|B) --> (A|Exists x. B)
+  def forwardExistsPastAnd(self):
+    assert(self.value.__class__ == And)
+    return AndPastExists(src = And(self.value.left, Exists(self.variable, self.value.right)),
+        tgt = self).invert()
+
   def updateVariables(self):
     variable = self.variable.updateVariables()
     return Exists(variable = variable,
@@ -170,15 +185,13 @@ class Exists(Formula):
           self.variable, variable).updateVariables())
 
   def substituteVariable(self, a, b):
-    assert(self.variable not in a.freeVariables())
-    assert(self.variable not in b.freeVariables())
+    if not(self.variable not in a.freeVariables()):
+      raise Exception("%s should not be in %s"%(self.variable, a.freeVariables()))
+    if not(self.variable not in b.freeVariables()):
+      raise Exception("%s should not be in %s"%(self.variable, b.freeVariables()))
+
     return Exists(variable = self.variable,
         value = self.value.substituteVariable(a, b))
-
-  def substitutionDependentArrow(self, a, b):
-    assert(self.variable not in a.freeVariables())
-    assert(self.variable not in b.freeVariables())
-    return self.value.substitutionDependentArrow(a, b).exists(self.variable)
 
   def freeVariables(self):
     return self.value.freeVariables().difference(Set([self.variable]))
@@ -214,6 +227,8 @@ class Conjunction(Formula):
     return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.left == other.left
         and self.right == other.right)
@@ -330,6 +345,20 @@ class And(Conjunction):
           x.forwardAssociate()), X) for a, X in self.left.produceFiltered(f)])
     return result
 
+  def getSide(self, side):
+    if side == left:
+      return self.left
+    else:
+      assert(side == right)
+      return self.right
+
+  def getOtherSide(self, side):
+    if side == left:
+      return self.right
+    else:
+      assert(side == right)
+      return self.left
+
   def simplifyOnce(self):
     if self.left == unit_for_conjunction(And):
       return UnitIdentity(tgt = self, src = self.right).invert()
@@ -338,9 +367,12 @@ class And(Conjunction):
     else:
       raise Exception("Can't simplify once.")
 
-  def substitutionDependentArrow(self, a, b):
-    return self.left.substitutionDependentArrow(a, b).dependent_arrow_and(
-           self.right.substitutionDependentArrow(a, b))
+  def forwardRemoveRightIfUnit(self):
+    if self.right == true:
+      return UnitIdentity(tgt = self, src = self.left).invert()
+    else:
+      return self.identity()
+
 
   def simplify(self):
     if self.left == unit_for_conjunction(And):
@@ -352,10 +384,27 @@ class And(Conjunction):
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
 
+  # A | 1 <-- A
+  def backwardIntroUnitLeft(self):
+    return UnitIdentity(tgt = self, src = self.left)
+  def forwardSubstituteIdentical(self, a, b):
+    I = self.left
+    assert(I.__class__ == Identical)
+    assert((I.left == a and I.right == b) or (I.left == b and I.right == a))
+    return SubstituteArrow(src = self, tgt = self.right.substituteVariable(a, b))
+
   def forwardApply(self):
     assert(self.right.__class__ == Not)
     assert(self.right.value.__class__ == And)
     return Apply(src = self, tgt = Not(self.right.value.right))
+
+  # A | ~A --> A | ~(A|1) --> ~1 --> -
+  def forwardContradict(self):
+    return self.forwardOnRightFollow(lambda x:
+        x.forwardOnNotFollow(lambda x:
+          x.backwardForgetRight(true))).forwardFollow(lambda x:
+              x.forwardApply()).forwardFollow(lambda x:
+                  notTrueIsFalse)
 
   def forwardZip(self):
     # !A | !B --> !(A|B)
@@ -366,7 +415,6 @@ class And(Conjunction):
   def forwardAndPastExists(self):
     # (A|Exists xs. B) --> Exists xs. (A|B)
     assert(self.right.__class__ == Exists)
-    v = self.right.variable.updateVariables()
     return AndPastExists(src = self,
         tgt = Exists(variable = self.right.variable,
           value = And(left = self.left, right = self.right.value)))
@@ -378,7 +426,7 @@ class And(Conjunction):
           x.forwardOnBodyFollow(lambda x:
             x.forwardCommute())))
 
-  def forwardDistibute(self):
+  def forwardDistribute(self):
     # A | (B - C) --> (A | B) - (A | C)
     assert(self.right.__class__ == Or)
     def pairWith(x):
@@ -392,13 +440,13 @@ class And(Conjunction):
 
   def forwardDistributeLeft(self):
     # A | (B - C) --> (A | B) - (A | C) --> (A | B) - C
-    return self.forwardDistibute().forwardFollow(lambda x:
+    return self.forwardDistribute().forwardFollow(lambda x:
         x.forwardOnRightFollow(lambda x:
           x.forwardForgetLeft()))
 
   def forwardDistributeRight(self):
     # A | (B - C) --> (A | B) - (A | C) --> B - (A | C)
-    return self.forwardDistibute().forwardFollow(lambda x:
+    return self.forwardDistribute().forwardFollow(lambda x:
         x.forwardOnLeftFollow(lambda x:
           x.forwardForgetLeft()))
 
@@ -419,25 +467,27 @@ class Or(Conjunction):
 
   def simplifyOnce(self):
     if self.left == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.right)
+      return UnitIdentity(tgt = self, src = self.right).invert()
     elif self.right == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.left)
+      return UnitIdentity(tgt = self, src = self.left).invert()
     else:
       raise Exception("Can't simplify once.")
 
+  def forwardRemoveRightIfUnit(self):
+    if self.right == false:
+      return UnitIdentity(tgt = self, src = self.left).invert()
+    else:
+      return self.identity()
+
   def simplify(self):
     if self.left == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.right).forwardFollow(lambda x:
+      return UnitIdentity(tgt = self, src = self.right).invert().forwardFollow(lambda x:
           x.simplify())
     elif self.right == unit_for_conjunction(Or):
-      return UnitIdentity(src = self, tgt = self.left).forwardFollow(lambda x:
+      return UnitIdentity(tgt = self, src = self.left).invert().forwardFollow(lambda x:
           x.simplify())
     else:
       return self.forwardOnConjunction(self.left.simplify(), self.right.simplify())
-
-  def substitutionDependentArrow(self, a, b):
-    return self.left.substitutionDependentArrow(a, b).dependent_arrow_or(
-           self.right.substitutionDependentArrow(a, b))
 
   def backwardAdmitLeft(self):
     return Admit(tgt = self, src = self.right)
@@ -473,13 +523,12 @@ class Not(Formula):
     self.value = value
     self.rendered = rendered
 
-  def substitutionDependentArrow(self, a, b):
-    return self.value.substitutionDependentArrow(a, b).dependent_arrow_not()
-
   def simplify(self):
     return self.forwardOnNot(self.value.simplify().invert())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
@@ -526,9 +575,7 @@ class Not(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
-
-  def substitutionDependentArrow(self, a, b):
-    return self.value.substitutionDependentArrow(a, b).always()
+    self._equal_formulas = Set()
 
   def simplify(self):
     return self.forwardOnAlways(self.value.simplify())
@@ -551,6 +598,8 @@ class Always(Formula):
     return Copy(src = self, tgt = And(self.updateVariables(), self))
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.value == other.value
   def __ne__(self, other):
     return not(self == other)
@@ -580,10 +629,13 @@ class Always(Formula):
 
   # !(A|B) --> !A | !B
   def forwardDistributeAlways(self):
+    assert(self.value.__class__ == And)
     # !(A|B) --> !(A|B) | !(A|B) --> !A | !(A|B) --> !A | !B
     return self.forwardCopy().forwardFollow(lambda x:
-        x.forwardOnLeftFollow(lambda x: x.forwardForgetRight()).forwardFollow(lambda x:
-          x.forwardOnRightFollow(lambda x: x.forwardForgetLeft())))
+        x.forwardOnLeftFollow(lambda x:
+          x.forwardOnAlwaysFollow(lambda x: x.forwardForgetRight())).forwardFollow(lambda x:
+        x.forwardOnRightFollow(lambda x:
+          x.forwardOnAlwaysFollow(lambda x: x.forwardForgetLeft()))))
 
   def forwardCojoin(self):
     return Cojoin(src = self, tgt = Always(self))
@@ -602,9 +654,6 @@ class Unit(Formula):
     return self.__class__ == other.__class__
   def __ne__(self, other):
     return not(self == other)
-
-  def substitutionDependentArrow(self, a, b):
-    return identity_dependent_arrow(self)
 
   def updateVariables(self):
     return self
@@ -635,6 +684,34 @@ class OrUnit(Unit):
 
 true = AndUnit()
 false = OrUnit()
+
+# In contexts where Identical(a, b) or Identical(b, a) can be concluded, it must be the case
+# that each formula F involving a has the EXACT same set of representations as
+# the formula F.substituteVariable(a, b)
+class Identical(Formula):
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+  def __eq__(self, other):
+    if self is other:
+      return True
+    return other.__class__ == Identical and (
+        (self.left == other.left and self.right == other.right)
+        or (self.left == other.right and self.right == other.left))
+  def __ne__(self, other):
+    return not(self == other)
+  def updateVariables(self):
+    return self
+  def substituteVariable(self, a, b):
+    return Identical(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
+  def freeVariables(self):
+    result = Set()
+    result.union_update(self.left.freeVariables())
+    result.union_update(self.right.freeVariables())
+    return result
+  def __repr__(self):
+    return "< %s === %s >"%(self.left, self.right)
 
 def unit_for_conjunction(conjunction):
   if conjunction == And:
@@ -677,6 +754,8 @@ class Arrow:
     raise Exception("The following arrow is not invertible: %s"%(self,))
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return self.__class__ == other.__class__ and self.src == other.src and self.tgt == other.tgt
   def __ne__(self, other):
     return not(self == other)
@@ -816,13 +895,15 @@ class Composite(Arrow):
       raise Exception(("Invalid composite.\n"
         "left %s\nright %s\nleft.src = %s\n"
         "left.tgt =%s\nright.src =%s\nright.tgt = %s\n"
-          )%(self.left, self.right, self.left.src, self.left.tgt, self.right.src, self.right.tgt))
+          )%(self.left.compress(), self.right.compress(), self.left.src, self.left.tgt, self.right.src, self.right.tgt))
 
   # May throw an exception.
   def invert(self):
     return Composite(left = self.right.invert(), right = self.left.invert())
 
   def __eq__(self, other):
+    if self is other:
+      return True
     return (self.__class__ == other.__class__
         and self.left == other.left
         and self.right == other.right)
@@ -845,6 +926,14 @@ class Distribute(Arrow):
     assert(self.src.right.left == self.tgt.left.right)
     assert(self.src.right.right == self.tgt.right.right)
 
+# And(base, step) --> claim
+class Induction(Arrow):
+  def arrowTitle(self):
+    return "Induction"
+  def validate(self):
+    #TODO Check induction arrows more carefully.
+    pass
+
 # A | B --> A,  A | B --> B
 class Forget(Arrow):
   def arrowTitle(self):
@@ -858,7 +947,7 @@ class Admit(Arrow):
   def arrowTitle(self):
     return "Admit"
   def validate(self):
-    assert(self.src.__class__ == Or)
+    assert(self.tgt.__class__ == Or)
     assert(self.src in [self.tgt.left, self.tgt.right])
 
 class Commute(Isomorphism):
@@ -912,7 +1001,11 @@ class Apply(Arrow):
     assert(self.src.__class__ == And)
     assert(self.src.right.__class__ == Not)
     assert(self.src.right.value.__class__ == And)
-    assert(self.src.left == self.src.right.value.left)
+    if not(self.src.left == self.src.right.value.left):
+      # FIXME
+      a = self.src.right.value.left.variable
+      b = self.src.left.variable
+      raise Exception("self.src.left =\n%s\nself.src.right.value.left =\n%s"%(self.src.left.value, self.src.right.value.left.value.substituteVariable(a, b)))
     assert(self.src.right.value.right == self.tgt.value)
 
 # !A --> !!A
@@ -980,6 +1073,18 @@ class AndPastExists(Isomorphism):
     assert(self.src.left == self.tgt.value.left)
     assert(self.src.right.variable == self.tgt.variable)
 
+# Exists x . Exists y . A --> Exists y . Exists x . A
+class CommuteExists(Isomorphism):
+  def arrowTitle(self):
+    return "CommuteExists"
+  def validate(self):
+    assert(self.src.__class__ == Exists)
+    assert(self.src.value.__class__ == Exists)
+    assert(self.tgt.__class__ == Exists)
+    assert(self.tgt.value.__class__ == Exists)
+    assert(self.src.variable == self.tgt.value.variable)
+    assert(self.src.value.variable == self.tgt.variable)
+
 # !(Exists x . B) --> Exists x . !B
 class AlwaysPastExists(Isomorphism):
   def arrowTitle(self):
@@ -999,6 +1104,60 @@ class RemoveExists(Arrow):
     assert(self.src.__class__ == Exists)
     assert(self.tgt == self.src.value)
     assert(self.src.variable not in self.tgt.freeVariables())
+
+# ~1 <--> -
+class NotTrueIsFalse(Isomorphism):
+  def arrowTitle(self):
+    return "NotTrueIsFalse"
+  def validate(self):
+    assert(self.tgt == false)
+    assert(self.src.__class__ == Not)
+    assert(self.src.value == true)
+
+# ~0 <--> 1
+class NotFalseIsTrue(Isomorphism):
+  def arrowTitle(self):
+    return "NotFalseIsTrue"
+  def validate(self):
+    assert(self.tgt == true)
+    assert(self.src.__class__ == Not)
+    assert(self.src.value == false)
+
+notTrueIsFalse = NotTrueIsFalse(src = Not(true), tgt = false)
+falseIsNotTrue = notTrueIsFalse.invert()
+notFalseIsTrue = NotFalseIsTrue(src = Not(false), tgt = true)
+trueIsNotFalse = notFalseIsTrue.invert()
+
+# a === b | A --> A.substituteVariable(a, b)
+# a === b | A --> A.substituteVariable(b, a)
+class SubstituteArrow(Arrow):
+  def arrowTitle(self):
+    return "Substitute(%s->%s)"%(self.src.left.left, self.src.left.right)
+  def validate(self):
+    assert(self.src.left.__class__ == Identical)
+    a = self.src.left.left
+    b = self.src.left.right
+    A = self.src.right
+    assert(A.substituteVariable(a, b) == self.tgt or
+        A.substituteVariable(b, a) == self.tgt)
+
+class TrueAlways(Isomorphism):
+  def arrowTitle(self):
+    return "TrueAlways"
+  def validate(self):
+    assert(self.src == true)
+    assert(self.tgt == Always(true))
+
+trueAlways = TrueAlways(src = true, tgt = Always(true))
+
+# a == a <--> ture
+class IdenticalReflexive(Isomorphism):
+  def name(self):
+    return "IdenticalReflexive"
+  def validate(self):
+    assert(self.src.__class__ == Identical)
+    assert(self.tgt == true)
+    assert(self.src.left == self.src.right)
 
 # For arrow built from the application of functors to other arrows.
 class FunctorialArrow(Arrow):

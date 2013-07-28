@@ -3,15 +3,15 @@
 from misc import *
 import misc
 from calculus.variable import ApplySymbolVariable, ProductVariable, StringVariable, Variable
-from calculus.enriched import formula as formula
+from calculus.enriched import spec, formula as formula
 from calculus.basic import formula as basicFormula
 from calculus.basic import endofunctor as basicEndofunctor
 from calculus.basic import bifunctor as basicBifunctor
-from lib import common_symbols
+from calculus.basic import instantiator
+from lib import common_symbols, common_vars
 from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSymbol
 
-from ui.render.gl import primitives, colors, distances
-from ui.stack import gl
+from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
 def Maps(a, b, f):
@@ -55,7 +55,7 @@ class Endofunctor:
     if self.is_identity():
       return arrow
     else:
-      basicArrow = self.translate().onArrow(arrow)
+      basicArrow = self.translate().onArrow(arrow.translate())
       if self.covariant():
         src = self.onObject(arrow.src)
         tgt = self.onObject(arrow.tgt)
@@ -69,6 +69,56 @@ class Endofunctor:
 
   def is_identity(self):
     return is_identity_functor(self)
+
+  # self must be contravariant
+  # formula: an Exists formula.
+  # variables: a list of variable in scope in self.
+  # return: a pair (arrow, value) such that arrow.tgt == self.onObject(value) and arrow instantiates the exists formula
+  #         with the given variables.
+  def instantiateInOrder(self, variables, x):
+    assert(not self.covariant())
+    assert(x.__class__ == formula.Exists)
+    assert(len(variables) == len(x.bindings))
+    value = fully_substituted(variables, x)
+    ins = InOrderInstantiator(variables)
+    basicArrow = self.translate().exportRecursively(ins, x.translate())
+    if not ins.complete():
+      raise Exception("Instantiation did not complete.")
+    result = formula.Arrow(src = self.onObject(x),
+        tgt = self.onObject(value),
+        basicArrow = basicArrow)
+    return result, value
+
+  def exportAutomaticallFromAnd(self, x):
+    assert(not self.covariant())
+    def try_export(y):
+      if y.__class__ == basicFormula.Always:
+        return y.value.__class__ == basicFormula.Holds
+      else:
+        return y.__class__ == basicFormula.Holds
+    xs, basicArrow = self.translate().exportNestedAnd(x.translate(), len(x.values), try_export)
+    newValues = []
+    for i in range(len(x.values)):
+      if xs[i] == False:
+        newValues.append(x.values[i])
+    newX = formula.And(newValues)
+    result = formula.Arrow(src = self.onObject(x), tgt = self.onObject(newX),
+        basicArrow = basicArrow)
+    return result, newX
+
+  def importExactly(self, B):
+    assert(self.covariant())
+    return (lambda x:
+        formula.Arrow(src = self.onObject(x),
+          tgt = self.onObject(formula.And([B, x])),
+          basicArrow = self.translate().importExactly(B.translate())(x.translate())))
+
+def fully_substituted(variables, x):
+  assert(x.__class__ == formula.Exists)
+  value = x.value
+  for i in range(len(variables)):
+    value = value.substituteVariable(x.bindings[i].variable, variables[i])
+  return value
 
 class Composite(Endofunctor):
   # if right is covariant, self will represent (left o right)
@@ -131,7 +181,47 @@ class VariableBinding:
   def translate(self):
     raise Exception("Abstract superclass.")
   def render(self, context):
-    return gl.newTextualGLStack(colors.variableColor, repr(self))
+    return primitives.newTextStack(colors.variableColor, repr(self))
+  def is_ordinary(self):
+    return False
+
+  def assertBoundedNatural(self):
+    assert(self.__class__ == BoundedVariableBinding)
+    assert(self.relation == common_vars.natural)
+
+  # other: a VariableBinding instance.
+  # return: an arrow representing a basic natural transform: self o other --> other o self
+  def commute(self, other):
+    if self.__class__ == BoundedVariableBinding and other.__class__ == BoundedVariableBinding:
+      # E v . A | (E w . B | C) --> E v . (E w . A | (B | C))
+      # --> E v . E w . A | (C | B) --> E v . E w . (A | C) | B --> E v . E w . B | (A | C)
+      # --> E w . E v . B | (A | C) --> E w . B | (E v . A | C)
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardOnBodyFollow(lambda x:
+            x.forwardAndPastExists().forwardFollow(lambda x:
+              x.forwardOnBodyFollow(lambda x:
+                x.forwardOnRightFollow(lambda x:
+                  x.forwardCommute()).forwardFollow(lambda x:
+                    x.forwardAssociateOther().forwardFollow(lambda x:
+                      x.forwardCommute()))))).forwardFollow(lambda x:
+                        x.forwardCommuteExists()).forwardFollow(lambda x:
+                          x.forwardOnBodyFollow(lambda x:
+                            x.forwardExistsPastAnd())))
+    elif self.__class__ == BoundedVariableBinding and other.__class__ == OrdinaryVariableBinding:
+      # E v . E w . B | C --> E w . E v . B | C --> E w . (B | E v . C)
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardCommuteExists().forwardFollow(lambda x:
+            x.forwardOnBodyFollow(lambda x:
+              x.forwardExistsPastAnd())))
+    elif self.__class__ == OrdinaryVariableBinding and other.__class__ == BoundedVariableBinding:
+      # E v . A | (E w . C) --> E v . E w . A | C --> E w . E v . A | C
+      return (lambda x:
+          other.translate().onObject(self.translate().onObject(x)).forwardOnBodyFollow(lambda x:
+            x.forwardAndPastExists()).forwardFollow(lambda x:
+              x.forwardCommuteExists()))
+    else:
+      raise Exception("Unrecognized pair of bindings (%s, %s)"%(self, other))
+
 
   # spec: a SearchSpec instance
   # return: a list of claims importable from the translation of self.
@@ -145,7 +235,11 @@ class BoundedVariableBinding(VariableBinding):
     self.domain = ApplySymbolVariable(self.relation, common_symbols.domainSymbol)
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
-    
+
+  def updateVariables(self):
+    return BoundedVariableBinding(variable = self.variable.updateVariables(),
+        relation = self.relation)
+
   def __repr__(self):
     return "%s : %s"%(self.variable, self.relation)
 
@@ -161,9 +255,9 @@ class BoundedVariableBinding(VariableBinding):
     return (renderBoundedVariableBinding(self.variable, self.domain), context)
 
 def renderBoundedVariableBinding(variable, domain):
-  middleStack = gl.newTextualGLStack(colors.variableColor, ":")
-  return variable.render({}).stack(0, middleStack,
-      spacing = distances.variable_binding_spacing).stackCentered(0, domain.render({}),
+  middleStack = primitives.newTextStack(colors.variableColor, ":")
+  return variable.render().stack(0, middleStack,
+      spacing = distances.variable_binding_spacing).stackCentered(0, domain.render(),
           spacing = distances.variable_binding_spacing)
 
 class OrdinaryVariableBinding(VariableBinding):
@@ -172,6 +266,12 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def __repr__(self):
     return repr(self.variable)
+
+  def is_ordinary(self):
+    return True
+
+  def updateVariables(self):
+    return OrdinaryVariableBinding(self.variable.updateVariables())
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable)
@@ -361,4 +461,69 @@ class WellDefinedFunctor(Endofunctor):
     return True
   def translate(self):
     return self.expanded
+
+def same_structure(x, y):
+  if x.__class__ == formula.Always:
+    return y.__class__ == formula.Always and same_structure(x.value, y.value)
+  elif x.__class__ == formula.Not:
+    return y.__class__ == formula.Not and same_structure(x.value, y.value)
+  elif isinstance(x, formula.Conjunction):
+    return (y.__class__ == x.__class__
+        and len(x.values) == len(y.values)
+        and all([same_structure(x.values[i], x.values[i]) for i in range(len(x.values))]))
+  elif x.__class__ == formula.Identical:
+    return y.__class__ == formula.Identical
+  elif x.__class__ == formula.Holds:
+    return y.__class__ == formula.Holds
+  else:
+    return False
+
+class DefinitionSearchSpec(spec.SearchSpec):
+  def __init__(self, x):
+    self.x = x
+  def valid(self, y):
+    if y.__class__ == formula.Always:
+      if y.value.__class__ == formula.Not:
+        if y.value.value.__class__ == formula.Exists:
+          if y.value.value.value.__class__ == formula.Not:
+            body = y.value.value.value.value
+            if body.__class__ == formula.Iff:
+              left = body.left
+              if same_structure(left, self.x):
+                return True
+    return False
+  def definitons_only(self):
+    return True
+  def search_hidden_formula(self, name):
+    return True
+
+# Statefull.
+class InOrderInstantiator(instantiator.Instantiator):
+  def __init__(self, variables):
+    self.variables = variables
+    self.i = 0
+    self.just_exported = False
+    self.exports = 0
+
+  def complete(self):
+    return self.i == len(self.variables)
+
+  # May throw FinishedInstantiatingException
+  def instantiate(self, variable, endofunctor, formula):
+    if self.complete():
+      raise instantiator.FinishedInstantiatingException()
+    else:
+      result = self.variables[self.i]
+      self.i += 1
+      self.just_exported = False
+      return result
+
+  # May throw FinishedInstantiatingException
+  def exportSide(self, formula, endofunctor):
+    if self.just_exported:
+      raise instantiator.FinishedInstantiatingException()
+    else:
+      self.just_exported = True
+      self.exports += 1
+      return left
 

@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus import variable
+from lib import common_vars
 from calculus.enriched import formula, endofunctor
 
 def Holds(held, holding):
@@ -16,6 +17,9 @@ def Not(value):
 
 def Apply(v, x):
   return variable.ApplySymbolVariable(v, x)
+
+def Identical(left, right):
+  return formula.Identical(left, right)
 
 def OrdinaryVariableBinding(variable):
   return endofunctor.OrdinaryVariableBinding(variable)
@@ -41,13 +45,27 @@ def Implies(predicates, consequent):
   values.append(Not(consequent))
   return Not(And(values))
 
+def Equal(a, b):
+  return formula.Always(formula.Identical(a, b))
+
+def S(a):
+  return variable.ApplySymbolVariable(a, common_vars.S)
+
 def Iff(left, right):
   return formula.Iff(left, right)
 
 def Hidden(value, name):
   return formula.Hidden(value, name)
 
+# x: an enriched formula
+# B: an enriched formula that will be assumed
+# return: an arrow with src x, and with a tgt equivalent to (B => And([B, x])).
+#   This arrow is crucial in constructing proofs.  Typically, the first step
+#   of a proof is to pick a claim B to be proven, and use an assume arrow.
+#   Then the user contradicts the first B in the tgt formula to yield a formula
+#   of the form:  And([B, x]).
 def assume(x, B):
   return formula.Arrow(src = x,
       tgt = Not(And([B, Not(And([B, x]))])),
       basicArrow = x.translate().forwardAssume(B.translate()))
+

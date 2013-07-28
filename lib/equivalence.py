@@ -43,4 +43,4 @@ claim = constructors.Forall([constructors.OrdinaryVariableBinding(A)],
 
 lib = library.Library(claims = [claim],
     variables = [common_vars.equivalence], sub_libraries = [],
-    name = "Equivalence")
+    name = "E")
