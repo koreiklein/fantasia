@@ -7,7 +7,7 @@ from calculus.basic import endofunctor, formula
 from calculus.enriched import formula as enrichedFormula
 from calculus import variable
 from lib import common_vars
-from tests import common_objects
+from tests.lowlevel import common_objects
 
 class ImportTest(unittest.TestCase):
   def assert_can_import_through_covariant_functor(self, functor):
