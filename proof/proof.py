@@ -1,6 +1,13 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+def from_library(library):
+  raise Exception("Not yet implemented.")
+
 class Proof:
+  # return: an enriched arrow from self.src_formula() to self.tgt_formula()
+  def arrow(self):
+    raise Exception("Not yet implemented.")
+
   # return: the library that starts this proof.
   def src_library(self):
     raise Exception("Not yet implemented.")

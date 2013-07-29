@@ -1,6 +1,5 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-
 import unittest
 from calculus.enriched import endofunctor, bifunctor, formula, constructors, spec
 from calculus import variable
