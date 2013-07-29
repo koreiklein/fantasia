@@ -98,9 +98,6 @@ class ProofExtension:
 # and defines ways to filter and process those proof extensions before
 # picking which one to use to extend the proof.
 class Extender:
-  def __init__(self, proof):
-    raise Exception("Abstract Superclass.")
-
   # return: the proof that self is extending.
   def proof(self):
     raise Exception("Abstract Superclass.")
