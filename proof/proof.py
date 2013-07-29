@@ -86,3 +86,58 @@ class ProofExtension:
   def global_power(self):
     raise Exception("Not yet implemented.")
 
+class Extender:
+  def __init__(self, proof):
+    raise Exception("Abstract Superclass.")
+
+  # return: the proof that self is extending.
+  def proof(self):
+    raise Exception("Abstract Superclass.")
+
+  # return: a list of possible extensions to self.proof()
+  def extensions(self):
+    raise Exception("Abstract Superclass.")
+
+  # return: the proof associated with the ith extension of self.proof()
+  def finish(self, i = 0):
+    return self.extensions()[i].tgt_proof()
+
+class Importer(Extender):
+  def __init__(self, proof):
+    self.proof = proof
+
+  # formula: an enriched formula
+  # return: a specific importer for formula
+  def specific(self, formula):
+    return SpecificImporter(proof, formula)
+
+class SpecificImporter(Extender):
+  def __init__(self, proof, formula):
+    self.proof = proof
+
+  # instead of finishing with an import, finish with
+  # an assume operation that
+  def assume(self):
+    raise Exception("Not yet implemented.")
+
+class CasesImporter(Extender):
+  pass
+
+class Instantiator(Extender):
+  # return: a list of variables that need to be assigned.
+  def unassigned_variables(self):
+    raise Exception("Not yet implemented.")
+
+  # a, b: variables
+  # return: an instantiator like self that instantiates a to b.
+  def assign(self, a, b):
+    raise Exception("Not yet implemented.")
+
+class Inductor(Extender):
+  pass
+
+class Reducer(Extender):
+  pass
+
+class Definer(Extender):
+  pass
