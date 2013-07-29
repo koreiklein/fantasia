@@ -11,7 +11,6 @@ def profile(pythonString, sortorder = 'cum'):
   p = pstats.Stats(outputFile)
   p.strip_dirs().sort_stats(sortorder).print_stats()
 
-if __name__ == '__main__':
-  profile('import main')
+profile('import main')
 
 
