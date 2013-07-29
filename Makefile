@@ -15,4 +15,4 @@ clean:
 	find . -name '*.pyo' | xargs rm -f
 
 profile:
-	python profile.py > /tmp/fantasia_profile.txt
+	python -c "import utils.profile" > /tmp/fantasia_profile.txt
