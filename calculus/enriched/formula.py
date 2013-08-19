@@ -62,7 +62,12 @@ class Formula:
   def render(self, context):
     return primitives.newTextStack(colors.genericColor, repr(self))
 
+  # replace all free variables a in self with b
   def substituteVariable(self, a, b):
+    raise Exception("Abstract superclass.")
+
+  # replace all free and bound variables a in self with b.
+  def replace(self, a, b):
     raise Exception("Abstract superclass.")
 
   def applied_variables(self):
@@ -165,6 +170,10 @@ class Holds(Formula):
     return Holds(held = self.held.substituteVariable(a, b),
         holding = self.holding.substituteVariable(a, b))
 
+  def replace(self, a, b):
+    return Holds(held = self.held.substituteVariable(a, b),
+        holding = self.holding.substituteVariable(a, b))
+
   def updateVariables(self):
     return self
 
@@ -177,6 +186,9 @@ class Not(Formula):
 
   def applied_variables(self):
     return self.value.applied_variables()
+
+  def replace(self, a, b):
+    return Not(value = self.value.replace(a, b))
 
   def forwardSimplify(self):
     arrow = self.value.backwardSimplify()
@@ -264,6 +276,10 @@ class Exists(Formula):
     for variable, binding in pairs[::-1]:
       value = value.substituteVariable(variable, binding.variable)
     return Exists([binding for variable, binding in pairs], value.updateVariables())
+
+  def replace(self, a, b):
+    return Exists(bindings = [binding.replace(a, b) for binding in self.bindings],
+        value = self.value.replace(a, b))
 
   def substituteVariable(self, a, b):
     for binding in self.bindings:
@@ -374,6 +390,8 @@ class Exists(Formula):
 class Always(Formula):
   def __init__(self, value):
     self.value = value
+  def replace(self, a, b):
+    return Always(self.value.replace(a, b))
   def applied_variables(self):
     return self.value.applied_variables()
   def search(self, spec):
@@ -438,6 +456,10 @@ class WellDefined(Formula):
     self.newVariable = newVariable
     self.equivalence = equivalence
     self.value = value
+  def replace(self, a, b):
+    return WellDefined(variable = self.variable.substituteVariable(a, b),
+        newVariable = self.newVariable.substituteVariable(a, b),
+        value = self.value.replace(a, b))
   def forwardSimplify(self):
     arrow = self.value.forwardSimplify()
     return Arrow(src = self, tgt = WellDefined(variable = self.variable,
@@ -487,6 +509,8 @@ class Conjunction(Formula):
         raise Exception("%s at index %s is not an enriched formula."%(value, i))
     self.values = values
     self.basicBinop = self.basicBinop()
+  def replace(self, a, b):
+    return self.__class__(values = [value.replace(a, b) for value in self.values])
   def __repr__(self):
     return "%s%s"%(self.name(), self.values)
   def _translate(self):
@@ -871,6 +895,8 @@ class Iff(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def replace(self, a, b):
+    return Iff(left = self.left.replace(a, b), right = self.right.replace(a, b))
   def applied_variables(self):
     return self.left.applied_variables().union(self.right.applied_variables())
   def __repr__(self):
@@ -913,6 +939,10 @@ class Hidden(Formula):
     self.base = base
     self.name = name
 
+  def replace(self, a, b):
+    return Hidden(base = self.base.replace(a, b),
+        name = self.name)
+
   def applied_variables(self):
     return self.base.applied_variables()
 
@@ -935,6 +965,9 @@ class Identical(Formula):
   def __init__(self, left, right):
     self.left = left
     self.right = right
+  def replace(self, a, b):
+    return Identical(left = self.left.substituteVariable(a, b),
+        right = self.right.substituteVariable(a, b))
   def forwardSimplify(self):
     return self
   def applied_variables(self):
@@ -983,6 +1016,14 @@ class Unique(Formula):
       self.newVariable = Variable()
     else:
       self.newVariable = newVariable
+
+  def replace(self, a, b):
+    return Unique(variable = self.variable.substituteVariable(a, b),
+        equivalence = self.equivalence.substituteVariable(a, b),
+        formula = self.formula.replace(a, b),
+        newVariable = self.newVariable
+                      if self.newVariable is None
+                      else self.newVariable.substituteVariable(a, b))
 
   def _translate(self):
     formulaTranslate = self.formula.translate()

@@ -7,12 +7,18 @@ from lib import common_vars, common_symbols
 
 
 class CommonObjects:
+  def _and(self, formula):
+    return endofunctor.And(values = [formula], index = 1)
+  def and_(self, formula):
+    return endofunctor.And(values = [formula], index = 0)
+
   def add_common_objects(self):
     self.a = common_vars.a()
     self.b = common_vars.b()
     self.c = common_vars.c()
     self.d = common_vars.d()
     self.e = common_vars.e()
+    self.x = common_vars.x()
 
     self.A = constructors.Always(constructors.Holds(self.a, self.a))
     self.B = constructors.Always(constructors.Holds(self.b, self.b))
@@ -25,8 +31,11 @@ class CommonObjects:
     self.a_in_domain_b = constructors.Always(constructors.Holds(self.a,
       variable.ApplySymbolVariable(self.b, common_symbols.domainSymbol)))
 
-    self.and_W = endofunctor.And(values = [self.W], index = 0)
-    self.W_and = endofunctor.And(values = [self.W], index = 1)
+    self.and_w = self.and_(self.W)
+    self.W_and = self._and(self.W)
+    self.and_X = self.and_(self.X)
+    self.X_and = self._and(self.X)
+
     self.X_and_and_Y = endofunctor.And(values = [self.X, self.Y], index = 1)
 
     self.W_and_X = constructors.And([self.W, self.X])
@@ -40,7 +49,17 @@ class CommonObjects:
         [constructors.WelldefinedVariableBinding(self.a, self.b)], self.X_and_Y_and_Z)
 
     self.exists_d = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.d)])
+    self.exists_d_Y = constructors.Exists(
+        bindings = [constructors.OrdinaryVariableBinding(self.d)],
+        value = self.Y)
     self.exists_e = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.e)])
     self.exists_d_e = endofunctor.Exists([ constructors.OrdinaryVariableBinding(self.d)
                                          , constructors.OrdinaryVariableBinding(self.e)])
+
+    self.W_or_X = constructors.Or([self.W, self.X])
+    self.W_or_X_or_Y = constructors.Or([self.W, self.X, self.Y])
+    self.W_or_X_or_Y_or_Z = constructors.Or([self.W, self.X, self.Y, self.Z])
+
+    self.if_W_then_X = constructors.Implies([self.W], self.X)
+    self.if_Y_then_X = constructors.Implies([self.Y], self.X)
 

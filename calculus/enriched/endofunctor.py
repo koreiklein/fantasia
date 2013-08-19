@@ -39,6 +39,10 @@ class Endofunctor:
   def search(self, spec):
     raise Exception("Abstract superclass.")
 
+  # replace all existentially quantified and free variables a in self with b.
+  def replace(self, a, b):
+    return self
+
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
   # and a is "as small as possible".
@@ -129,6 +133,9 @@ class Composite(Endofunctor):
     self.left = left
     self.right = right
 
+  def replace(self, a, b):
+    return self.left.replace(a, b).compose(self.right.replace(a, b))
+
   def search(self, spec):
     # Note: It surprising how simple the below code needs to be.
     # koreiklein was able to conclude that this implementation was correct only after reasoning
@@ -180,6 +187,9 @@ class VariableBinding:
   #         over this variable.
   def translate(self):
     raise Exception("Abstract superclass.")
+  def replace(self, a, b):
+    raise Exception("Abstract superclass.")
+
   def render(self, context):
     return primitives.newTextStack(colors.variableColor, repr(self))
   def is_ordinary(self):
@@ -236,6 +246,11 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  def replace(self, a, b):
+    return BoundedVariableBinding(
+        variable = self.variable.substituteVariable(a, b),
+        relation = self.relation.substituteVariable(a, b))
+
   def updateVariables(self):
     return BoundedVariableBinding(variable = self.variable.updateVariables(),
         relation = self.relation)
@@ -266,6 +281,9 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def __repr__(self):
     return repr(self.variable)
+
+  def replace(self, a, b):
+    return OrdinaryVariableBinding(self.variable.substituteVariable(a, b))
 
   def is_ordinary(self):
     return True
@@ -313,6 +331,9 @@ class WelldefinedVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def replace(self, a, b):
+    return Exists([binding.replace(a, b) for binding in self.bindings])
 
   def __repr__(self):
     return "Exists%s"%(self.bindings,)
@@ -379,7 +400,11 @@ class Conjunction(Endofunctor):
     self.index = index
     self.first = values[:index]
     self.rest = values[index:]
-  
+
+  def replace(self, a, b):
+    return self.__class__(values = [value.replace(a, b) for value in self.values],
+        index = self.index})
+
   def __repr__(self):
     values = [repr(value) for value in self.values]
     values.insert(self.index, '.')

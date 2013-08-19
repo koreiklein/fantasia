@@ -43,16 +43,19 @@ class Range:
 class Condition:
   def _continue(self, formula):
     raise Exception("Not yet implemented.")
-  def _matches(self, formula):
+  def _matches(self, factorization):
     raise Exception("Not yet implemented.")
   # ... more private methods as needed ...
 
 class IsAlways(Condition):
-  pass
+  def __init__(self, is_always):
+    self.is_always = is_always
 
 class IdentityRightLeg(Condition):
-  pass
+  def __init__(self, be_identity):
+    self.be_identity = be_identity
 
+# for controlling the variance of the right argument to the BIFUNCTOR
 class Variance(Condition):
   # desired_variance: true or false
   def __init__(self, desired_variance):
@@ -70,13 +73,21 @@ class Disjunctive(Condition):
   def __init__(self, range):
     self.range = range
 
+# Insures that factorization.right_leg() is covariant and
+# factorization.formula() == formula
 class Concludes(Condition):
   def __init__(self, formula):
     self.formula = formula
 
+# Insures that factorization.right_leg() is contravariant and
+# factorization.formula() == formula
 class Assumes(Condition):
   def __init__(self, formula):
     self.formula = formula
+
+
+# NOTE: This function should not return a factorization when there exists a "closer" factorization.
+# TODO: Describe this requirement fully.
 
 # endofunctor: an endofunctor to be factored.
 # conditions: a list of Condition instances constraining the kinds of factorizations to look for.
