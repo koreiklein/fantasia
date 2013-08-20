@@ -31,7 +31,7 @@ class CommonObjects:
     self.a_in_domain_b = constructors.Always(constructors.Holds(self.a,
       variable.ApplySymbolVariable(self.b, common_symbols.domainSymbol)))
 
-    self.and_w = self.and_(self.W)
+    self.and_W = self.and_(self.W)
     self.W_and = self._and(self.W)
     self.and_X = self.and_(self.X)
     self.X_and = self._and(self.X)

@@ -30,9 +30,15 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
       right_leg = right_leg.replace(a, b)
       formula = formula.replace(a, b)
 
+    self.assertEqual(formula,
+        factorization.instantiated_formula())
+    self.assertEqual(right_leg.onObject(self.Z),
+        factorization.instantiated_right_leg().onObject(self.Z))
+
     X = self.A
     one = endofunctor.onObject(X)
-    two = factorization.bifunctor().compose_right(right_leg).onObjects(X, formula)
+    two = factorization.bifunctor().compose_right(
+        factorization.right_leg()).onObjects(X, factorization.formula())
     self.assertEqual(one, two)
 
   def assert_factorization_meets_condition(self, factorization, condition):
@@ -104,7 +110,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
       self.assert_factors_once_with_replacements(
         identity_right_leg = True,
         endofunctor = endofunctor,
-        conditions = [factor.IsAlways(True), factor.Variance(covariant)],
+        conditions = [factor.IsAlways(True), factor.BifunctorVariance(covariant)],
         formula = formula)
 
   def test_universal(self):
@@ -155,24 +161,30 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = True,
-        conditions = [factor.IdentityRightLeg(True), factor.Concludes(self.W)],
+        conditions = [factor.IdentityRightLeg(True),
+          factor.RightLegVariance(True),
+          factor.ExactFormula(self.W)],
         formula = self.W)
 
     self.assertEqual(2, len(factor.factor(
       endofunctor = endofunctor,
-      conditions = [factor.IdentityRightLeg(False), factor.Concludes(self.X)])))
+      conditions = [factor.IdentityRightLeg(False),
+        factor.RightLegVariance(True),
+        factor.ExactFormula(self.X)])))
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [ factor.Variance(True)
-                     , factor.Concludes(self.X)],
+        conditions = [ factor.BifunctorVariance(True)
+                     , factor.RightLegVariance(True)
+                     , factor.ExactFormula(self.X)],
         formula = self.X)
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         conditions = [ factor.IdentityRightLeg(False)
-                     , factor.Variance(False)
-                     , factor.Concludes(self.X)],
+                     , factor.BifunctorVariance(False)
+                     , factor.RightLegVariance(True)
+                     , factor.ExactFormula(self.X)],
         formula = self.X)
 
   def test_assumes(self):
@@ -185,16 +197,16 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
     self.assert_does_not_factor(
         endofunctor = endofunctor,
-        conditions = [factor.Assumes(self.X)])
+        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.X)])
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [factor.Assumes(self.Y)],
+        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.Y)],
         formula = self.Y)
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [factor.Assumes(self.W)],
+        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.W)],
         formula = self.W)
 
   def test_replacements(self):
@@ -203,11 +215,27 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
           bindings = [constructors.OrdinaryVariableBinding(self.a)],
           value = self.if_W_then_X)))
 
+    self.assert_factors_once_with_replacements(
+        endofunctor = endofunctor,
+        conditions = [factor.ReplaceAll([self.e])],
+        formula = self.if_W_then_X.substituteVariable(self.a, self.e))
+
+    self.assert_does_not_factor(
+        endofunctor = endofunctor,
+        conditions = [factor.ReplaceAny([])])
+
+    self.assert_factors_once_with_replacements(
+        endofunctor = endofunctor,
+        identity_right_leg = False,
+        conditions = [factor.ReplaceAny([self.e]),
+          factor.ExactFormula(self.X.substituteVariable(self.a, self.e))],
+        formula = self.X.substituteVariable(self.a, self.e))
+
     formula = self.X.substituteVariable(self.a, self.x)
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = False,
-        conditions = [factor.Concludes(formula)],
+        conditions = [factor.RightLegVariance(True), factor.ExactFormula(formula)],
         replacements = [(self.a, self.x)],
         formula = formula)
 
@@ -215,7 +243,9 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = False,
-        conditions = [factor.Assumes(formula)],
+        conditions = [factor.RightLegVariance(False), factor.ExactFormula(formula)],
         replacements = [(self.a, self.x)],
         formula = formula)
 
+def suite():
+  return unittest.makeSuite(FactorTest)

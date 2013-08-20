@@ -403,7 +403,7 @@ class Conjunction(Endofunctor):
 
   def replace(self, a, b):
     return self.__class__(values = [value.replace(a, b) for value in self.values],
-        index = self.index})
+        index = self.index)
 
   def __repr__(self):
     values = [repr(value) for value in self.values]
