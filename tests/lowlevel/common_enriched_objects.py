@@ -35,6 +35,10 @@ class CommonObjects:
     self.W_and = self._and(self.W)
     self.and_X = self.and_(self.X)
     self.X_and = self._and(self.X)
+    self.and_Y = self.and_(self.Y)
+    self.Y_and = self._and(self.Y)
+    self.and_Z = self.and_(self.Z)
+    self.Z_and = self._and(self.Z)
 
     self.X_and_and_Y = endofunctor.And(values = [self.X, self.Y], index = 1)
 
@@ -62,4 +66,5 @@ class CommonObjects:
 
     self.if_W_then_X = constructors.Implies([self.W], self.X)
     self.if_Y_then_X = constructors.Implies([self.Y], self.X)
+    self.if_Z_then_Y = constructors.Implies([self.Z], self.Y)
 
