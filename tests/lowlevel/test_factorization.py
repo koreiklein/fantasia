@@ -31,9 +31,9 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
       formula = formula.replace(a, b)
 
     self.assertEqual(formula,
-        search_result.instantiated_factorization().formula())
+        search_result.instantiated_formula())
     self.assertEqual(right_leg.onObject(self.Z),
-        search_result.instantiated_factorization().right_leg().onObject(self.Z))
+        search_result.instantiated_right_leg().onObject(self.Z))
 
     X = self.A
     one = endofunctor.onObject(X)
@@ -48,8 +48,8 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
         search_result.factorization().right_leg().onObject(
           search_result.factorization().formula()))
     self.assertEqual(arrow.tgt,
-        search_result.instantiated_factorization().right_leg().onObject(
-          search_result.instantiated_factorization().formula()))
+        search_result.instantiated_right_leg().onObject(
+          search_result.instantiated_formula()))
 
   def assert_factorization_meets_condition(self, factorization, condition):
     self.assertTrue(condition._matches(factorization))
@@ -66,7 +66,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
         search_result = search_results[0],
         intended_replacements = replacements,
         identity_irght_leg = identity_right_leg)
-    self.assertEqual(formula, search_results[0].instantiated_factorization().formula())
+    self.assertEqual(formula, search_results[0].instantiated_formula())
 
   def test_factor_and(self):
     for endofunctor in [self.and_W, self.W_and]:

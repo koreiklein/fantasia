@@ -12,25 +12,32 @@ class SearchResult:
   def factorization(self):
     raise Exception("Not yet implemented.")
 
-  # return: true iff self.instantiated_factorization() is different from
-  #  self.factorization() iff self.instantiate() is not the identity natural transform.
+  # return: true iff self.instantiated_right_leg().onObject(self.instantiated_formula())
+  #         is different from self.factorization().right_leg().onObject(
+  #                               self.factorization().formula())
+  #     iff self.instantiate() is not the identity arrow.
   def needs_instantiation(self):
     raise Exception("Not yet implemented.")
 
-  # return: a factorization
-  def instantiated_factorization(self):
+  # return: an endofunctor
+  def instantiated_right_leg(self):
+    raise Exception("Not yet implemented.")
+
+  # return: a formula.
+  def instantiated_formula(self):
     raise Exception("Not yet implemented.")
 
   # return: a list of pairs (a_i, b_i) such that
-  # self.instantiated_factorization() differs from self.factorization() only in
-  # that the variables a_i have been instantiated with b_i
+  # self.instantiated_right_leg() and self.instantiated_formula() differ
+  # from self.factorization().right_leg() and self.factorization().formula() only in
+  # that the variables a_i have been instantiated with b_i.
   def replacements(self):
     raise Exception("Not yet implemented.")
 
   # return: an arrow:
   #   self.factorization().right_leg().onObject(self.factorization().formula())
-  #  --> self.instantiated_factorization().right_leg().onObject(
-  #           self.instantiated_factorization().formula())
+  #  --> self.instantiated_right_leg().onObject(
+  #           self.instantiated_formula())
   def instantiate(self, x):
     raise Exception("Not yet implemented.")
 
