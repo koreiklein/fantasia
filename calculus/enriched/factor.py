@@ -27,8 +27,10 @@ class SearchResult:
   def replacements(self):
     raise Exception("Not yet implemented.")
 
-  # return: a function representing a natural transform:
-  #   self.factorization().composite() --> self.instantiated_factorization().composite()
+  # return: an arrow:
+  #   self.factorization().right_leg().onObject(self.factorization().formula())
+  #  --> self.instantiated_factorization().right_leg().onObject(
+  #           self.instantiated_factorization().formula())
   def instantiate(self, x):
     raise Exception("Not yet implemented.")
 

@@ -43,10 +43,13 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
             search_result.factorization().formula())
     self.assertEqual(one, two)
 
-    three = search_result.instantiated_factorization().composite().onObject(X)
-    arrow = search_result.instantiate()(X)
-    self.assertEqual(one, arrow.src)
-    self.assertEqual(three, arrow.tgt)
+    arrow = search_result.instantiate()
+    self.assertEqual(arrow.src,
+        search_result.factorization().right_leg().onObject(
+          search_result.factorization().formula()))
+    self.assertEqual(arrow.tgt,
+        search_result.instantiated_factorization().right_leg().onObject(
+          search_result.instantiated_factorization().formula()))
 
   def assert_factorization_meets_condition(self, factorization, condition):
     self.assertTrue(condition._matches(factorization))
