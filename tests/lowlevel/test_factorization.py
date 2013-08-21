@@ -13,63 +13,65 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
   # identity_right_leg: if True, check that the right leg is the identity,
   #                     if False, check that the right leg is not the identity,
   #                     if None, check nothing.
-  def assert_factorization_well_formed_with_replacements(self, endofunctor, factorization,
+  def assert_factorization_well_formed_with_replacements(self, endofunctor, search_result,
       intended_replacements, identity_right_leg = None):
-    replacements = factorization.replacements()
+    replacements = search_result.replacements()
 
     for a, b in intended_replacements:
       self.assertTrue( (a, b) in replacements )
     for a, b in replacements:
       self.assertTrue( (a, b) in intended_replacements )
 
-    right_leg = factorization.right_leg()
+    right_leg = search_result.factorization().right_leg()
     if identity_right_leg is not None:
       self.assertEqual(identity_right_leg, enrichedEndofunctor.is_identity_functor(right_leg))
-    formula = factorization.formula()
+    formula = search_result.factorization().formula()
     for a, b in replacements:
       right_leg = right_leg.replace(a, b)
       formula = formula.replace(a, b)
 
     self.assertEqual(formula,
-        factorization.instantiated_formula())
+        search_result.instantiated_factorization().formula())
     self.assertEqual(right_leg.onObject(self.Z),
-        factorization.instantiated_right_leg().onObject(self.Z))
+        search_result.instantiated_factorization().right_leg().onObject(self.Z))
 
     X = self.A
     one = endofunctor.onObject(X)
-    two = factorization.bifunctor().compose_right(
-        factorization.right_leg()).onObjects(X, factorization.formula())
+    two = search_result.factorization().bifunctor().compose_right(
+        search_result.factorization().right_leg()).onObjects(
+            X,
+            search_result.factorization().formula())
     self.assertEqual(one, two)
 
   def assert_factorization_meets_condition(self, factorization, condition):
     self.assertTrue(condition._matches(factorization))
 
-  def assert_does_not_factor(self, endofunctor, conditions):
-    self.assertEqual(0, len(factor.factor(endofunctor = endofunctor, conditions = conditions)))
+  def assert_does_not_factor(self, endofunctor, constraints):
+    self.assertEqual(0, len(factor.factor(endofunctor = endofunctor, constraints = constraints)))
 
-  def assert_factors_once_with_replacements(self, endofunctor, conditions, formula, replacements = [],
+  def assert_factors_once_with_replacements(self, endofunctor, constraints, formula, replacements = [],
       identity_right_leg = None) :
-    factorizations = factor.factor(endofunctor = endofunctor, conditions = conditions)
-    self.assertEqual(1, len(factorizations))
+    search_results = factor.factor(endofunctor = endofunctor, constraints = constraints)
+    self.assertEqual(1, len(search_results))
     self.assert_factorization_well_formed_with_replacements(
         endofunctor = endofunctor,
-        factorization = factorizations[0],
+        search_result = search_results[0],
         intended_replacements = replacements,
         identity_irght_leg = identity_right_leg)
-    self.assertEqual(formula, factorizations[0])
+    self.assertEqual(formula, search_results[0].instantiated_factorization().formula())
 
   def test_factor_and(self):
     for endofunctor in [self.and_W, self.W_and]:
       self.assert_factors_once_with_replacements(
           endofunctor = self.endofunctor,
           identity_right_leg = True,
-          conditions = [factor.IsAlways(True)],
+          constraints = [factor.IsAlways(True)],
           formula = self.W)
 
       self.assert_factors_once_with_replacements(
           identity_right_leg = True,
           endofunctor = self.endofunctor,
-          conditions = [factor.IsAlways(True), factor.IdentityRightLeg()],
+          constraints = [factor.IsAlways(True), factor.IdentityRightLeg()],
           formula = self.W)
 
   def test_factor_no_always(self):
@@ -77,17 +79,17 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
                        , self.and_(constructors.Holds(self.a, self.b))]:
       self.assert_does_not_factor(
           endofunctor = endofunctor,
-          conditions = [factor.IsAlways(True)])
+          constraints = [factor.IsAlways(True)])
 
   def test_factor_involving(self):
     self.assert_does_not_factor(
         endofunctor = self.and_W,
-        conditions = [factor.Involving(variables = [self.c])])
+        constraints = [factor.Involving(variables = [self.c])])
     for variables in [ [self.a], [self.b], [self.a, self.b] ]:
       self.assert_factors_once_with_replacements(
         identity_right_leg = True,
         endofunctor = self.and_W,
-        conditions = [factor.IsAlways(True), factor.Involving(variables = variables)],
+        constraints = [factor.IsAlways(True), factor.Involving(variables = variables)],
         formula = self.W)
 
     for endofunctor in [ self.and_W.compose(self.and_X)
@@ -98,7 +100,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
         self.assert_factors_once_with_replacements(
             identity_right_leg = True,
             endofunctor = endofunctor,
-            conditions = [factor.IsAlways(True), factor.Involving(variables = [involved_variable])],
+            constraints = [factor.IsAlways(True), factor.Involving(variables = [involved_variable])],
             formula = formula)
 
   def test_variance(self):
@@ -110,35 +112,35 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
       self.assert_factors_once_with_replacements(
         identity_right_leg = True,
         endofunctor = endofunctor,
-        conditions = [factor.IsAlways(True), factor.BifunctorVariance(covariant)],
+        constraints = [factor.IsAlways(True), factor.BifunctorVariance(covariant)],
         formula = formula)
 
   def test_universal(self):
     self.assert_does_not_factor(
       endofunctor = self.and_X.compose(self._and(self.exists_d_Y)),
-      conditions = [factor.Universal(factor.Range(2, 5))])
+      constraints = [factor.Universal(factor.Range(2, 5))])
 
     self.assert_factors_once_with_replacements(
       identity_right_leg = True,
       endofunctor = self.and_X.compose(self._and(self.exists_d_Y)),
-      conditions = [factor.Universal(factor.Range(1, 2))],
+      constraints = [factor.Universal(factor.Range(1, 2))],
       formula = self.exists_d_Y)
 
     self.assert_factors_once_with_replacements(
       identity_right_leg = True,
       endofunctor = self.and_X.compose(self._and(constructors.Always(self.exists_d_Y))),
-      conditions = [factor.Universal(factor.Range(0, None)), factor.IsAlways(True)],
+      constraints = [factor.Universal(factor.Range(0, None)), factor.IsAlways(True)],
       formula = constructors.Always(self.exists_d_Y))
 
   def test_disjunctive(self):
     self.assert_does_not_factor(
       endofunctor = self.and_X.compose(self._and(self.W_or_X)),
-      conditions = [factor.Disjunctive(factor.Range(1, 2))])
+      constraints = [factor.Disjunctive(factor.Range(1, 2))])
 
     self.assert_factors_once_with_replacements(
       identity_right_leg = True,
       endofunctor = self.and_X.compose(self._and(self.W_or_X)),
-      conditions = [factor.Disjunctive(factor.Range(1, 3))],
+      constraints = [factor.Disjunctive(factor.Range(1, 3))],
       formula = self.W_or_X)
 
     for formula, always in [ (constructors.Always(self.W_or_X), True)
@@ -148,7 +150,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
           endofunctor = self.and_X.compose(
             self._and(constructors.Always(self.W_or_X))).compose(
               self.and_(self.W_or_X_or_Y)),
-            conditions = [factor.IsAlways(always), factor.Disjunctive(factor.Range(1, 4))],
+            constraints = [factor.IsAlways(always), factor.Disjunctive(factor.Range(1, 4))],
             formula = formula)
 
   def test_concludes(self):
@@ -161,27 +163,27 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = True,
-        conditions = [factor.IdentityRightLeg(True),
+        constraints = [factor.IdentityRightLeg(True),
           factor.RightLegVariance(True),
           factor.ExactFormula(self.W)],
         formula = self.W)
 
     self.assertEqual(2, len(factor.factor(
       endofunctor = endofunctor,
-      conditions = [factor.IdentityRightLeg(False),
+      constraints = [factor.IdentityRightLeg(False),
         factor.RightLegVariance(True),
         factor.ExactFormula(self.X)])))
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [ factor.BifunctorVariance(True)
+        constraints = [ factor.BifunctorVariance(True)
                      , factor.RightLegVariance(True)
                      , factor.ExactFormula(self.X)],
         formula = self.X)
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [ factor.IdentityRightLeg(False)
+        constraints = [ factor.IdentityRightLeg(False)
                      , factor.BifunctorVariance(False)
                      , factor.RightLegVariance(True)
                      , factor.ExactFormula(self.X)],
@@ -197,16 +199,16 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
     self.assert_does_not_factor(
         endofunctor = endofunctor,
-        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.X)])
+        constraints = [factor.RightLegVariance(False), factor.ExactFormula(self.X)])
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.Y)],
+        constraints = [factor.RightLegVariance(False), factor.ExactFormula(self.Y)],
         formula = self.Y)
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [factor.RightLegVariance(False), factor.ExactFormula(self.W)],
+        constraints = [factor.RightLegVariance(False), factor.ExactFormula(self.W)],
         formula = self.W)
 
   def test_replacements(self):
@@ -217,17 +219,17 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
-        conditions = [factor.ReplaceAll([self.e])],
+        constraints = [factor.ReplaceAll([self.e])],
         formula = self.if_W_then_X.substituteVariable(self.a, self.e))
 
     self.assert_does_not_factor(
         endofunctor = endofunctor,
-        conditions = [factor.ReplaceAny([])])
+        constraints = [factor.ReplaceAny([])])
 
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = False,
-        conditions = [factor.ReplaceAny([self.e]),
+        constraints = [factor.ReplaceAny([self.e]),
           factor.ExactFormula(self.X.substituteVariable(self.a, self.e))],
         formula = self.X.substituteVariable(self.a, self.e))
 
@@ -235,7 +237,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = False,
-        conditions = [factor.RightLegVariance(True), factor.ExactFormula(formula)],
+        constraints = [factor.RightLegVariance(True), factor.ExactFormula(formula)],
         replacements = [(self.a, self.x)],
         formula = formula)
 
@@ -243,7 +245,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_factors_once_with_replacements(
         endofunctor = endofunctor,
         identity_right_leg = False,
-        conditions = [factor.RightLegVariance(False), factor.ExactFormula(formula)],
+        constraints = [factor.RightLegVariance(False), factor.ExactFormula(formula)],
         replacements = [(self.a, self.x)],
         formula = formula)
 

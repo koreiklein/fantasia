@@ -2,6 +2,36 @@
 
 from calculus.enriched import endofunctor, bifunctor
 
+class SearchResult:
+  # return: the endofunctor being factored
+  def composite(self):
+    raise Exception("Not yet implemented.")
+
+  # return: a factorization fact such that
+  # self.composite() == factorization.composite()
+  def factorization(self):
+    raise Exception("Not yet implemented.")
+
+  # return: true iff self.instantiated_factorization() is different from
+  #  self.factorization() iff self.instantiate() is not the identity natural transform.
+  def needs_instantiation(self):
+    raise Exception("Not yet implemented.")
+
+  # return: a factorization
+  def instantiated_factorization(self):
+    raise Exception("Not yet implemented.")
+
+  # return: a list of pairs (a_i, b_i) such that
+  # self.instantiated_factorization() differs from self.factorization() only in
+  # that the variables a_i have been instantiated with b_i
+  def replacements(self):
+    raise Exception("Not yet implemented.")
+
+  # return: a function representing a natural transform:
+  #   self.factorization().composite() --> self.instantiated_factorization().composite()
+  def instantiate(self, x):
+    raise Exception("Not yet implemented.")
+
 # forall formulas X,
 #  self.composite().onObject(X)
 #  == self.bifunctor().compose_right(self.right_leg()).onObjects(X, self.formula())
@@ -20,37 +50,6 @@ class Factorization:
 
   # return: a formula
   def formula(self):
-    raise Exception("Not yet implemented.")
-
-  # return: a list of pairs (a, b) where a, b are variables and
-  #   a will be instantiated in self.formula(), self.right_leg(),
-  #   and self.bifunctor() to produce the instantiated versions.
-  def replacements(self):
-    raise Exception("Not yet implemented.")
-
-  # formula: an enriched formula
-  # return: an enriched arrow:
-  #  self.composite().onObject(formula)
-  #  =
-  #  self.bifunctor().onObjects(
-  #          formula,
-  #          self.right_leg().onObject(self.formula()))
-  # -->
-  #  self.instantiated_bifunctor().onObjects(
-  #          formula,
-  #          self.instantiated_right_leg().onObject(self.instantiated_formula())
-  def replace(self, formula):
-    raise Exception("Not yet implemented.")
-
-  # return: true if there's anything for the instantiator to do.
-  def needs_instantiation(self):
-    raise Exception("Not yet implemented.")
-
-  def instantiated_bifunctor(self):
-    raise Exception("Not yet implemented.")
-  def instantiated_right_leg(self):
-    raise Exception("Not yet implemented.")
-  def instantiated_formula(self):
     raise Exception("Not yet implemented.")
 
 # Integer ranges of the form [a, b) or [a, infinity)
@@ -117,7 +116,9 @@ class ReplaceAll(Constraint):
 
 # endofunctor: an endofunctor to be factored.
 # conditions: a list of Constraint instances constraining the kinds of factorizations to look for.
-# return: a list of factorizations f meeting each of the conditions with f.composite() == endofunctor.
-def factor(endofunctor, conditions):
+# return: an iterable of SearchResult instances R with R.instantiated_factorization() meeting
+#  each of the constraints on factorizations and with R.replacements() meeting each
+#  of the conditions on the nature of variable instantiation.
+def factor(endofunctor, constraints):
   raise Exception("Not yet implemented.")
 
