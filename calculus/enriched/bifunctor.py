@@ -14,6 +14,11 @@ class Bifunctor:
   def onObjects(self, left, right):
     raise Exception("Abstract superclass.")
 
+  def right_covariant(self):
+    raise Exception("Abstract superclass.")
+  def right_onObject(self, x):
+    raise Exception("Abstract superclass.")
+
   # return a function representing a natural transform: F(B, .) --> F(B, And([B, .]))
   def transport_duplicating(self, B):
     nt = self.translate().transport_duplicating(B.translate())
@@ -42,6 +47,12 @@ class PostcompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.functor = functor
 
+  def right_covariant(self):
+    return self.functor.covariant() ^ self.bifunctor.right_covariant()
+
+  def right_onObject(self, x):
+    return self.bifunctor.right_onObject(x).compose(self.functor)
+
   def translate(self):
     return self.bifunctor.translate().compose(self.functor.translate())
 
@@ -65,7 +76,13 @@ class PrecompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.left = left
     self.right = right
-    
+
+  def right_covariant(self):
+    return self.right.covariant() ^ self.bifunctor.right_covariant()
+
+  def right_onObject(self, x):
+    return self.left.compose(self.bifunctor.right_onObject(self.right.onObject(x)))
+
   def __repr__(self):
     return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
 
@@ -99,12 +116,27 @@ class Conjunction(Bifunctor):
     self.leftIndex = leftIndex
     self.rightIndex = rightIndex
 
+  def right_covariant(self):
+    return True
+
+  def right_onObject(self, x):
+    values = list(self.values)
+    if self.rightIndex <= self.leftIndex:
+      # the right comes first
+      index = self.leftIndex + 1
+      values.insert(self.rightIndex, x)
+    else:
+      # the left comes first
+      index = self.leftIndex
+      values.insert(self.rightIndex - 1, x)
+    return self.enrichedEndofunctor()(values = values, index = index)
+
   def __repr__(self):
     values = [repr(value) for value in self.values]
     values.insert(self.leftIndex, " . ")
     values.insert(self.rightIndex, " . ")
     return self.name() + " [ " + ', '.join(values) + ' ]'
-    
+
   def translate(self):
     lesserIndex = min(self.leftIndex, self.rightIndex)
     greaterIndex = max(self.leftIndex, self.rightIndex)
