@@ -2,6 +2,18 @@
 
 from calculus.enriched import endofunctor, bifunctor
 
+# The essential objects in the implementation of the factor module will be
+# the formula constraints, the endofunctor constraints and the bifunctor constraints.
+
+# Each constraint should be thought of as a possibly infinite set of pairs
+#  (B, b) where B is a {formula, endofunctor, bifunctor} and b is any object.
+
+# The factor module provides an interface with 3 kinds of methods:
+#   0) Methods for constructing simple constraints.
+#   1) Methods for combining constraints in simple ways into complex constraints.
+#   2) A match method (called at "the end of the day") for finding all the ways
+#   an endofunctor matches an endofunctor constraint.
+
 # covariant: a boolean
 # return: an endofunctor constraint
 #  { (F, F) | F is a endofunctor with endofunctor.covariant() == covariant }
