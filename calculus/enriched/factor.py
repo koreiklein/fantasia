@@ -20,7 +20,7 @@ def _all_endofunctor_factorizations(endofunctor):
 # ef: a "small" endofunctor.
 # yield all pairs bi, x with bi.onRight(x) == endofunctor
 def _all_endofunctor_factorizations_of_small_endofunctor(ef):
-  if isinstance(ef.__class__, endofunctor.Conjunction):
+  if isinstance(ef, endofunctor.Conjunction):
     if ef.__class__ == endofunctor.And:
       bi = bifunctor.And
     else:
@@ -42,7 +42,7 @@ def _all_formula_factorizations(formula):
   for f, y in _all_small_formula_factorizations(formula):
     yield f, y
     for F, Y in _all_formula_factorizations(y):
-      yield f.compose(F), Y
+      yield F.compose(f), Y
 
 # formula: an enriched formula
 # yield all pairs F, Y such that F(Y) == formula, and F is "small".
@@ -61,12 +61,12 @@ def _all_small_formula_factorizations(formula):
           bindings = formula.bindings[1:], value = formula.value)
   elif formula.__class__ == enrichedFormula.Hidden:
     yield endofunctor.Hidden(name = formula.name), formula.base
-  elif isinstance(formula.__class__, enrichedFormula.Conjunction):
+  elif isinstance(formula, enrichedFormula.Conjunction):
     for i in range(len(formula.values)):
-      if formula.__class__ == And:
+      if formula.__class__ == enrichedFormula.And:
         ef = endofunctor.And
       else:
-        assert(formula.__class__ == Or)
+        assert(formula.__class__ == enrichedFormula.Or)
         ef = endofunctor.Or
       values = list(formula.values)
       x = values.pop(i)
@@ -88,8 +88,10 @@ class _FormulaConstraint:
   #       each subclass of _FormulaConstraint.
   def match_within_formula(self, formula, ef_constraint, f):
     for ef, x in _all_formula_factorizations(formula): # This call is potentially unnecessary.
-      for b in self.match(x):
-        for a in ef_constraint.match(ef):
+      # FIXME Remove this.
+      assert(ef.onObject(x) == formula)
+      for a in self.match(x):
+        for b in ef_constraint.match(ef):
           yield f(formula = formula, a = a, b = b)
 
   # f: a function f(endofunctor = B(., X), a = b, b = x)
@@ -124,9 +126,9 @@ class _InvolvingAny(_FormulaConstraint):
 
   def match(self, formula):
     free = formula.freeVariables()
-    for v in self.variables:
-      if v in free:
-        yield v
+    involved = [v for v in self.variables if v in free]
+    if len(involved) != 0:
+      yield (formula, involved)
 
 class _AllFormulaConstraints(_FormulaConstraint):
   def __init__(self, formula_constraints, combiner):
@@ -158,7 +160,7 @@ class _Apply(_FormulaConstraint):
     self.f = f
 
   def match(self, formula):
-    return formula_constraint.match_within_formula(formula, ef_constraint, f)
+    return self.formula_constraint.match_within_formula(formula, self.ef_constraint, self.f)
 
 class _EndofunctorConstraint:
   def match(self, endofunctor):
@@ -243,7 +245,7 @@ def involving_any(variables):
 # f: a function
 # return: the formula constraint
 # { (F(Y), f(formula = F(Y), a = f, b = y)) | (F, f) in ef_constraint, (Y, y) in formula_costraint }
-def apply(formula_costraint, ef_constraint, f):
+def apply(formula_constraint, ef_constraint, f):
   return _Apply(formula_constraint, ef_constraint, f)
 
 # formula_constraints: a list of formula constraints

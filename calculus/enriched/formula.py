@@ -34,6 +34,9 @@ class Formula:
     return Arrow(src = self, tgt = Exists(bindings, value),
         basicArrow = arrow)
 
+  def freeVariables(self):
+    return self.translate().freeVariables()
+
   # return: a triplet (arrow, bindings, value) where
   #         arrow is a basic arrow with arrow.src == self.translate()
   #         arrow.tgt == Exists(bindings, value).translate()
