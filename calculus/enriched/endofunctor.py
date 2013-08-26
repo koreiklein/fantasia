@@ -182,13 +182,26 @@ class Composite(Endofunctor):
     else:
       return not self.right.covariant()
 
-class VariableBinding:
+class VariableBinding(Endofunctor):
   # return: an endofunctor representing existential quantification
   #         over this variable.
   def translate(self):
     raise Exception("Abstract superclass.")
+  def covariant(self):
+    raise Exception("Abstract superclass.")
+  def updateVariables(self):
+    raise Exception("Abstract superclass.")
   def replace(self, a, b):
     raise Exception("Abstract superclass.")
+  def onObject(self, formula):
+    assert(formula.__class__ == Exists)
+    bindings = [self]
+    bindings.extend(formula.bindings)
+    return Exists(bindings = bindings, value = formula.value)
+  def is_and_functor(self):
+    return False
+  def is_identity_functor(self):
+    return False
 
   def render(self, context):
     return primitives.newTextStack(colors.variableColor, repr(self))
@@ -262,6 +275,8 @@ class BoundedVariableBinding(VariableBinding):
     return basicEndofunctor.And(side = right,
                                 other = self.inDomain.translate()).compose(
             basicEndofunctor.Exists(self.variable))
+  def covariant(self):
+    return True
 
   def search(self, spec):
     return [claim for claim in [self.inDomain] if spec.valid(claim)]
@@ -290,6 +305,9 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def updateVariables(self):
     return OrdinaryVariableBinding(self.variable.updateVariables())
+
+  def covariant(self):
+    return True
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable)
