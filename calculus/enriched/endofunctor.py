@@ -318,6 +318,62 @@ class OrdinaryVariableBinding(VariableBinding):
   def search(self, spec):
     return []
 
+class Hidden(Endofunctor):
+  def __init__(self, name):
+    self.name = name
+  def translate(self):
+    return basicEndofunctor.identity_functor
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return self
+  def onObject(self, x):
+    return formula.Hidden(self.name, x)
+
+class AppendIffRight(Endofunctor):
+  def __init__(self, x):
+    assert(x.__class__ == formula.Not)
+    assert(x.value.__class__ == formula.And)
+    assert(len(x.value.values) == 2)
+    assert(x.value.values[1].__class__ == formula.Not)
+    self.formula = x
+    self.coformula = formula.Not(
+        formula.And([x.value.values[1].value,
+          formula.Not(x.values.values[0])]))
+
+  def translate(self):
+    return basicEndofunctor.And(side = left,
+        other = self.coformula.translate())
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return AppendIffRight(self.formula.updateVariables())
+  def onObject(self, x):
+    assert(x == self.coformula)
+    return formula.Iff(left = x, right = self.formula)
+
+class AppendIffLeft(Endofunctor):
+  def __init__(self, x):
+    assert(x.__class__ == formula.Not)
+    assert(x.value.__class__ == formula.And)
+    assert(len(x.value.values) == 2)
+    assert(x.value.values[1].__class__ == formula.Not)
+    self.formula = x
+    self.coformula = formula.Not(
+        formula.And([x.value.values[1].value,
+          formula.Not(x.values.values[0])]))
+
+  def translate(self):
+    return basicEndofunctor.And(side = right,
+        other = self.coformula.translate())
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return AppendIffLeft(self.formula.updateVariables())
+  def onObject(self, x):
+    assert(x == self.coformula)
+    return formula.Iff(left = self.formula, right = x)
+
 class WelldefinedVariableBinding(VariableBinding):
   # variable: a variable
   # relation: an equivalence relation
