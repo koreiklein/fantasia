@@ -53,6 +53,18 @@ def involving_any(variables):
 def apply(formula_costraint, ef_constraint, f):
   raise Exception("Not yet implemented.")
 
+# formula_constraints: a list of formula constraints
+# f: a function
+# return: the formula constraint
+#   { (X, c)
+#   | exists (X, c0) in formula_constraints[0]
+#   , exists (X, c1) in formula_constraints[1]
+#   ....
+#   , exists (X, c(n-1) in formula_constraints[n-1]
+#   , c == f([c0, c1, .... c(n-1)])
+def all_formula_constraints(formula_constraints, f):
+  raise Exception("Not yet implemented.")
+
 # formula_constraint: a formula constraint
 # bi_constraint: a bifunctor constraint
 # f: a function
@@ -81,3 +93,14 @@ def formula_replace(formula_constraint, covariant, allowed_variables, f):
 def ef_match(ef_constraint, endofunctor):
   raise Exception("Not yet implemented.")
 
+# bf_constraint: a bifunctor constraint
+# bifunctor: a bifunctor
+# return: an iterator through all values c such that ((bifunctor, c) in bf_constraint)
+def bf_match(bf_constraint, bifunctor):
+  raise Exception("Not yet implemented.")
+
+# formula_constraint: a formula constraint
+# formula: a formula
+# return: an iterator through all values c such that ((formula, c) in formula_constraint)
+def bf_match(bf_constraint, bifunctor):
+  raise Exception("Not yet implemented.")

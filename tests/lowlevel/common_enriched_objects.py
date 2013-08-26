@@ -2,7 +2,7 @@
 
 import unittest
 from calculus import variable
-from calculus.enriched import constructors, endofunctor
+from calculus.enriched import constructors, endofunctor, bifunctor
 from lib import common_vars, common_symbols
 
 
@@ -41,6 +41,9 @@ class CommonObjects:
     self.Z_and = self._and(self.Z)
 
     self.X_and_and_Y = endofunctor.And(values = [self.X, self.Y], index = 1)
+
+    self._and_ = bifunctor.And(values = [], rightIndex = 1, leftIndex = 0)
+    self._and__Z_and = self._and_.precomposeRight(self.Z_and)
 
     self.W_and_X = constructors.And([self.W, self.X])
     self.X_and_Y_and_Z = constructors.Always(constructors.And([self.X, self.Y, self.Z]))
