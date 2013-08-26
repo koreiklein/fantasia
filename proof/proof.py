@@ -52,8 +52,12 @@ class Proof:
   # +++++++++++++++++++++ Extender Methods +++++++++++++++++++++
   def simplify(self):
     return Simplifier(self)
-  def importt(self):
-    return Importer(self)
+  # safe: a boolean.
+  # kind: one of ["split", "replace", "append"]
+  def importt(self, safe, kind):
+    return Importer(self, safe, kind)
+  def specific(self, formula):
+    return SpecificImporter(self, formula)
   def reduce(self):
     return Reducer(self)
   def instantiate(self):
@@ -114,7 +118,7 @@ class Extender:
     raise Exception("Abstract Superclass.")
 
   # return: the proof associated with the ith extension of self.proof()
-  def finish(self, i = 0):
+  def extend(self, i = 0):
     return self.extensions()[i].tgt_proof()
 
   def current_formula(self):
@@ -123,61 +127,18 @@ class Extender:
   def covariant(self):
     return self.proof().covariant()
 
-# An Extender for producing extensions that increase simplicity and do
-# not decrease global power.
-class Simplifier(Extender):
-  def __init__(self, proof):
-    self._proof = proof
-  def proof(self):
-    return self._proof
-  def extensions(self):
-    return [self.light(), self.heavy()]
-
-  # return: a proof extension that applies
-  #   local arrows to produce an equally globally and locally powerfull yet possibly
-  #   simpler self.current_formula()
-  def light(self):
-    raise Exception("Not yet implemented.")
-
-  # return: a proof extension that
-  #   applies local arrows
-  #   and performs exports
-  #   and makes universal choices (e.g. picking the right side of an Or in a contravariant spot
-  #                                     when it can infer that the left side is false)
-  #   to produce an equally globally powerfull yet possibly simpler self.current_formula()
-  def heavy(self):
-    raise Exception("Not yet implemented.")
-
 # This extender is for generating proof extensions that move a formula
 # close to self.current_formula().
 class Importer(Extender):
-  def __init__(self, proof):
-    raise Exception("Not yet implemented.")
-
-  # return: an importer which imports a formula x iff:
-  #         x is of the form Or(xs)
-  #         x is importable from self
-  def cases(self):
-    raise Exception("Not yet implemented.")
-
-  # return: an importer importing all formulas of self which can be imported safely.
-  #   [An import is safe if the imported formula can be copied so as not to disappear
-  #    from its original location.  Safe imports are typically imports of formulas
-  #    that occur within an Always].
-  def safe(self):
-    raise Exception("Not yet implemented.")
-
-  # formula: an enriched formula
-  # return: a specific importer for formula
-  def specific(self, formula):
-    return SpecificImporter(proof, formula)
-
-  # i: None or an integer
-  # return: an importer importing all formulas of self in which
-  #         exactly N variables are existentially quantified within a single Not
-  #         and
-  #         either i == N, or i is None and N > 0
-  def universal(self, i):
+  # safe: a boolean
+  # kind: one of ["split", "replace", "append"]
+  # proof: a proof
+  # return: an importer that extends proof.  The extensions are safe iff safe,
+  #   if kind == "split" list extensions that import a disjunction and split the current formula
+  #                      into cases.
+  #   if kind == "replace" list extensions that consume the current formula as an assumption
+  #   if kind == "append" list extension that AND a new formula with the current formula.
+  def __init__(self, safe, kind, proof):
     raise Exception("Not yet implemented.")
 
   # variables: a set of variables
@@ -192,11 +153,6 @@ class Importer(Extender):
   #  This method should be most useful for things like importing a formula that the user
   #  knows comes from a particular library.
   def hiddenBy(self, name):
-    raise Exception("Not yet implemented.")
-
-  # f: a function from formulas to booleans.
-  # return: an importing importing all formulas x of self such that f(x) == True
-  def filterWithFunction(self, f):
     raise Exception("Not yet implemented.")
 
   # variables: a list of variables in scope at self.
@@ -252,17 +208,51 @@ class SpecificImporter(Extender):
 # the variables of self.current_formula() with other variables that
 # are in scope.
 class Instantiator(Extender):
-  # return: a list of variables that need to be assigned.
-  def unassigned_variables(self):
+  def __init__(self, proof):
+    raise Exception("Not yet implemented.")
+
+  # return: the list of variables that need to be bound.
+  def unbound(self):
+    raise Exception("Not yet implemented.")
+
+  # return: the list of variable pairs (a,b) where a is bound to b.
+  def bound(self):
     raise Exception("Not yet implemented.")
 
   # a, b: variables
   # return: an instantiator like self that instantiates a to b.
-  def assign(self, a, b):
+  def bind(self, a, b):
     raise Exception("Not yet implemented.")
+
+  # a: a variable in self.unbound().
+  # return: an instantator that does not attempt to instantiate a.
+  #         the variable a will be left existentially quantified in tgt of all extensions.
+  def ignore(self, a):
+    raise Exception("Not yet implemented.")
+
+  class Replacement:
+    # return: the replacement variable
+    def variable(self):
+      raise Exception("Not yet implemented.")
+    # return: True iff instantiating this variable allows for export of a condition
+    #         imposed by bounded quantification.
+    def standard_export(self):
+      raise Exception("Not yet implemented.")
+    # return: the number of claims that can be exported if this choice is made
+    def number_of_exports(self):
+      raise Exception("Not yet implemented.")
+
+  # a: an unbound variable
+  # return: a list of Replacement instances of good ways to instantiate a.
+  def candidate_replacements(self, a):
+    raise Exception("Not yet implemented.")
+
 
 # This Extender is for making use of mathematical induction.
 class Inductor(Extender):
+  def __init__(self, proof):
+    raise Exception("Not yet implemented.")
+
   # self must be covariant.
   # self.current_formula() must be an Exists
   # a: a variable quantified as a natural by self.current_formula()
@@ -281,17 +271,21 @@ class Inductor(Extender):
   def show(self, formula, a):
     raise Exception("Not yet implemented.")
 
+  # return: a list of variables v in scope at self for which (v : Natural) is
+  #         importable
+  def natural_variables(self):
+    raise Exception("Not yet implemented.")
+
 # This Extender is for adding definitions to self.proof()
 class Definer(Extender):
-  pass
+  def __init__(self, proof):
+    raise Exception("Not yet implemented.")
 
-# This Extender is for replacing self.current_formula() with a more
-# specific claim which may make the proof globally weaker.
-# In covariant spots, a Reducer finds things that follow from self.current_formula().
-# In contravariant spots, a Reducer finds things that imply self.current_formula().
-class Reducer(Extender):
-  # return a reducer that reduces only with the reductions of self which
-  #   are invertible.
-  def equialences(self):
+  # defined_variable: the variable being defined.
+  # argument: the universally quantified argument to the defined variable
+  # formula: an enriched formula constituting the definition.
+  # return: a proof extension that append the definition:
+  #       forall argument. argument : defined_variable <===> formula
+  def define(self, defined_variable, argument, formula):
     raise Exception("Not yet implemented.")
 

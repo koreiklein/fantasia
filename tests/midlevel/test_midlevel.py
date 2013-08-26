@@ -36,8 +36,8 @@ class SimpleProofTest(AbstractProofTest):
           variables = [],
           build_proof = (lambda proof: (proof
             .instantiate()
-              .assign(q, natural.zero)
-              .assign(r, natural.zero)
+              .bind(q, natural.zero)
+              .bind(r, natural.zero)
             .finish())))
 
   def test_import_about(self):
@@ -48,8 +48,7 @@ class SimpleProofTest(AbstractProofTest):
         claim = claim,
         reduced_claim = And([imported, claim]),
         build_proof = (lambda proof: (proof
-          .importt()
-            .safe()
+          .importt(safe = True, kind = 'append')
             .about([a])
             .involvingVariables([natural.zero, natural.natural_less])
           .finish())))
@@ -71,10 +70,10 @@ class SimpleProofTest(AbstractProofTest):
         variables = [a, b, c],
         build_proof = lambda proof: (proof
           .down(3).down()
-          .reduce()
+          .importt(safe = True, kind = 'replace')
           .finish()))
 
-  def assert_natural_proof_succeeds(claim, reduced_claim, variables, build_proof):
+  def assert_natural_proof_succeeds(self, claim, reduced_claim, variables, build_proof):
     lib = library.Library(claims = [claim],
       variables = variables,
       sub_libraries = [natural.lib])
@@ -93,11 +92,11 @@ class SmallQRProofsTest(AbstractProofTest):
 
   def test_assume(self):
     self.assert_proof_yields(formula = QR.formulas[1],
-        proof = self.startingQRProof.importt().specific(QR.claim).assume())
+        proof = self.startingQRProof.specific(QR.claim).assume())
 
   def test_infer_fails(self):
     try:
-      self.startingQRProof.importt().specific(QR.claim).infer()
+      self.startingQRProof.specific(QR.claim).infer()
       self.assertTrue(False, "startingQRProof should fail to infer the claim.")
     except UnimportableException as e:
       pass
@@ -105,8 +104,6 @@ class SmallQRProofsTest(AbstractProofTest):
   def test_induct(self):
     self.assert_proof_yields(formula = QR.formulas[3],
         proof = self.startingQRProof.induct().show(QR.claim, QR.a))
-
-
 
 def suite():
   return unittest.TestSuite( [ unittest.makeSuite(SimpleProofTest)
