@@ -106,6 +106,24 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assertTrue( self.X in results )
     self.assertTrue( self.W_and_X in results )
 
+  def test_all_with_apply(self):
+    results = list(factor.formula_match(
+      formula = constructors.Not(self.W_and_X),
+      formula_constraint = factor.apply(
+        formula_constraint = factor.all_formula_constraints(
+          formula_constraints = [
+            factor.involving_all([self.a, self.c]),
+            factor.apply(
+              formula_constraint = factor.no_formula_constraint,
+              ef_constraint = factor.is_always,
+              f = lambda formula, a, b : a)
+            ],
+          f = lambda x_y : x_y[1]),
+        ef_constraint = factor.variance(covariant = False),
+        f = lambda formula, a, b : a)))
+
+    self.assertEqual(len(results), 1)
+    self.assertEqual(results[0], self.X.value)
 
 def suite():
   return unittest.makeSuite(FactorTest)

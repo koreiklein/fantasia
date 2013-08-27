@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 from calculus.enriched import endofunctor, bifunctor, formula as enrichedFormula
+from calculus.basic.endofunctor import Always, Not
 
 
 # PRIVATE
@@ -101,6 +102,10 @@ class _FormulaConstraint:
         for a in bi_constraint.match(bi):
           yield f(endofunctor = endofunctor, a = a, b = b)
 
+class _NoFormulaConstraint(_FormulaConstraint):
+  def match(self, formula):
+    yield formula
+
 class _Exact(_FormulaConstraint):
   def __init__(self, formula):
     self.formula = formula
@@ -142,14 +147,14 @@ class _AllFormulaConstraints(_FormulaConstraint):
       if len(constraints) == 0:
         yield []
       else:
-        first = formula_constraints[0]
-        rest = formula_constraints[1:]
-        for matched in first.match(formula_constraint):
+        first = constraints[0]
+        rest = constraints[1:]
+        for matched in first.match(formula):
           for others in _loop(rest):
             result = [matched]
             result.extend(others)
             yield result
-    for values in _loop(constraints):
+    for values in _loop(self.formula_constraints):
       yield self.combiner(values)
 
 class _Apply(_FormulaConstraint):
@@ -172,6 +177,14 @@ class _EndofunctorVariance(_EndofunctorConstraint):
 
   def match(self, endofunctor):
     if endofunctor.covariant() == self.covariant:
+      yield endofunctor
+
+class _ExactEndofunctor(_EndofunctorConstraint):
+  def __init__(self, f):
+    self.f = f
+
+  def match(self, endofunctor):
+    if self.f(endofunctor):
       yield endofunctor
 
 class _ApplyRight(_EndofunctorConstraint):
@@ -214,6 +227,21 @@ class _RightVariance(_BifunctorConstraint):
 #  { (F, F) | F is a endofunctor with endofunctor.covariant() == covariant }
 def variance(covariant):
   return _EndofunctorVariance(covariant)
+
+# Exact endofunctor constraints matching a set of size 1:
+
+# { (Always, Always) }
+is_always = _ExactEndofunctor(lambda ef:
+    ef.__class__ == endofunctor.DirectTranslate
+    and ef.basicEndofunctor.__class__ == Always)
+# { (Not, Not) }
+is_not = _ExactEndofunctor(lambda ef:
+    ef.__class__ == endofunctor.DirectTranslate
+    and ef.basicEndofunctor.__class__ == Not)
+
+
+# The formula constraint { (X, X) | X is any formula }
+no_formula_constraint = _NoFormulaConstraint()
 
 # covariant: a boolean
 # return: a bifunctor constraint
