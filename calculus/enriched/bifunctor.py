@@ -16,6 +16,8 @@ class Bifunctor:
 
   def right_covariant(self):
     raise Exception("Abstract superclass.")
+  def left_covariant(self):
+    raise Exception("Abstract superclass.")
   def right_onObject(self, x):
     raise Exception("Abstract superclass.")
 
@@ -50,6 +52,9 @@ class PostcompositeBifunctor(Bifunctor):
   def right_covariant(self):
     return self.functor.covariant() ^ self.bifunctor.right_covariant()
 
+  def left_covariant(self):
+    return self.functor.covariant() ^ self.bifunctor.left_covariant()
+
   def right_onObject(self, x):
     return self.bifunctor.right_onObject(x).compose(self.functor)
 
@@ -79,6 +84,9 @@ class PrecompositeBifunctor(Bifunctor):
 
   def right_covariant(self):
     return self.right.covariant() ^ self.bifunctor.right_covariant()
+
+  def left_covariant(self):
+    return self.left.covariant() ^ self.bifunctor.left_covariant()
 
   def right_onObject(self, x):
     return self.left.compose(self.bifunctor.right_onObject(self.right.onObject(x)))
@@ -117,6 +125,9 @@ class Conjunction(Bifunctor):
     self.rightIndex = rightIndex
 
   def right_covariant(self):
+    return True
+
+  def left_covariant(self):
     return True
 
   def right_onObject(self, x):

@@ -8,13 +8,14 @@ from calculus.basic.endofunctor import Always, Not
 
 # endofunctor: an endofunctor
 # yield all pairs bi, x with bi.onRight(x) == endofunctor
-def _all_endofunctor_factorizations(endofunctor):
-  if endofunctor.is_identity_functor():
+def _all_endofunctor_factorizations(ef):
+  if endofunctor.is_identity_functor(ef):
     return
   else:
-    a, b = endofunctor.factor_left()
+    a, b = ef.factor_left()
     for bi, x in _all_endofunctor_factorizations_of_small_endofunctor(a):
-      yield bi.compose(b), x
+      for f, y in _all_formula_factorizations(x):
+        yield bi.compose(b).precomposeRight(f), y
     for bi, x in _all_endofunctor_factorizations(b):
       yield bi.precomposeLeft(a), x
 
@@ -30,15 +31,15 @@ def _all_endofunctor_factorizations_of_small_endofunctor(ef):
     for i in range(len(ef.values)):
       values = list(ef.values)
       x = values.pop(i)
-      return bi(values = values,
-          leftIndex = endofunctor.index - 1 if i < endofunctor.index else endofunctor.index,
-          rightIndex = i if i < endofunctor.index else i + 1
+      yield bi(values = values,
+          leftIndex = ef.index - 1 if i < ef.index else ef.index,
+          rightIndex = i if i < ef.index else i + 1
           ), x
   else:
     return
 
 # formula: a formula
-# yield all pairs ef, x) with ef.onObject(x) == formula
+# yield all pairs (ef, x) with ef.onObject(x) == formula
 def _all_formula_factorizations(formula):
   for f, y in _all_small_formula_factorizations(formula):
     yield f, y
@@ -98,8 +99,8 @@ class _FormulaConstraint:
   # f: a function f(endofunctor = B(., X), a = b, b = x)
   def match_within_ef(self, endofunctor, bi_constraint, f):
     for bi, x in _all_endofunctor_factorizations(endofunctor):
-      for b in self.match(x):
-        for a in bi_constraint.match(bi):
+      for a in self.match(x):
+        for b in bi_constraint.match(bi):
           yield f(endofunctor = endofunctor, a = a, b = b)
 
 class _NoFormulaConstraint(_FormulaConstraint):
@@ -194,7 +195,7 @@ class _ApplyRight(_EndofunctorConstraint):
     self.f = f
 
   def match(self, endofunctor):
-    return self.formula_constraint.match_within_ef(endofunctor, bi_constraint, f)
+    return self.formula_constraint.match_within_ef(endofunctor, self.bi_constraint, self.f)
 
 class _BifunctorConstraint:
   def match(self, bifunctor):
@@ -204,9 +205,17 @@ class _RightVariance(_BifunctorConstraint):
   def __init__(self, covariant):
     self.covariant = covariant
 
-  def match(self, endofunctor):
-    if endofunctor.right_covariant() == self.covariant:
-      yield endofunctor
+  def match(self, bifunctor):
+    if bifunctor.right_covariant() == self.covariant:
+      yield bifunctor
+
+class _LeftVariance(_BifunctorConstraint):
+  def __init__(self, covariant):
+    self.covariant = covariant
+
+  def match(self, bifunctor):
+    if bifunctor.left_covariant() == self.covariant:
+      yield bifunctor
 
 # PUBLIC
 
@@ -248,6 +257,12 @@ no_formula_constraint = _NoFormulaConstraint()
 #  { (B, B) | B is a bifunctor with bifunctor.right_covariant() == covariant }
 def right_variance(covariant):
   return _RightVariance(covariant)
+
+# covariant: a boolean
+# return: a bifunctor constraint
+#  { (B, B) | B is a bifunctor with bifunctor.left_covariant() == covariant }
+def left_variance(covariant):
+  return _LeftVariance(covariant)
 
 # formula: a formula
 # return: the formula constraint { (formula, formula) }

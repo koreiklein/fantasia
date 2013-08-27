@@ -108,7 +108,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
   def test_all_with_apply(self):
     results = list(factor.formula_match(
-      formula = constructors.Not(self.W_and_X),
+      formula = self._and(constructors.Not(self.W_and_X)).onObject(self.Z),
       formula_constraint = factor.apply(
         formula_constraint = factor.all_formula_constraints(
           formula_constraints = [
@@ -124,6 +124,36 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
     self.assertEqual(len(results), 1)
     self.assertEqual(results[0], self.X.value)
+
+  def test_apply_right(self):
+    def gen_ef_constraint(bi_constraint):
+      return factor.apply_right(
+        formula_constraint = factor.all_formula_constraints(
+          formula_constraints = [
+            factor.involving_all([self.a, self.c]),
+            factor.apply(
+              formula_constraint = factor.no_formula_constraint,
+              ef_constraint = factor.is_always,
+              f = lambda formula, a, b : a)
+            ],
+          f = lambda x_y : x_y[1]),
+        bi_constraint = bi_constraint,
+        f = lambda endofunctor, a, b: a)
+
+    results = list(factor.ef_match(
+      endofunctor = self._and(constructors.And([self.X, constructors.Not(self.X)])),
+      ef_constraint = gen_ef_constraint(factor.right_variance(False))))
+    self.assertEqual(1, len(results))
+    self.assertEqual(results[0], self.X.value)
+
+    results = list(factor.ef_match(
+      endofunctor = self._and(constructors.And([self.X, constructors.Not(self.X)])),
+      ef_constraint = gen_ef_constraint(factor.left_variance(True))))
+    self.assertEqual(2, len(results))
+    self.assertEqual(results[0], self.X.value)
+    self.assertEqual(results[1], self.X.value)
+
+  def test_
 
 def suite():
   return unittest.makeSuite(FactorTest)
