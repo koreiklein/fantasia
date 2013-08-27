@@ -90,8 +90,6 @@ class _FormulaConstraint:
   #       each subclass of _FormulaConstraint.
   def match_within_formula(self, formula, ef_constraint, f):
     for ef, x in _all_formula_factorizations(formula): # This call is potentially unnecessary.
-      # FIXME Remove this.
-      assert(ef.onObject(x) == formula)
       for a in self.match(x):
         for b in ef_constraint.match(ef):
           yield f(formula = formula, a = a, b = b)
