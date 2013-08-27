@@ -45,6 +45,9 @@ class CommonObjects:
     self._and_ = bifunctor.And(values = [], rightIndex = 1, leftIndex = 0)
     self._and__Z_and = self._and_.precomposeRight(self.Z_and)
 
+    self.exists_ = (lambda variables, value:
+      constructors.Exists([constructors.OrdinaryVariableBinding(v) for v in variables], value))
+
     self.W_and_X = constructors.And([self.W, self.X])
     self.X_and_Y_and_Z = constructors.Always(constructors.And([self.X, self.Y, self.Z]))
     self.W_AND_X_and_Y_and_Z = constructors.And([self.W, self.X_and_Y_and_Z])
