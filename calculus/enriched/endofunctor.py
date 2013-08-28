@@ -1,5 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from sets import Set
+
 from misc import *
 import misc
 from calculus.variable import ApplySymbolVariable, ProductVariable, StringVariable, Variable
@@ -14,6 +16,9 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
+def combine_variances(a, b):
+  return a if b else not a
+
 def Maps(a, b, f):
   return basicFormula.Holds(
       ProductVariable([ (common_symbols.inputSymbol, a)
@@ -26,6 +31,12 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
   def covariant(self):
     raise Exception("Abstract superclass.")
+
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    return (self, lambda x: self.onObject(x).identity())
 
   def is_and_functor(self):
     return False
@@ -42,6 +53,11 @@ class Endofunctor:
   # replace all existentially quantified and free variables a in self with b.
   def replace(self, a, b):
     return self
+
+  # return: the set of variables quantified at certain spots in this endofunctor.
+  #         Only use covariant spots iff covariant, otherwise use contravariant spots.
+  def quantified(self, covariant):
+    return Set([])
 
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
@@ -133,6 +149,21 @@ class Composite(Endofunctor):
     self.left = left
     self.right = right
 
+  def instantiate(self, covariant, pairs):
+    F, nt0 = self.left.instantiate(combine_variances(covariant, self.right.covariant()), pairs)
+    G, nt1 = self.right.instantiate(covariant, pairs)
+    # Horizontal composite.  I'm somewhat certain it works in all 8 cases, but we should test
+    # to be sure.
+    return (F.compose(G), lambda x:
+        (lambda a, b: a.forwardCompose(b) if covariant else b.forwardCompose(a))(
+            a = self.right.onArrow(nt0(x)),
+            b = nt1(F.onObject(x))))
+
+  def quantified(self, covariant):
+    a = self.right.quantified(covariant)
+    b = self.left.quantified(combine_variances(covariant, self.right.covariant()))
+    return a.union(b)
+
   def replace(self, a, b):
     return self.left.replace(a, b).compose(self.right.replace(a, b))
 
@@ -193,15 +224,21 @@ class VariableBinding(Endofunctor):
     raise Exception("Abstract superclass.")
   def replace(self, a, b):
     raise Exception("Abstract superclass.")
-  def onObject(self, formula):
-    assert(formula.__class__ == Exists)
+  def onObject(self, x):
+    assert(x.__class__ == formula.Exists)
     bindings = [self]
-    bindings.extend(formula.bindings)
-    return Exists(bindings = bindings, value = formula.value)
+    bindings.extend(x.bindings)
+    return formula.Exists(bindings = bindings, value = x.value)
   def is_and_functor(self):
     return False
   def is_identity_functor(self):
     return False
+  
+  def quantified(self, covariant):
+    if covariant:
+      return Set([self.variable])
+    else:
+      return Set([])
 
   def render(self, context):
     return primitives.newTextStack(colors.variableColor, repr(self))
@@ -405,6 +442,30 @@ class WelldefinedVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def instantiate(self, covariant, pairs):
+    if covariant:
+      return (self, lambda x: self.onObject(x).identity())
+    else:
+      # FIXME This code fails for BoundedVariableBindings.
+      #       The call to backwardInstantiateAll doesn't even yet work if some
+      #       of the variables are part of BoundedVariableBindings.
+      pairs_to_use_here = []
+      remaining_bindings = []
+      for binding in self.bindings:
+        for a, b in pairs:
+          if binding.variable == a:
+            pairs_to_use_here.append( (a, b))
+          else:
+            remaining_bindings.append(binding)
+      return (Exists(remaining_bindings),
+          lambda x: self.onObject(x).backwardInstantiateAll(pairs_to_use_here))
+
+  def quantified(self, covariant):
+    if covariant:
+      return Set([b.variable for b in self.bindings])
+    else:
+      return Set([])
 
   def replace(self, a, b):
     return Exists([binding.replace(a, b) for binding in self.bindings])

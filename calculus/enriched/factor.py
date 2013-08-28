@@ -83,6 +83,32 @@ class _FormulaConstraint:
   def match(self, formula):
     raise Exception("Abstract superclass.")
 
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    raise Exception("Abstract superclass.")
+
+  # x: a formula
+  # replaceable: a list of variables
+  # replacements: a list of variables
+  # f: a function
+  # return: an iterator over
+  #   { f(a = b, pairs = pairs)
+  #   | (B, b) in self
+  #     B = x.substitute(<a->b for (a,b) in pairs>)
+  #     pairs is any list of pairs of variables (a, b) with a in replaceable and b in replacements }
+  def match_substituting(self, x, replaceable, replacements, f):
+    # FIXME Implement this in subclasses.
+    raise Exception("Abstract superclass.")
+
   # f: a function f(formula = F(Y), a = f, b = y)
   # note: This method can be super inefficient.  Rewrite it
   #       for a potentially big performance boost.
@@ -101,9 +127,51 @@ class _FormulaConstraint:
         for b in bi_constraint.match(bi):
           yield f(endofunctor = endofunctor, a = a, b = b)
 
+class _FormulaReplace(_FormulaConstraint):
+  # formula_constraint: a formula constraint
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # construct: the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in formula_constraint
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def __init__(self, formula_constraint, covariant, allowed_variables, f):
+    self.formula_constraint = formula_constraint
+    self.covariant = covariant
+    self.allowed_variables = allowed_variables
+    self.f = f
+
+  def match_substituting(self, x, replaceable, replacements, f):
+    raise Exception("substituting unimplemented in a replace constraint.")
+
+  def match(self, formula):
+    return self.formula_constraint.match_replacing(
+        x = formula,
+        covariant = self.covariant,
+        allowed_variables = self.allowed_variables,
+        f = self.f)
+
 class _NoFormulaConstraint(_FormulaConstraint):
   def match(self, formula):
     yield formula
+
+  def match_substituting(self, x, replaceable, replacements, f):
+    yield f(a = x, pairs = [])
+
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    yield f(x, x.identity(), [], x)
 
 class _Exact(_FormulaConstraint):
   def __init__(self, formula):
@@ -113,9 +181,87 @@ class _Exact(_FormulaConstraint):
     if formula == self.formula:
       yield formula
 
+  # x: a formula
+  # replaceable: a list of variables
+  # replacements: a list of variables
+  # f: a function
+  # return: an iterator over
+  #   { f(a = b, pairs = pairs)
+  #   | (B, b) in self
+  #     B = x.substitute(<a->b for (a,b) in pairs>)
+  #     pairs is any list of pairs of variables (a, b) with a in replaceable and b in replacements }
+  def match_substituting(self, x, replaceable, replacements, f):
+    pairs = _pairs_to_convert(a = x, b = self.formula)
+    if pairs is not None:
+      for a, b in pairs:
+        if a not in replaceable:
+          return
+        if b not in replacements:
+          return
+      yield f(a = self.formula, pairs = pairs)
+
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    if (x.__class__ == formula.Exists and not covariant
+        and all([b.__class__ == endofunctor.OrdinaryVariableBinding for b in x.bindings])):
+      for r in self.match_substituting(
+          x = x.value,
+          replaceable = [b.variable for b in x.bindings],
+          replacements = allowed_variables,
+          f = (lambda a, pairs: f(
+              original = x,
+              arrow = x.backwardInstantiateAll(pairs),
+              substitutions = pairs,
+              y = a))
+          ):
+        yield r
+    else:
+      return
+
+# a, b: formulas
+# return: a list of pairs of variables that need to be substituted in a to get b
+#         or None if no such list exists.
+def _pairs_to_convert(a, b):
+  c = a.__class__
+  if c == b.__class__:
+    if c == enrichedFormula.Exists:
+      if (len(a.bindings) == len(b.bindings)
+          and all([a.bindings[i] == b.bindings[i] for i in range(len(a.bindings))])):
+        return _pairs_to_convert(a.value, b.value)
+    elif c == enrichedFormula.Holds:
+      pairs = []
+      if a.holding != b.holding:
+        pairs.append( (a.holding, b.holding) )
+      if a.held != b.held:
+        pairs.append( (a.held, b.held) )
+      return pairs
+    elif isinstance(c, enrichedFormula.Conjunction):
+      if len(a.values) == len(b.values):
+        pairs = []
+        for i in range(len(a.values)):
+          pairs.extend(_pairs_to_convert(a.values[i], b.values[i]))
+    elif c == enrichedFormula.Not:
+      return _pairs_to_convert(a.value, b.value)
+    elif c == enrichedFormula.Always:
+      return _pairs_to_convert(a.value, b.value)
+  return None
+
 class _InvolvingAll(_FormulaConstraint):
   def __init__(self, variables):
     self.variables = variables
+
+  def match_substituting(self, x, replaceable, replacements, f):
+    # FIXME Implement
+    raise Exception("Not yet implemented.")
 
   def match(self, formula):
     free = formula.freeVariables()
@@ -124,9 +270,27 @@ class _InvolvingAll(_FormulaConstraint):
         return
     yield formula
 
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    # FIXME Implement this.
+    raise Exception("Not yet implemented.")
+
 class _InvolvingAny(_FormulaConstraint):
   def __init__(self, variables):
     self.variables = variables
+
+  def match_substituting(self, x, replaceable, replacements, f):
+    # FIXME Implement
+    raise Exception("Not yet implemented.")
 
   def match(self, formula):
     free = formula.freeVariables()
@@ -134,10 +298,28 @@ class _InvolvingAny(_FormulaConstraint):
     if len(involved) != 0:
       yield (formula, involved)
 
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    # FIXME Implement this.
+    raise Exception("Not yet implemented.")
+
 class _AllFormulaConstraints(_FormulaConstraint):
   def __init__(self, formula_constraints, combiner):
     self.formula_constraints = formula_constraints
     self.combiner = combiner
+
+  def match_substituting(self, x, replaceable, replacements, f):
+    # FIXME Implement
+    raise Exception("Not yet implemented.")
 
   # Note: This implementation can be terrible for performance.
   #       Rewrite this function for a huge performance increase.
@@ -156,6 +338,20 @@ class _AllFormulaConstraints(_FormulaConstraint):
     for values in _loop(self.formula_constraints):
       yield self.combiner(values)
 
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    # FIXME Implement this.
+    raise Exception("Not yet implemented.")
+
 class _Apply(_FormulaConstraint):
   # f: a function f(formula = F(Y), a = f, b = y)
   def __init__(self, formula_constraint, ef_constraint, f):
@@ -163,11 +359,51 @@ class _Apply(_FormulaConstraint):
     self.ef_constraint = ef_constraint
     self.f = f
 
+  def match_substituting(self, x, replaceable, replacements, f):
+    # FIXME Implement
+    raise Exception("Not yet implemented.")
+
   def match(self, formula):
     return self.formula_constraint.match_within_formula(formula, self.ef_constraint, self.f)
 
+  # x: a formula
+  # covariant: a boolean
+  # allowed_variables: a list of variables
+  # f: a function
+  # return the formula constraint
+  #        { (X, f(original = X, arrow = A, substitutions = pairs, y = y)
+  #        | (Y, y) in self
+  #        , if covariant then (A : X --> Y) else (A : Y --> X)
+  #        , A is an instantiation arrow making the substitution
+  #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
+  def match_replacing(self, x, covariant, allowed_variables, f):
+    for ef, y in _all_formula_factorizations(x): # This call is potentially unnecessary.
+      for a, pairs in self.formula_constraint.match_substituting(
+          x = y,
+          replaceable = ef.quantified(not covariant), # Those variables quantified in ef.
+          replacements = allowed_variables,
+          f = (lambda a, pairs:
+            (a, pairs))):
+        for nt, b in self.ef_constraint.match_replacing_ef(ef, pairs, covariant):
+          yield f(original = x,
+              arrow = nt(y),
+              substitutions = pairs,
+              y = self.f(
+                formula = x,
+                a = a,
+                b = b))
+
 class _EndofunctorConstraint:
   def match(self, endofunctor):
+    raise Exception("Abstract superclass.")
+
+  # ef: an endofunctor
+  # pairs: a list of variables pairs
+  # covariant: a boolean
+  # yield all pairs nt, b such that:
+  #    nt : (if covariant then (ef --> F) else (F --> ef))
+  #    (F, b) in self
+  def match_replacing_ef(self, ef, pairs, covariant):
     raise Exception("Abstract superclass.")
 
 class _EndofunctorVariance(_EndofunctorConstraint):
@@ -177,6 +413,17 @@ class _EndofunctorVariance(_EndofunctorConstraint):
   def match(self, endofunctor):
     if endofunctor.covariant() == self.covariant:
       yield endofunctor
+
+  # ef: an endofunctor
+  # pairs: a list of variables pairs
+  # covariant: a boolean
+  # yield all pairs nt, b such that:
+  #    nt : (if covariant then (ef --> F) else (F --> ef))
+  #    (F, b) in self
+  def match_replacing_ef(self, ef, pairs, covariant):
+    F, nt = ef.instantiate(covariant, pairs)
+    for b in self.match(F):
+      yield nt, b
 
 class _ExactEndofunctor(_EndofunctorConstraint):
   def __init__(self, f):
@@ -321,7 +568,11 @@ def apply_right(formula_constraint, bi_constraint, f):
 #        , A is an instantiation arrow making the substitution
 #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
 def formula_replace(formula_constraint, covariant, allowed_variables, f):
-  raise Exception("Not yet implemented.")
+  return _FormulaReplace(
+      formula_constraint = formula_constraint,
+      covariant = covariant,
+      allowed_variables = allowed_variables,
+      f = f)
 
 # ef_constraint: an endofunctor constraint
 # endofunctor: an endofunctor

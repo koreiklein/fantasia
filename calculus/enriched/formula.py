@@ -270,6 +270,35 @@ class Exists(Formula):
     newBindings.extend(bindings)
     return self._endofunctor_translate().onArrow(arrow), newBindings, value
 
+  def backwardInstantiateAll(self, pairs):
+    arrow = self.identity()
+    for a, b in pairs:
+      index = None
+      for i in range(len(self.bindings)):
+        binding = self.bindings[i]
+        if a == binding.variable:
+          if binding.is_ordinary():
+            index = i
+            break
+          else:
+            raise Exception("backwardInstantiateAll only works on OrdinaryVariableBindings")
+      if index is None:
+        raise Exception("pairs contained a pair that did not match any binding in self.")
+      else:
+        arrow = arrow.backwardCompose(self.backwardInstantiateIth(i, b))
+        self = arrow.src
+    return arrow
+
+  def backwardInstantiateIthOrdinary(self, i, variable):
+    if i > 0:
+      return self.bindings[0].onArrow(
+          Exists(self.bindings[1:], self.value).backwardInstantiateIthOrdinary(i - 1, variable))
+    else:
+      assert(self.bindings[0].is_ordinary())
+      return Arrow(tgt = self, src = Exists(self.bindings[1:], self.value).substituteVariable(
+        self.bindings[0].variable, variable),
+        basicArrow = self.translate().backwardIntroExists(variable))
+
   def applied_variables(self):
     return self.value.applied_variables()
 
