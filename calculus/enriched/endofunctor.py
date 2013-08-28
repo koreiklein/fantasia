@@ -88,7 +88,12 @@ class Endofunctor:
       return formula.Arrow(src = src, tgt = tgt, basicArrow = basicArrow)
 
   def compose(self, other):
-    return Composite(self, other)
+    if other.is_identity():
+      return self
+    elif self.is_identity():
+      return other
+    else:
+      return Composite(self, other)
 
   def is_identity(self):
     return is_identity_functor(self)

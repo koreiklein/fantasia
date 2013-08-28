@@ -41,8 +41,8 @@ def _all_endofunctor_factorizations_of_small_endofunctor(ef):
 # formula: a formula
 # yield all pairs (ef, x) with ef.onObject(x) == formula
 def _all_formula_factorizations(formula):
+  yield endofunctor.identity_functor, formula
   for f, y in _all_small_formula_factorizations(formula):
-    yield f, y
     for F, Y in _all_formula_factorizations(y):
       yield F.compose(f), Y
 
