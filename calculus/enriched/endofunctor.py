@@ -44,6 +44,9 @@ class Endofunctor:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+  def onObject(self, x):
+    raise Exception("Abstract superclass.")
+
   # spec: a SearchSpec instance.
   # return: if self.covariant(): a list of claims importable at self matching spec
   #         otherwise:  a list of claims exportable at self matching spec
@@ -133,6 +136,28 @@ class Endofunctor:
           tgt = self.onObject(formula.And([B, x])),
           basicArrow = self.translate().importExactly(B.translate())(x.translate())))
 
+class Substitute(Endofunctor):
+  def __init__(self, oldVariable, newVariable):
+    self.oldVariable = oldVariable
+    self.newVariable = newVariable
+
+  def translate(self):
+    return basicEndofunctor.SubstituteVariable(
+        oldVariable = self.oldVariable,
+        newVariable = self.newVariable)
+  def covariant(self):
+    return True
+  def is_and_functor(self):
+    return False
+  def updateVariables(self):
+    return self
+  def onObject(self, x):
+    return x.substituteVariable(self.oldVariable, self.newVariable)
+  def replace(self, a, b):
+    if a == self.newVariable:
+      return Substitute(self.oldVariable, b)
+    else:
+      return self
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)
   value = x.value
@@ -296,6 +321,21 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    if not covariant:
+      for a, b in pairs:
+        if a == self.variable:
+          F = Substitute(a, b).compose(
+              And(values = [self.inDomain.substituteVariable(a, b)], index = 1))
+          nt = (lambda x: formula.Arrow(tgt = self.onObject(x),
+            src = formula.And([self.inDomain, x]).substituteVariable(a, b),
+            basicArrow = self.onObject(x).translate().backwardIntroExists(b)))
+          return F, nt
+    return (self, lambda x: self.onObject(x).identity())
+
   def replace(self, a, b):
     return BoundedVariableBinding(
         variable = self.variable.substituteVariable(a, b),
@@ -330,6 +370,19 @@ def renderBoundedVariableBinding(variable, domain):
 class OrdinaryVariableBinding(VariableBinding):
   def __init__(self, variable):
     self.variable = variable
+
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    if not covariant:
+      for a, b in pairs:
+        if a == self.variable:
+          return (Substitute(a,b),
+              lambda x: formula.Arrow(tgt = self.onObject(x),
+                src = x.substituteVariable(a, b),
+                basicArrow = self.onObject(x).translate().backwardIntroExists(b)))
+    return (self, lambda x: self.onObject(x).identity())
 
   def __repr__(self):
     return repr(self.variable)

@@ -179,8 +179,9 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
         f = lambda original, arrow, substitutions, y: y)))
     self.assertEqual(0, len(results))
 
+    x = constructors.Not(self.exists_([self.b], constructors.And([self.W, self.Z])))
     results = list(factor.formula_match(
-      formula = constructors.Not(self.exists_([self.b], constructors.And([self.W, self.Z]))),
+      formula = x,
       formula_constraint = factor.formula_replace(
         formula_constraint = factor.apply(
           formula_constraint = factor.exact(self.X),
@@ -188,9 +189,32 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
           f = lambda formula, a, b: a),
         covariant = True,
         allowed_variables = [self.c],
-        f = lambda original, arrow, substitutions, y: y)))
+        f = lambda original, arrow, substitutions, y: (y, arrow))))
     self.assertEqual(1, len(results))
-    self.assertEqual(results[0], self.X)
+    y, arrow = results[0]
+    self.assertEqual(arrow.src, x)
+    self.assertEqual(arrow.tgt,
+        constructors.Not(constructors.And([self.X, self.Z])))
+    self.assertEqual(y, self.X)
+
+  def test_replace_bounded(self):
+    x = constructors.Not(constructors.Exists(
+        [constructors.BoundedVariableBinding(self.b, self.x)],
+        constructors.And([self.W, self.Z])))
+    results = list(factor.formula_match(
+      formula = x,
+      formula_constraint = factor.formula_replace(
+        formula_constraint = factor.apply(
+          formula_constraint = factor.exact(self.X),
+          ef_constraint = factor.variance(False),
+          f = lambda formula, a, b: a),
+        covariant = True,
+        allowed_variables = [self.c],
+        f = lambda original, arrow, substitutions, y: arrow)))
+    self.assertEqual(1, len(results))
+    arrow = results[0]
+    self.assertEqual(arrow.src, x)
+
 
 def suite():
   return unittest.makeSuite(FactorTest)
