@@ -34,6 +34,14 @@ def Exists(bindings, value):
 def Forall(bindings, value):
   return Not(Exists(bindings, Not(value)))
 
+def OrdinaryExists(variables, value):
+  return formula.Exists(
+      bindings = [OrdinaryVariableBinding(variable) for variable in variables],
+      value = value)
+
+def OrdinaryForall(variables, value):
+  return Not(OrdinaryExists(variables, Not(value)))
+
 def Always(value):
   return formula.Always(value)
 

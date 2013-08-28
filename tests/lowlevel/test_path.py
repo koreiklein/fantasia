@@ -5,7 +5,7 @@ import unittest
 from calculus import variable
 from calculus.enriched import path, constructors, formula, spec
 from lib import common_vars
-from tests.common_enriched_objects import CommonObjects
+from tests.lowlevel.common_enriched_objects import CommonObjects
 
 class AbstractPathSearchTest(unittest.TestCase):
   # assert that the paths a and b are equal.

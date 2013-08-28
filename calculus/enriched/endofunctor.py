@@ -1,5 +1,7 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
+from sets import Set
+
 from misc import *
 import misc
 from calculus.variable import ApplySymbolVariable, ProductVariable, StringVariable, Variable
@@ -14,6 +16,9 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
+def combine_variances(a, b):
+  return a if b else not a
+
 def Maps(a, b, f):
   return basicFormula.Holds(
       ProductVariable([ (common_symbols.inputSymbol, a)
@@ -27,10 +32,19 @@ class Endofunctor:
   def covariant(self):
     raise Exception("Abstract superclass.")
 
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    return (self, lambda x: self.onObject(x).identity())
+
   def is_and_functor(self):
     return False
 
   def updateVariables(self):
+    raise Exception("Abstract superclass.")
+
+  def onObject(self, x):
     raise Exception("Abstract superclass.")
 
   # spec: a SearchSpec instance.
@@ -38,6 +52,15 @@ class Endofunctor:
   #         otherwise:  a list of claims exportable at self matching spec
   def search(self, spec):
     raise Exception("Abstract superclass.")
+
+  # replace all existentially quantified and free variables a in self with b.
+  def replace(self, a, b):
+    return self
+
+  # return: the set of variables quantified at certain spots in this endofunctor.
+  #         Only use covariant spots iff covariant, otherwise use contravariant spots.
+  def quantified(self, covariant):
+    return Set([])
 
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
@@ -113,6 +136,28 @@ class Endofunctor:
           tgt = self.onObject(formula.And([B, x])),
           basicArrow = self.translate().importExactly(B.translate())(x.translate())))
 
+class Substitute(Endofunctor):
+  def __init__(self, oldVariable, newVariable):
+    self.oldVariable = oldVariable
+    self.newVariable = newVariable
+
+  def translate(self):
+    return basicEndofunctor.SubstituteVariable(
+        oldVariable = self.oldVariable,
+        newVariable = self.newVariable)
+  def covariant(self):
+    return True
+  def is_and_functor(self):
+    return False
+  def updateVariables(self):
+    return self
+  def onObject(self, x):
+    return x.substituteVariable(self.oldVariable, self.newVariable)
+  def replace(self, a, b):
+    if a == self.newVariable:
+      return Substitute(self.oldVariable, b)
+    else:
+      return self
 def fully_substituted(variables, x):
   assert(x.__class__ == formula.Exists)
   value = x.value
@@ -128,6 +173,24 @@ class Composite(Endofunctor):
     assert(isinstance(right, Endofunctor))
     self.left = left
     self.right = right
+
+  def instantiate(self, covariant, pairs):
+    F, nt0 = self.left.instantiate(combine_variances(covariant, self.right.covariant()), pairs)
+    G, nt1 = self.right.instantiate(covariant, pairs)
+    # Horizontal composite.  I'm somewhat certain it works in all 8 cases, but we should test
+    # to be sure.
+    return (F.compose(G), lambda x:
+        (lambda a, b: a.forwardCompose(b) if covariant else b.forwardCompose(a))(
+            a = self.right.onArrow(nt0(x)),
+            b = nt1(F.onObject(x))))
+
+  def quantified(self, covariant):
+    a = self.right.quantified(covariant)
+    b = self.left.quantified(combine_variances(covariant, self.right.covariant()))
+    return a.union(b)
+
+  def replace(self, a, b):
+    return self.left.replace(a, b).compose(self.right.replace(a, b))
 
   def search(self, spec):
     # Note: It surprising how simple the below code needs to be.
@@ -175,11 +238,33 @@ class Composite(Endofunctor):
     else:
       return not self.right.covariant()
 
-class VariableBinding:
+class VariableBinding(Endofunctor):
   # return: an endofunctor representing existential quantification
   #         over this variable.
   def translate(self):
     raise Exception("Abstract superclass.")
+  def covariant(self):
+    raise Exception("Abstract superclass.")
+  def updateVariables(self):
+    raise Exception("Abstract superclass.")
+  def replace(self, a, b):
+    raise Exception("Abstract superclass.")
+  def onObject(self, x):
+    assert(x.__class__ == formula.Exists)
+    bindings = [self]
+    bindings.extend(x.bindings)
+    return formula.Exists(bindings = bindings, value = x.value)
+  def is_and_functor(self):
+    return False
+  def is_identity_functor(self):
+    return False
+  
+  def quantified(self, covariant):
+    if covariant:
+      return Set([self.variable])
+    else:
+      return Set([])
+
   def render(self, context):
     return primitives.newTextStack(colors.variableColor, repr(self))
   def is_ordinary(self):
@@ -236,6 +321,26 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    if not covariant:
+      for a, b in pairs:
+        if a == self.variable:
+          F = Substitute(a, b).compose(
+              And(values = [self.inDomain.substituteVariable(a, b)], index = 1))
+          nt = (lambda x: formula.Arrow(tgt = self.onObject(x),
+            src = formula.And([self.inDomain, x]).substituteVariable(a, b),
+            basicArrow = self.onObject(x).translate().backwardIntroExists(b)))
+          return F, nt
+    return (self, lambda x: self.onObject(x).identity())
+
+  def replace(self, a, b):
+    return BoundedVariableBinding(
+        variable = self.variable.substituteVariable(a, b),
+        relation = self.relation.substituteVariable(a, b))
+
   def updateVariables(self):
     return BoundedVariableBinding(variable = self.variable.updateVariables(),
         relation = self.relation)
@@ -247,6 +352,8 @@ class BoundedVariableBinding(VariableBinding):
     return basicEndofunctor.And(side = right,
                                 other = self.inDomain.translate()).compose(
             basicEndofunctor.Exists(self.variable))
+  def covariant(self):
+    return True
 
   def search(self, spec):
     return [claim for claim in [self.inDomain] if spec.valid(claim)]
@@ -264,14 +371,33 @@ class OrdinaryVariableBinding(VariableBinding):
   def __init__(self, variable):
     self.variable = variable
 
+  # return: F, a natural transform instantiating a->b for (a, b) in pairs
+  #         if covariant it goes self --> F
+  #         otherwise it goes    F --> self
+  def instantiate(self, covariant, pairs):
+    if not covariant:
+      for a, b in pairs:
+        if a == self.variable:
+          return (Substitute(a,b),
+              lambda x: formula.Arrow(tgt = self.onObject(x),
+                src = x.substituteVariable(a, b),
+                basicArrow = self.onObject(x).translate().backwardIntroExists(b)))
+    return (self, lambda x: self.onObject(x).identity())
+
   def __repr__(self):
     return repr(self.variable)
+
+  def replace(self, a, b):
+    return OrdinaryVariableBinding(self.variable.substituteVariable(a, b))
 
   def is_ordinary(self):
     return True
 
   def updateVariables(self):
     return OrdinaryVariableBinding(self.variable.updateVariables())
+
+  def covariant(self):
+    return True
 
   def translate(self):
     return basicEndofunctor.Exists(self.variable)
@@ -281,6 +407,62 @@ class OrdinaryVariableBinding(VariableBinding):
 
   def search(self, spec):
     return []
+
+class Hidden(Endofunctor):
+  def __init__(self, name):
+    self.name = name
+  def translate(self):
+    return basicEndofunctor.identity_functor
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return self
+  def onObject(self, x):
+    return formula.Hidden(self.name, x)
+
+class AppendIffRight(Endofunctor):
+  def __init__(self, x):
+    assert(x.__class__ == formula.Not)
+    assert(x.value.__class__ == formula.And)
+    assert(len(x.value.values) == 2)
+    assert(x.value.values[1].__class__ == formula.Not)
+    self.formula = x
+    self.coformula = formula.Not(
+        formula.And([x.value.values[1].value,
+          formula.Not(x.values.values[0])]))
+
+  def translate(self):
+    return basicEndofunctor.And(side = left,
+        other = self.coformula.translate())
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return AppendIffRight(self.formula.updateVariables())
+  def onObject(self, x):
+    assert(x == self.coformula)
+    return formula.Iff(left = x, right = self.formula)
+
+class AppendIffLeft(Endofunctor):
+  def __init__(self, x):
+    assert(x.__class__ == formula.Not)
+    assert(x.value.__class__ == formula.And)
+    assert(len(x.value.values) == 2)
+    assert(x.value.values[1].__class__ == formula.Not)
+    self.formula = x
+    self.coformula = formula.Not(
+        formula.And([x.value.values[1].value,
+          formula.Not(x.values.values[0])]))
+
+  def translate(self):
+    return basicEndofunctor.And(side = right,
+        other = self.coformula.translate())
+  def covariant(self):
+    return True
+  def updateVariables(self):
+    return AppendIffLeft(self.formula.updateVariables())
+  def onObject(self, x):
+    assert(x == self.coformula)
+    return formula.Iff(left = self.formula, right = x)
 
 class WelldefinedVariableBinding(VariableBinding):
   # variable: a variable
@@ -313,6 +495,33 @@ class WelldefinedVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def instantiate(self, covariant, pairs):
+    if covariant:
+      return (self, lambda x: self.onObject(x).identity())
+    else:
+      # FIXME This code fails for BoundedVariableBindings.
+      #       The call to backwardInstantiateAll doesn't even yet work if some
+      #       of the variables are part of BoundedVariableBindings.
+      pairs_to_use_here = []
+      remaining_bindings = []
+      for binding in self.bindings:
+        for a, b in pairs:
+          if binding.variable == a:
+            pairs_to_use_here.append( (a, b))
+          else:
+            remaining_bindings.append(binding)
+      return (Exists(remaining_bindings),
+          lambda x: self.onObject(x).backwardInstantiateAll(pairs_to_use_here))
+
+  def quantified(self, covariant):
+    if covariant:
+      return Set([b.variable for b in self.bindings])
+    else:
+      return Set([])
+
+  def replace(self, a, b):
+    return Exists([binding.replace(a, b) for binding in self.bindings])
 
   def __repr__(self):
     return "Exists%s"%(self.bindings,)
@@ -379,7 +588,11 @@ class Conjunction(Endofunctor):
     self.index = index
     self.first = values[:index]
     self.rest = values[index:]
-  
+
+  def replace(self, a, b):
+    return self.__class__(values = [value.replace(a, b) for value in self.values],
+        index = self.index)
+
   def __repr__(self):
     values = [repr(value) for value in self.values]
     values.insert(self.index, '.')

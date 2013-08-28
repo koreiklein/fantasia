@@ -2,7 +2,7 @@
 
 import unittest
 
-from tests import common_objects
+from tests.lowlevel import common_objects
 from calculus.basic import endofunctor, formula, bifunctor
 
 class AbstractTransportTest(unittest.TestCase):

@@ -18,4 +18,4 @@ import profile
 
 
 #static.run(natural.lib.beginProof())
-static.run(QR.proof)
+static.run(QR.proof())

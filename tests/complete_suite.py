@@ -1,14 +1,13 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
 import unittest
-from tests import test_basic_bifunctor, test_basic_endofunctor, test_enriched_functors, test_path
+from tests.lowlevel import test_lowlevel
+from tests.midlevel import test_midlevel
 
 def suite():
-  testSuite = unittest.TestSuite(( test_basic_bifunctor.suite()
-                                 , test_basic_endofunctor.suite()
-                                 , test_enriched_functors.suite()
-                                 , test_path.suite()))
-  return testSuite
+  return unittest.TestSuite([ test_lowlevel.suite(),
+    #test_midlevel.suite()
+    ])
 
 def run():
   runner = unittest.TextTestRunner()

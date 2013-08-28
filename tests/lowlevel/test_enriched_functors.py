@@ -1,11 +1,10 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-
 import unittest
 from calculus.enriched import endofunctor, bifunctor, formula, constructors, spec
 from calculus import variable
 from lib import common_vars
-from tests.common_enriched_objects import CommonObjects
+from tests.lowlevel.common_enriched_objects import CommonObjects
 
 class AbstractSearchTest(unittest.TestCase):
   def assert_exact_search_fails(self, functor, claim):
