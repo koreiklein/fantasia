@@ -154,8 +154,9 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assertEqual(results[1], self.X.value)
 
   def test_replace(self):
+    x = self.exists_([self.b], constructors.And([self.W, self.Z]))
     results = list(factor.formula_match(
-      formula = self.exists_([self.b], constructors.And([self.W, self.Z])),
+      formula = x,
       formula_constraint = factor.formula_replace(
         formula_constraint = factor.apply(
           formula_constraint = factor.exact(self.X),
@@ -163,10 +164,14 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
           f = lambda formula, a, b: a),
         covariant = False,
         allowed_variables = [self.c],
-        f = lambda original, arrow, substitutions, y: y)))
+        f = lambda original, arrow, substitutions, y: (y, original, substitutions))))
     self.assertEqual(1, len(results))
-    self.assertEqual(results[0], self.X)
+    y, original, substitutions = results[0]
+    self.assertEqual(y, self.X)
+    self.assertEqual(original, x)
+    self.assertEqual(substitutions, [(self.b, self.c)])
 
+  def test_replace_with_unallowed_variables(self):
     results = list(factor.formula_match(
       formula = self.exists_([self.b], constructors.And([self.W, self.Z])),
       formula_constraint = factor.formula_replace(
@@ -179,6 +184,7 @@ class FactorTest(unittest.TestCase, common_enriched_objects.CommonObjects):
         f = lambda original, arrow, substitutions, y: y)))
     self.assertEqual(0, len(results))
 
+  def test_replace_within_not(self):
     x = constructors.Not(self.exists_([self.b], constructors.And([self.W, self.Z])))
     results = list(factor.formula_match(
       formula = x,
