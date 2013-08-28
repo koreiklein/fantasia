@@ -2,11 +2,11 @@
 
 import unittest
 from tests.lowlevel import test_lowlevel
-from tests.midlevel import test_midlevel
+from tests.midlevel import test_midlevel, test_lower_midlevel
 
 def suite():
   return unittest.TestSuite([ test_lowlevel.suite(),
-    #test_midlevel.suite()
+    test_lower_midlevel.suite()
     ])
 
 def run():

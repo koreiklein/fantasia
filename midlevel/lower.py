@@ -17,5 +17,5 @@ def absorb(x, f, g):
 # f: an endofunctor
 # x: a formula
 # return: an arrow : f.onObject(x) -> f.onObject(Or([]) if f.covariant() else And([]))
-def export(x, f)
+def export(x, f):
   raise Exception("Not yet implemented.")

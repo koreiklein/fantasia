@@ -124,11 +124,14 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
   def test_absorb_with_existentials(self):
     gs = []
-    for claim in [ constructors.OrdinaryForall([self.d], self.Y)
-                 , constructors.And([ OrdinaryForall([self.d], self.if_Z_then_Y)
-                                    , self.Z]) ]:
+    for claim in [ self._and(constructors.OrdinaryForall([self.d], self.Y))
+                 , self._and(constructors.And([ constructors.OrdinaryForall([self.d], self.if_Z_then_Y)
+                                    , self.Z])) ]:
       gs.append(endofunctor.not_functor.compose(claim))
     for g in gs:
       for f in [self.and_X]:
         for x in [self.W]:
           self.assert_full_absorb(x, f, g)
+
+def suite():
+  return unittest.makeSuite(LowerTest)
