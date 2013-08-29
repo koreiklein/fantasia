@@ -20,6 +20,8 @@ class Bifunctor:
     raise Exception("Abstract superclass.")
   def right_onObject(self, x):
     raise Exception("Abstract superclass.")
+  def left_onObject(self, x):
+    raise Exception("Abstract superclass.")
 
   # return a function representing a natural transform: F(B, .) --> F(B, And([B, .]))
   def transport_duplicating(self, B):
@@ -57,6 +59,8 @@ class PostcompositeBifunctor(Bifunctor):
 
   def right_onObject(self, x):
     return self.bifunctor.right_onObject(x).compose(self.functor)
+  def left_onObject(self, x):
+    return self.bifunctor.left_onObject(x).compose(self.functor)
 
   def translate(self):
     return self.bifunctor.translate().compose(self.functor.translate())
@@ -90,6 +94,8 @@ class PrecompositeBifunctor(Bifunctor):
 
   def right_onObject(self, x):
     return self.left.compose(self.bifunctor.right_onObject(self.right.onObject(x)))
+  def left_onObject(self, x):
+    return self.right.compose(self.bifunctor.left_onObject(self.left.onObject(x)))
 
   def __repr__(self):
     return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
@@ -141,6 +147,11 @@ class Conjunction(Bifunctor):
       index = self.leftIndex
       values.insert(self.rightIndex - 1, x)
     return self.enrichedEndofunctor()(values = values, index = index)
+
+  def left_onObject(self, x):
+    values = list(self.values)
+    values.insert(self.leftIndex, x)
+    return self.enrichedEndofunctor()(values = values, index = self.rightIndex)
 
   def __repr__(self):
     values = [repr(value) for value in self.values]

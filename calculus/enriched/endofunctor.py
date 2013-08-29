@@ -44,6 +44,9 @@ class Endofunctor:
   def updateVariables(self):
     raise Exception("Abstract superclass.")
 
+  def freeVariables(self):
+    raise Exception("Abstract superclass.")
+
   def onObject(self, x):
     raise Exception("Abstract superclass.")
 
@@ -61,6 +64,9 @@ class Endofunctor:
   #         Only use covariant spots iff covariant, otherwise use contravariant spots.
   def quantified(self, covariant):
     return Set([])
+
+  def allQuantified(self):
+    return self.quantified(True).union(self.quantified(False))
 
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
@@ -146,6 +152,9 @@ class Substitute(Endofunctor):
     self.oldVariable = oldVariable
     self.newVariable = newVariable
 
+  def freeVariables(self):
+    return Set([])
+
   def translate(self):
     return basicEndofunctor.SubstituteVariable(
         oldVariable = self.oldVariable,
@@ -178,6 +187,11 @@ class Composite(Endofunctor):
     assert(isinstance(right, Endofunctor))
     self.left = left
     self.right = right
+
+  def freeVariables(self):
+    return self.right.freeVariables().union(
+        self.left.freeVariables().difference(
+          self.right.allQuantified()))
 
   def instantiate(self, covariant, pairs):
     F, nt0 = self.left.instantiate(combine_variances(covariant, self.right.covariant()), pairs)
@@ -326,6 +340,9 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  def freeVariables(self):
+    return Set([])
+
   # return: F, a natural transform instantiating a->b for (a, b) in pairs
   #         if covariant it goes self --> F
   #         otherwise it goes    F --> self
@@ -376,6 +393,9 @@ class OrdinaryVariableBinding(VariableBinding):
   def __init__(self, variable):
     self.variable = variable
 
+  def freeVariables(self):
+    return Set([])
+
   # return: F, a natural transform instantiating a->b for (a, b) in pairs
   #         if covariant it goes self --> F
   #         otherwise it goes    F --> self
@@ -422,6 +442,8 @@ class Hidden(Endofunctor):
     return True
   def updateVariables(self):
     return self
+  def freeVariables(self):
+    return Set([])
   def onObject(self, x):
     return formula.Hidden(self.name, x)
 
@@ -435,6 +457,9 @@ class AppendIffRight(Endofunctor):
     self.coformula = formula.Not(
         formula.And([x.value.values[1].value,
           formula.Not(x.values.values[0])]))
+
+  def freeVariables(self):
+    return self.formula.freeVariables()
 
   def translate(self):
     return basicEndofunctor.And(side = left,
@@ -457,6 +482,9 @@ class AppendIffLeft(Endofunctor):
     self.coformula = formula.Not(
         formula.And([x.value.values[1].value,
           formula.Not(x.values.values[0])]))
+
+  def freeVariables(self):
+    return self.formula.freeVariables()
 
   def translate(self):
     return basicEndofunctor.And(side = right,
@@ -500,6 +528,9 @@ class WelldefinedVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def freeVariables(self):
+    return Set([])
 
   def instantiate(self, covariant, pairs):
     if covariant:
@@ -553,6 +584,10 @@ class DirectTranslate(Endofunctor):
   def __init__(self, basicEndofunctor, _onObject):
     self.basicEndofunctor = basicEndofunctor
     self._onObject = _onObject
+
+  def freeVariables(self):
+    return Set([])
+
   def __repr__(self):
     return "direct(%s)"%(self.basicEndofunctor,)
   def translate(self):
@@ -593,6 +628,11 @@ class Conjunction(Endofunctor):
     self.index = index
     self.first = values[:index]
     self.rest = values[index:]
+
+  def freeVariables(self):
+    result = Set([])
+    for value in values:
+      result.union_update(value.freeVariables())
 
   def replace(self, a, b):
     return self.__class__(values = [value.replace(a, b) for value in self.values],

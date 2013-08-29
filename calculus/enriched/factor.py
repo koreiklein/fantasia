@@ -13,7 +13,7 @@ def _all_endofunctor_factorizations(ef):
     return
   else:
     a, b = ef.factor_left()
-    for bi, x in _all_endofunctor_factorizations_of_small_endofunctor(a):
+    for bi, x in all_endofunctor_factorizations_of_small_endofunctor(a):
       for f, y in _all_formula_factorizations(x):
         yield bi.compose(b).precomposeRight(f), y
     for bi, x in _all_endofunctor_factorizations(b):
@@ -21,7 +21,7 @@ def _all_endofunctor_factorizations(ef):
 
 # ef: a "small" endofunctor.
 # yield all pairs bi, x with bi.onRight(x) == endofunctor
-def _all_endofunctor_factorizations_of_small_endofunctor(ef):
+def all_endofunctor_factorizations_of_small_endofunctor(ef):
   if isinstance(ef, endofunctor.Conjunction):
     if ef.__class__ == endofunctor.And:
       bi = bifunctor.And

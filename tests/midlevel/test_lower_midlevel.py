@@ -12,17 +12,18 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.add_common_objects()
 
   def assert_full_absorb(self, x, f, g):
-    tag, result = lower.absorb(x, f, g)
+    tag, p = lower.absorb(x, f, g)
     self.assertEqual('full', tag)
+    G, result = p
     self.assertEqual(result.src, g.onObject(f.onObject(x)))
-    self.assertEqual(result.tgt, g.onObject(x))
+    self.assertEqual(result.tgt, G.onObject(x))
 
   def assert_partial_absorb(self, x, f, g, expected_f):
     tag, result = lower.absorb(x, f, g)
     self.assertEqual('partial', tag)
-    a, e, i = result
+    a, G, e, i = result
     self.assertEqual(a.src, g.onObject(f.onObject(x)))
-    self.assertEqual(a.tgt, g.onObject(expected_f.onObject(x)))
+    self.assertEqual(a.tgt, G.onObject(expected_f.onObject(x)))
 
   def assert_no_absorb(self, x, f, g):
     tag, result = lower.absorb(x, f, g)
