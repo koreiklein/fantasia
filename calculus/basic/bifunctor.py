@@ -190,9 +190,20 @@ class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
     self.bifunctor = bifunctor
     self.functor = functor
-  
   def __repr__(self):
     return "%s . %s"%(self.bifunctor, self.functor)
+
+  # return a function reperesenting a natural transform: F(B|., .) --> F(., B|.) if possible,
+  #  otherwise, raise an intransportable exception.
+  def transport(self, B):
+    if self.functor.covariant():
+      nt = self.bifunctor.transport(B)
+      return (lambda x:
+          self.functor.onArrow(nt(x)))
+    else:
+      nt = self.bifunctor.commute().transport(B)
+      return (lambda x:
+          self.functor.onArrow(nt(x)))
 
   def variables(self):
     result = []
