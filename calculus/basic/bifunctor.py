@@ -198,12 +198,12 @@ class PostcompositeBifunctor(Bifunctor):
   def transport(self, B):
     if self.functor.covariant():
       nt = self.bifunctor.transport(B)
-      return (lambda x:
-          self.functor.onArrow(nt(x)))
+      return (lambda x, y:
+          self.functor.onArrow(nt(x, y)))
     else:
       nt = self.bifunctor.commute().transport(B)
-      return (lambda x:
-          self.functor.onArrow(nt(x)))
+      return (lambda x, y:
+          self.functor.onArrow(nt(y, x)))
 
   def variables(self):
     result = []
