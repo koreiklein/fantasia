@@ -893,8 +893,8 @@ class Composite(Arrow):
   def validate(self):
     if not(self.left.tgt == self.right.src):
       raise Exception(("Invalid composite.\n"
-        "left %s\nright %s\nleft.src = %s\n"
-        "left.tgt =%s\nright.src =%s\nright.tgt = %s\n"
+        "left %s\nright %s\nleft.src  = %s\n"
+        "left.tgt =  %s\nright.src = %s\nright.tgt = %s\n"
           )%(self.left.compress(), self.right.compress(), self.left.src, self.left.tgt, self.right.src, self.right.tgt))
 
   # May throw an exception.
@@ -1001,11 +1001,7 @@ class Apply(Arrow):
     assert(self.src.__class__ == And)
     assert(self.src.right.__class__ == Not)
     assert(self.src.right.value.__class__ == And)
-    if not(self.src.left == self.src.right.value.left):
-      # FIXME
-      a = self.src.right.value.left.variable
-      b = self.src.left.variable
-      raise Exception("self.src.left =\n%s\nself.src.right.value.left =\n%s"%(self.src.left.value, self.src.right.value.left.value.substituteVariable(a, b)))
+    assert(self.src.left == self.src.right.value.left)
     assert(self.src.right.value.right == self.tgt.value)
 
 # !A --> !!A

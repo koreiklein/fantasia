@@ -34,6 +34,9 @@ class Formula:
     return Arrow(src = self, tgt = Exists(bindings, value),
         basicArrow = arrow)
 
+  def forwardDoubleDual(self):
+    return Not(Not(self)).backwardDoubleDual()
+
   def freeVariables(self):
     return self.translate().freeVariables()
 
@@ -419,6 +422,19 @@ class Exists(Formula):
         quantifierStackingDimension, kid,
         spacing = distances.quantifier_after_divider_spacing)
 
+  def forwardRemoveSingleExists(self):
+    assert(len(self.bindings) == 1)
+    binding = self.bindings[0]
+    assert(binding.variable not in self.value.freeVariables())
+    if binding.is_ordinary():
+      return Arrow(src = self, tgt = self.value,
+          basicArrow = self.translate().forwardRemoveExists())
+    else:
+      return Arrow(src = self, tgt = self.value,
+          basicArrow = self.translate().forwardOnBodyFollow(lambda x:
+            x.forwardForgetLeft()).forwardFollow(lambda x:
+              x.forwardRemoveExists()))
+
 class Always(Formula):
   def __init__(self, value):
     self.value = value
@@ -729,6 +745,29 @@ class Conjunction(Formula):
 class And(Conjunction):
   def is_and(self):
     return True
+
+  # And([A, Not(And([A, B]))]) --> Not(B)
+  def forwardApply(self):
+    assert(len(self.values) == 2)
+    assert(self.values[1].__class__ == Not)
+    assert(self.values[1].value.__class__ == And)
+    assert(len(self.values[1].value.values) == 2)
+    assert(self.values[1].value.values[0] == self.values[0])
+    return Arrow(src = self, tgt = Not(self.values[1].value.values[1]),
+        basicArrow = self.translate().forwardApply())
+
+  # And([A, Not(And([B, A]))]) --> Not(B)
+  def forwardApplyOther(self):
+    assert(len(self.values) == 2)
+    assert(self.values[1].__class__ == Not)
+    assert(self.values[1].value.__class__ == And)
+    assert(len(self.values[1].value.values) == 2)
+    assert(self.values[1].value.values[1] == self.values[0])
+    return Arrow(src = self, tgt = Not(self.values[1].value.values[0]),
+        basicArrow = self.translate().forwardOnRightFollow(lambda x:
+          x.forwardOnNotFollow(lambda x:
+            x.backwardCommute())).forwardFollow(lambda x:
+              x.forwardApply()))
 
   def search(self, spec):
     result = []

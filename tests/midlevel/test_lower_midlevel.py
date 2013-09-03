@@ -14,7 +14,7 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
   def assert_full_absorb(self, x, f, g):
     tag, p = lower.absorb(x, f, g)
     self.assertEqual('full', tag)
-    G, result = p
+    G, i, result = p
     self.assertEqual(result.src, g.onObject(f.onObject(x)))
     self.assertEqual(result.tgt, G.onObject(x))
 
@@ -81,15 +81,14 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
       ll = list(l)
       ll.insert(i, endofunctor.not_functor)
       g = ll[0].compose(ll[1]).compose(ll[2])
-      for f in [ self.and_Y, self.and_Y.compose(self.and_Y), self.exists_d ]:
+      for f in [ self.and_Y, self.and_Y.compose(endofunctor.And(values = [self.A], index = 1)), self.exists_a ]:
         for x in [self.W_or_X, self.Z, self.W]:
           self.assert_no_absorb(x, f, g)
 
   def test_absorb_with_implies(self):
     and_if_Y_then_X = self._and(constructors.Always(self.if_Y_then_X))
     for g in [ self.and_Y.compose(endofunctor.not_functor).compose( and_if_Y_then_X )
-             , endofunctor.not_functor.compose(self.and_Y.compose(and_if_Y_then_X))
-             , endofunctor]:
+             , endofunctor.not_functor.compose(self.and_Y.compose(and_if_Y_then_X))]:
       self.assert_full_absorb(
           x = self.Z,
           f = self.and_X,
@@ -104,11 +103,13 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
     self.assert_full_absorb(
         x = self.Y,
         f = self.and_X,
-        g = endofunctor.not_functor.compose(and_if_Y_then_X))
+        g = endofunctor.not_functor.compose(and_if_Y_then_X).compose(self.and_Y))
     self.assert_full_absorb(
-        x = constructors.Always(self.if_Y_then_X),
+        x = self.W,
         f = self.and_X,
-        g = endofunctor.not_functor.compose(self.Y_and))
+        g = endofunctor.not_functor.compose(self.Y_and).compose(
+            endofunctor.And(index = 1,
+              values = [constructors.Always(self.if_Y_then_X)])))
 
   def test_absorb_modus_ponens(self):
     and_if_Y_then_X = self._and(constructors.Always(self.if_Y_then_X))
@@ -125,10 +126,12 @@ class LowerTest(unittest.TestCase, common_enriched_objects.CommonObjects):
 
   def test_absorb_with_existentials(self):
     gs = []
-    for claim in [ self._and(constructors.OrdinaryForall([self.d], self.Y))
-                 , self._and(constructors.And([ constructors.OrdinaryForall([self.d], self.if_Z_then_Y)
-                                    , self.Z])) ]:
-      gs.append(endofunctor.not_functor.compose(claim))
+    for claim in [ self._and(constructors.Always(constructors.OrdinaryForall([self.d], self.Y)))
+                 , self._and(constructors.Always(constructors.And(
+                   [ constructors.Always(constructors.OrdinaryForall([self.d], self.if_Z_then_Y))
+                   , self.Z]))) ]:
+      gs.append(endofunctor.not_functor.compose(claim).compose(
+         endofunctor.Exists([constructors.OrdinaryVariableBinding(self.c)])))
     for g in gs:
       for f in [self.and_X]:
         for x in [self.W]:
