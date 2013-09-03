@@ -25,8 +25,19 @@ class Bifunctor:
   def onArrows(self, left, right):
     raise Exception("Abstract superclass.")
 
+  # return a pair of booleans (a, b) representing the left and right variances of self.
+  def variances(self):
+    raise Exception("Abstract superclass.")
+
   # return a function representing a natural transform F(., .) o (B|.) --> F(B|., B|.)
   def _import(self, B):
+    raise Exception("Abstract superclass.")
+
+  # B: an enriched formula
+  # covariant: a boolean
+  # self must be of mixed variance: (covariant-contravariant or contravariant-covariant)
+  # return: a natural transform F(B|., B|.) --> F(., .) if covariant else F(., .) --> F(B|., B|.)
+  def _contradict(self, B, covariant):
     raise Exception("Abstract superclass.")
 
   # return those variable quantified anywhere in self.
@@ -49,13 +60,24 @@ class Bifunctor:
   def _liftRight(self, B):
     raise endofunctor.UnliftableException(self, B)
 
-  # B: an enriched formula such that B.forwardCopy() is defined.
+  # B: a basic formula such that B.forwardCopy() is defined.
   # return a function representing a natural transform: F(B, .) --> F(B, B|.)
   def transport_duplicating(self, B):
-    # F(B, x) --> F(B|B, x) --> F(B, B|x)
-    return (lambda x:
-        self.onArrows(B.forwardCopy(), x.identity()).forwardCompose(
-          self.transport(B)(B, x)))
+    assert(B.__class__ == formula.Always)
+    a, b = self.variances()
+    if a == True and b == True:
+      # F(B, x) --> F(B|B, x) --> F(B, B|x)
+      return (lambda x:
+          self.onArrows(B.forwardCopy(), x.identity()).forwardCompose(
+            self.transport(B)(B, x)))
+    elif a == False and b == True:
+      # F(B, x) --> F(B|B, B|x) --> F(B, B|x)
+      nt = self._contradict(B, False)
+      return (lambda x:
+          nt(B, x).forwardCompose(self.onArrows(
+            B.forwardCopy(), formula.And(B, x).identity())))
+    else:
+      raise Exception("Transport can't be done on a bifunctor with variances() == %s, %s"%(a, b))
 
   # return a function reperesenting a natural transform: F(B|., .) --> F(., B|.) if possible,
   #  otherwise, raise an intransportable exception.
@@ -78,7 +100,6 @@ class Bifunctor:
     return self.precompose(left = endofunctor.identity_functor, right = right)
 
   def compose(self, other):
-    assert(other.covariant())
     return PostcompositeBifunctor(self, other)
 
   def join(self):
@@ -90,6 +111,17 @@ class Bifunctor:
 class Commute(Bifunctor):
   def __init__(self, bifunctor):
     self.bifunctor = bifunctor
+
+  def variances(self):
+    a, b = self.bifunctor.variances()
+    return b, a
+  
+  def precompose(self, left, right):
+    return self.bifunctor.precompose(right, left).commute()
+
+  def _contradict(self, B, covariant):
+    nt = self.bifunctor._contradict(B, covariant)
+    return (lambda x, y: nt(y, x))
 
   def __repr__(self):
     return "commute %s"%(self.bifunctor,)
@@ -123,6 +155,10 @@ class Commute(Bifunctor):
 class And(Bifunctor):
   def __repr__(self):
     return "AND"
+  def variances(self):
+    return True, True
+  def _contradict(self, B, covariant):
+    raise Exception("Not of mixed variance.")
   def onObjects(self, left, right):
     return formula.And(left, right)
   def onArrows(self, left, right):
@@ -164,6 +200,10 @@ and_functor = And()
 class Or(Bifunctor):
   def __repr__(self):
     return "OR"
+  def variances(self):
+    return True, True
+  def _contradict(self, B, covariant):
+    raise Exception("Not of mixed variance.")
   def onObjects(self, left, right):
     return formula.Or(left, right)
   def onArrows(self, left, right):
@@ -190,9 +230,31 @@ class PostcompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, functor):
     self.bifunctor = bifunctor
     self.functor = functor
-  
   def __repr__(self):
     return "%s . %s"%(self.bifunctor, self.functor)
+
+  def variances(self):
+    a, b = self.bifunctor.variances()
+    if self.functor.covariant():
+      return a, b
+    else:
+      return not a, not b
+
+  def _contradict(self, B, covariant):
+    nt = self.bifunctor._contradict(B, covariant if self.functor.covariant() else not covariant)
+    return (lambda x, y: self.functor.onArrow(nt(x, y)))
+
+  # return a function reperesenting a natural transform: F(B|., .) --> F(., B|.) if possible,
+  #  otherwise, raise an intransportable exception.
+  def transport(self, B):
+    if self.functor.covariant():
+      nt = self.bifunctor.transport(B)
+      return (lambda x, y:
+          self.functor.onArrow(nt(x, y)))
+    else:
+      nt = self.bifunctor.commute().transport(B)
+      return (lambda x, y:
+          self.functor.onArrow(nt(y, x)))
 
   def variables(self):
     result = []
@@ -225,6 +287,9 @@ class PostcompositeBifunctor(Bifunctor):
         functor = self.functor)
   def compose(self, other):
     return PostcompositeBifunctor(bifunctor = self.bifunctor, functor = self.functor.compose(other))
+  
+  def commute(self):
+    return PostcompositeBifunctor(bifunctor = self.bifunctor.commute(), functor = self.functor)
 
   def _import(self, B):
     return (lambda left, right:
@@ -243,12 +308,71 @@ class PostcompositeBifunctor(Bifunctor):
 
 class PrecompositeBifunctor(Bifunctor):
   def __init__(self, bifunctor, left, right):
-    self.bifunctor = bifunctor
+    self.bifunctor = bifunctor # Must be AND or OR
+    assert(self.bifunctor.__class__ in [And, Or])
     self.left = left
     self.right = right
-    
   def __repr__(self):
     return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
+
+  def variances(self):
+    a, b = self.bifunctor.variances()
+    a_, b_, = self.left.covariant(), self.right.covariant()
+    return (a if a_ else not a), (b if b_ else not b)
+
+  def _contradict(self, B, covariant):
+    if not(self.bifunctor.__class__ == And):
+      raise Exception("_contradict works only for AND")
+    if covariant:
+      if self.left.covariant():
+        assert(not self.right.covariant())
+        # L(B|.) | R(B|.) --> (L(.) | B) | R(B|.) --> L(.) | R(.)
+        nt = self.right._export(B)
+        lift_nt = self.left.lift(B)
+        return (lambda x, y:
+            self.bifunctor.onArrows(lift_nt(x).forwardFollow(lambda t: t.forwardCommute()),
+              self.right.onObject(formula.And(B, y)).identity()).forwardFollow(lambda t:
+                t.forwardAssociate().forwardFollow(lambda t:
+                  t.forwardOnRightFollow(lambda t:
+                    nt(y)))))
+      else:
+        assert(not self.left.covariant())
+        assert(self.right.covariant())
+        # L(B|.) | R(B|.) --> L(B|.) | (B | R(.)) --> L(.) | R(.)
+        nt = self.left._export(B)
+        lift_nt = self.right.lift(B)
+        return (lambda x, y:
+            self.bifunctor.onArrows(self.left.onObject(formula.And(B, x)).identity(),
+              lift_nt(y)).forwardFollow(lambda t:
+                t.forwardAssociateOther().forwardFollow(lambda t:
+                  t.forwardOnLeftFollow(lambda t:
+                    t.forwardCommute().forwardFollow(lambda t:
+                      nt(x))))))
+    else:
+      if self.left.covariant():
+        assert(not self.right.covariant())
+        # L(B|.) | R(B|.) <-- (L(.) | B) | R(B|.) <-- L(.) | R(.)
+        nt = self.right._export(B)
+        lift_nt = self.left.lift(B)
+        return (lambda x, y:
+            self.bifunctor.onArrows(lift_nt(x).backwardFollow(lambda t: t.backwardCommute()),
+              self.right.onObject(formula.And(B, y)).identity()).backwardFollow(lambda t:
+                t.backawardAssociate().backwardFollow(lambda t:
+                  t.backwardOnRightFollow(lambda t:
+                    nt(y)))))
+      else:
+        assert(not self.left.covariant())
+        assert(self.right.covariant())
+        # L(B|.) | R(B|.) <-- L(B|.) | (B | R(.)) <-- L(.) | R(.)
+        nt = self.left._export(B)
+        lift_nt = self.right.lift(B)
+        return (lambda x, y:
+            self.bifunctor.onArrows(self.left.onObject(formula.And(B, x)).identity(),
+              lift_nt(y)).backwardFollow(lambda t:
+                t.backwardAssociateOther().backwardFollow(lambda t:
+                  t.backwardOnLeftFollow(lambda t:
+                    t.backwardCommute().backwardFollow(lambda t:
+                      nt(x))))))
 
   def variables(self):
     result = []
@@ -345,13 +469,6 @@ class Join(endofunctor.Endofunctor):
 
   def variables(self):
     return self.bifunctor.variables()
-
-  # self must be covariant
-  # return a function representing some natural transform: (B|.) o F --> F o (B|.) if possible
-  #  otherwise, throw an UnliftableException
-  def lift(self, B):
-    # TODO Consider actually lifting B.
-    return endofunctor.UnliftableException(self, B)
 
   def onObject(self, object):
     return self.bifunctor.onObjects(object, object.updateVariables())

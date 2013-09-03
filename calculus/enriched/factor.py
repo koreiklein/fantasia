@@ -13,7 +13,7 @@ def _all_endofunctor_factorizations(ef):
     return
   else:
     a, b = ef.factor_left()
-    for bi, x in _all_endofunctor_factorizations_of_small_endofunctor(a):
+    for bi, x in all_endofunctor_factorizations_of_small_endofunctor(a):
       for f, y in _all_formula_factorizations(x):
         yield bi.compose(b).precomposeRight(f), y
     for bi, x in _all_endofunctor_factorizations(b):
@@ -21,7 +21,7 @@ def _all_endofunctor_factorizations(ef):
 
 # ef: a "small" endofunctor.
 # yield all pairs bi, x with bi.onRight(x) == endofunctor
-def _all_endofunctor_factorizations_of_small_endofunctor(ef):
+def all_endofunctor_factorizations_of_small_endofunctor(ef):
   if isinstance(ef, endofunctor.Conjunction):
     if ef.__class__ == endofunctor.And:
       bi = bifunctor.And
@@ -41,8 +41,8 @@ def _all_endofunctor_factorizations_of_small_endofunctor(ef):
 # formula: a formula
 # yield all pairs (ef, x) with ef.onObject(x) == formula
 def _all_formula_factorizations(formula):
+  yield endofunctor.identity_functor, formula
   for f, y in _all_small_formula_factorizations(formula):
-    yield f, y
     for F, Y in _all_formula_factorizations(y):
       yield F.compose(f), Y
 
@@ -211,7 +211,7 @@ class _Exact(_FormulaConstraint):
   #        , A is an instantiation arrow making the substitution
   #        a --> a' iff (a, a') in pairs and a' in allowed_variables }
   def match_replacing(self, x, covariant, allowed_variables, f):
-    if (x.__class__ == formula.Exists and not covariant
+    if (x.__class__ == enrichedFormula.Exists and not covariant
         and all([b.__class__ == endofunctor.OrdinaryVariableBinding for b in x.bindings])):
       for r in self.match_substituting(
           x = x.value,
@@ -404,7 +404,14 @@ class _EndofunctorConstraint:
   #    nt : (if covariant then (ef --> F) else (F --> ef))
   #    (F, b) in self
   def match_replacing_ef(self, ef, pairs, covariant):
-    raise Exception("Abstract superclass.")
+    F, nt = ef.instantiate(covariant, pairs)
+    for b in self.match(F):
+      yield nt, b
+
+class _NoNegations(_EndofunctorConstraint):
+  def match(self, endofunctor):
+    if endofunctor.negations() == 0:
+      yield endofunctor
 
 class _EndofunctorVariance(_EndofunctorConstraint):
   def __init__(self, covariant):
@@ -413,17 +420,6 @@ class _EndofunctorVariance(_EndofunctorConstraint):
   def match(self, endofunctor):
     if endofunctor.covariant() == self.covariant:
       yield endofunctor
-
-  # ef: an endofunctor
-  # pairs: a list of variables pairs
-  # covariant: a boolean
-  # yield all pairs nt, b such that:
-  #    nt : (if covariant then (ef --> F) else (F --> ef))
-  #    (F, b) in self
-  def match_replacing_ef(self, ef, pairs, covariant):
-    F, nt = ef.instantiate(covariant, pairs)
-    for b in self.match(F):
-      yield nt, b
 
 class _ExactEndofunctor(_EndofunctorConstraint):
   def __init__(self, f):
@@ -445,6 +441,16 @@ class _ApplyRight(_EndofunctorConstraint):
 class _BifunctorConstraint:
   def match(self, bifunctor):
     raise Exception("Abstract superclass.")
+
+class _NoBifunctorConstraint(_BifunctorConstraint):
+  def match(self, bifunctor):
+    yield bifunctor
+
+class _NoNegationsRight(_BifunctorConstraint):
+  def match(self, bifunctor):
+    i = bifunctor.right_negations()
+    if i == 0:
+      yield bifunctor
 
 class _RightVariance(_BifunctorConstraint):
   def __init__(self, covariant):
@@ -493,9 +499,14 @@ is_not = _ExactEndofunctor(lambda ef:
     ef.__class__ == endofunctor.DirectTranslate
     and ef.basicEndofunctor.__class__ == Not)
 
+no_negations = _NoNegations()
 
 # The formula constraint { (X, X) | X is any formula }
 no_formula_constraint = _NoFormulaConstraint()
+
+no_bifunctor_constraint = _NoBifunctorConstraint()
+
+no_negations_right = _NoNegationsRight()
 
 # covariant: a boolean
 # return: a bifunctor constraint

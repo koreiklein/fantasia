@@ -16,6 +16,8 @@ from lib.common_symbols import leftSymbol, rightSymbol, relationSymbol, domainSy
 from ui.render.text import primitives, colors, distances
 from ui.stack import stack
 
+UnliftableException = basicEndofunctor.UnliftableException
+
 def combine_variances(a, b):
   return a if b else not a
 
@@ -31,6 +33,24 @@ class Endofunctor:
     raise Exception("Abstract superclass.")
   def covariant(self):
     raise Exception("Abstract superclass.")
+  # return: the number of negations in self
+  def negations(self):
+    raise Exception("Abstract superclass.")
+
+  def do_substitutions(self):
+    return self
+
+  # self must be covariant
+  # return a function representing some natural transform: (B|.) o F --> F o (B|.) if possible
+  #  otherwise, throw an UnliftableException
+  def lift(self, B):
+    nt = self.translate().lift(B)
+    G = And(values = [B], index = 1)
+    return (lambda x:
+        formula.Arrow(
+          src = self.onObject(G.onObject(x)),
+          tgt = G.onObject(self.onObject(x)),
+          basicArrow = nt(x.translate)))
 
   # return: F, a natural transform instantiating a->b for (a, b) in pairs
   #         if covariant it goes self --> F
@@ -38,10 +58,31 @@ class Endofunctor:
   def instantiate(self, covariant, pairs):
     return (self, lambda x: self.onObject(x).identity())
 
+  # B: an enriched formula such that B.forwardCopy() is defined.
+  # return a function representing a natural transform: F(B, .) --> F(B, B|.)
+  def transport_duplicating(self, B):
+    return (lambda x:
+        formula.Arrow(
+          src = self.onObjects(B, x),
+          tgt = self.onObject(B, formula.And([B, x])),
+          basicArrow = self.translate().transport_duplicating(B.translate())(x.translate())))
+
   def is_and_functor(self):
     return False
 
+  def is_not(self):
+    return False
+
+  def is_always(self):
+    return False
+
+  def has_substitute(self):
+    return False
+
   def updateVariables(self):
+    raise Exception("Abstract superclass.")
+
+  def freeVariables(self):
     raise Exception("Abstract superclass.")
 
   def onObject(self, x):
@@ -61,6 +102,9 @@ class Endofunctor:
   #         Only use covariant spots iff covariant, otherwise use contravariant spots.
   def quantified(self, covariant):
     return Set([])
+
+  def allQuantified(self):
+    return self.quantified(True).union(self.quantified(False))
 
   # self must not be the identity functor.
   # return a pair of endofunctors (a, b) such that a.compose(b) == self, a is non-trivial
@@ -88,7 +132,12 @@ class Endofunctor:
       return formula.Arrow(src = src, tgt = tgt, basicArrow = basicArrow)
 
   def compose(self, other):
-    return Composite(self, other)
+    if other.is_identity():
+      return self
+    elif self.is_identity():
+      return other
+    else:
+      return Composite(self, other)
 
   def is_identity(self):
     return is_identity_functor(self)
@@ -141,6 +190,18 @@ class Substitute(Endofunctor):
     self.oldVariable = oldVariable
     self.newVariable = newVariable
 
+  def has_substitute(self):
+    return True
+
+  def do_substitutions(self):
+    return identity_functor
+
+  def negations(self):
+    return 0
+
+  def freeVariables(self):
+    return Set([])
+
   def translate(self):
     return basicEndofunctor.SubstituteVariable(
         oldVariable = self.oldVariable,
@@ -173,6 +234,19 @@ class Composite(Endofunctor):
     assert(isinstance(right, Endofunctor))
     self.left = left
     self.right = right
+
+  def do_substitutions(self):
+    return self.left.do_substitutions().compose(self.right.do_substitutions())
+  def has_substitute(self):
+    return self.left.has_substitute() or self.right.has_substitute()
+
+  def negations(self):
+    return self.left.negations() + self.right.negations()
+
+  def freeVariables(self):
+    return self.right.freeVariables().union(
+        self.left.freeVariables().difference(
+          self.right.allQuantified()))
 
   def instantiate(self, covariant, pairs):
     F, nt0 = self.left.instantiate(combine_variances(covariant, self.right.covariant()), pairs)
@@ -249,6 +323,8 @@ class VariableBinding(Endofunctor):
     raise Exception("Abstract superclass.")
   def replace(self, a, b):
     raise Exception("Abstract superclass.")
+  def negations(self):
+    return 0
   def onObject(self, x):
     assert(x.__class__ == formula.Exists)
     bindings = [self]
@@ -321,6 +397,9 @@ class BoundedVariableBinding(VariableBinding):
     self.inDomain = formula.Always(formula.Holds(held = self.variable,
       holding = self.domain))
 
+  def freeVariables(self):
+    return Set([])
+
   # return: F, a natural transform instantiating a->b for (a, b) in pairs
   #         if covariant it goes self --> F
   #         otherwise it goes    F --> self
@@ -371,6 +450,9 @@ class OrdinaryVariableBinding(VariableBinding):
   def __init__(self, variable):
     self.variable = variable
 
+  def freeVariables(self):
+    return Set([])
+
   # return: F, a natural transform instantiating a->b for (a, b) in pairs
   #         if covariant it goes self --> F
   #         otherwise it goes    F --> self
@@ -411,12 +493,16 @@ class OrdinaryVariableBinding(VariableBinding):
 class Hidden(Endofunctor):
   def __init__(self, name):
     self.name = name
+  def negations(self):
+    return 0
   def translate(self):
     return basicEndofunctor.identity_functor
   def covariant(self):
     return True
   def updateVariables(self):
     return self
+  def freeVariables(self):
+    return Set([])
   def onObject(self, x):
     return formula.Hidden(self.name, x)
 
@@ -430,6 +516,11 @@ class AppendIffRight(Endofunctor):
     self.coformula = formula.Not(
         formula.And([x.value.values[1].value,
           formula.Not(x.values.values[0])]))
+
+  def freeVariables(self):
+    return self.formula.freeVariables()
+  def negations(self):
+    return 2
 
   def translate(self):
     return basicEndofunctor.And(side = left,
@@ -452,6 +543,11 @@ class AppendIffLeft(Endofunctor):
     self.coformula = formula.Not(
         formula.And([x.value.values[1].value,
           formula.Not(x.values.values[0])]))
+
+  def negations(self):
+    return 2
+  def freeVariables(self):
+    return self.formula.freeVariables()
 
   def translate(self):
     return basicEndofunctor.And(side = right,
@@ -495,6 +591,12 @@ class WelldefinedVariableBinding(VariableBinding):
 class Exists(Endofunctor):
   def __init__(self, bindings):
     self.bindings = bindings
+
+  def negations(self):
+    return 0
+
+  def freeVariables(self):
+    return Set([])
 
   def instantiate(self, covariant, pairs):
     if covariant:
@@ -548,6 +650,19 @@ class DirectTranslate(Endofunctor):
   def __init__(self, basicEndofunctor, _onObject):
     self.basicEndofunctor = basicEndofunctor
     self._onObject = _onObject
+
+  def negations(self):
+    return 1 if self.is_not() else 0
+
+  def freeVariables(self):
+    return Set([])
+
+  def is_not(self):
+    return self.basicEndofunctor.__class__ == basicEndofunctor.Not
+
+  def is_always(self):
+    return self.basicEndofunctor.__class__ == basicEndofunctor.Always
+
   def __repr__(self):
     return "direct(%s)"%(self.basicEndofunctor,)
   def translate(self):
@@ -589,6 +704,14 @@ class Conjunction(Endofunctor):
     self.first = values[:index]
     self.rest = values[index:]
 
+  def negations(self):
+    return 0
+
+  def freeVariables(self):
+    result = Set([])
+    for value in self.values:
+      result.union_update(value.freeVariables())
+
   def replace(self, a, b):
     return self.__class__(values = [value.replace(a, b) for value in self.values],
         index = self.index)
@@ -627,6 +750,20 @@ class And(Conjunction):
   def is_and_functor(self):
     return True
 
+  # len(self.values) must be 1
+  # return: a natural transform : self --> Id
+  def forwardForget(self):
+    assert(len(self.values) == 1)
+    if self.index == 0:
+      return (lambda x:
+          formula.Arrow(src = self.onObject(x), tgt = x,
+            basicArrow = self.onObject(x).translate().forwardForgetRight()))
+    else:
+      assert(self.index == 1)
+      return (lambda x:
+          formula.Arrow(src = self.onObject(x), tgt = x,
+            basicArrow = self.onObject(x).translate().forwardForgetLeft()))
+
   def name(self):
     return 'AND'
 
@@ -648,6 +785,20 @@ class Or(Conjunction):
     return basicEndofunctor.Or
   def multiOp(self):
     return formula.Or
+
+  # len(self.values) must be 1
+  # return: a natural transform : Id --> self
+  def backwardAdmit(self):
+    assert(len(self.values) == 1)
+    if self.index == 0:
+      return (lambda x:
+          formula.Arrow(tgt = self.onObject(x), src = x,
+            basicArrow = self.onObject(x).translate().backwardAdmitRight()))
+    else:
+      assert(self.index == 1)
+      return (lambda x:
+          formula.Arrow(tgt = self.onObject(x), src = x,
+            basicArrow = self.onObject(x).translate().backwardAdmitLeft()))
 
   def search(self, spec):
     return []

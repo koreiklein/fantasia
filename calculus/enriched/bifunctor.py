@@ -20,13 +20,28 @@ class Bifunctor:
     raise Exception("Abstract superclass.")
   def right_onObject(self, x):
     raise Exception("Abstract superclass.")
+  def left_onObject(self, x):
+    raise Exception("Abstract superclass.")
+  # return: the number of negations performed on the right leg of this bifunctor.
+  def right_negations(self):
+    raise Exception("Abstract superclass.")
 
   # return a function representing a natural transform: F(B, .) --> F(B, And([B, .]))
   def transport_duplicating(self, B):
+    assert(B.__class__ == formula.Always)
     nt = self.translate().transport_duplicating(B.translate())
     return (lambda x:
         formula.Arrow(src = self.onObjects(left = B, right = x),
           tgt = self.onObjects(left = B, right = constructors.And([B.updateVariables(), x])),
+          basicArrow = nt(x.translate())))
+
+  # return a function representing a natural transform: F(., B) --> F(And([B, .]), B)  
+  def transport_other_duplicating(self, B):
+    assert(B.__class__ == formula.Always)
+    nt = self.translate().commute().transport_duplicating(B.translate())
+    return (lambda x:
+        formula.Arrow(src = self.onObjects(left = x, right = B),
+          tgt = self.onObjects(right = B, left = constructors.And([B.updateVariables(), x])),
           basicArrow = nt(x.translate())))
 
   def onArrows(self, left, right):
@@ -49,6 +64,9 @@ class PostcompositeBifunctor(Bifunctor):
     self.bifunctor = bifunctor
     self.functor = functor
 
+  def right_negations(self):
+    return self.bifunctor.right_negations()
+
   def right_covariant(self):
     return self.functor.covariant() ^ self.bifunctor.right_covariant()
 
@@ -57,6 +75,8 @@ class PostcompositeBifunctor(Bifunctor):
 
   def right_onObject(self, x):
     return self.bifunctor.right_onObject(x).compose(self.functor)
+  def left_onObject(self, x):
+    return self.bifunctor.left_onObject(x).compose(self.functor)
 
   def translate(self):
     return self.bifunctor.translate().compose(self.functor.translate())
@@ -82,6 +102,9 @@ class PrecompositeBifunctor(Bifunctor):
     self.left = left
     self.right = right
 
+  def right_negations(self):
+    return self.bifunctor.right_negations() + self.right.negations()
+
   def right_covariant(self):
     return self.right.covariant() ^ self.bifunctor.right_covariant()
 
@@ -90,6 +113,8 @@ class PrecompositeBifunctor(Bifunctor):
 
   def right_onObject(self, x):
     return self.left.compose(self.bifunctor.right_onObject(self.right.onObject(x)))
+  def left_onObject(self, x):
+    return self.right.compose(self.bifunctor.left_onObject(self.left.onObject(x)))
 
   def __repr__(self):
     return "%s x %s . %s"%(self.left, self.right, self.bifunctor)
@@ -124,6 +149,9 @@ class Conjunction(Bifunctor):
     self.leftIndex = leftIndex
     self.rightIndex = rightIndex
 
+  def right_negations(self):
+    return 0
+
   def right_covariant(self):
     return True
 
@@ -141,6 +169,11 @@ class Conjunction(Bifunctor):
       index = self.leftIndex
       values.insert(self.rightIndex - 1, x)
     return self.enrichedEndofunctor()(values = values, index = index)
+
+  def left_onObject(self, x):
+    values = list(self.values)
+    values.insert(self.leftIndex, x)
+    return self.enrichedEndofunctor()(values = values, index = self.rightIndex)
 
   def __repr__(self):
     values = [repr(value) for value in self.values]

@@ -58,6 +58,7 @@ class CommonObjects:
     self.exists_wd_a_in_domain_b_X_and_Y_and_Z = constructors.Exists(
         [constructors.WelldefinedVariableBinding(self.a, self.b)], self.X_and_Y_and_Z)
 
+    self.exists_a = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.a)])
     self.exists_d = endofunctor.Exists([constructors.OrdinaryVariableBinding(self.d)])
     self.exists_d_Y = constructors.Exists(
         bindings = [constructors.OrdinaryVariableBinding(self.d)],
