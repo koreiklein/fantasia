@@ -18,7 +18,7 @@ THE QR DEMO:
   division and modulus operations.
 
 RUNNING THE QR DEMO:
-  To run the demo, just type
+  To run the demo, type
     make
 
   You can modify the proof from the demo yourself by editing
@@ -26,3 +26,9 @@ RUNNING THE QR DEMO:
     make
 
   You can check and modify the way the proof is printed out by examining ui/run/text/static.py.
+
+RUNNING THE TESTS:
+  To run the tests, type
+    make test
+
+  See tests/complete_suite.py to track down which tests are being run.
