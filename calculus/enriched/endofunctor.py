@@ -195,6 +195,8 @@ class Composite(Endofunctor):
     result.extend(self.left.search(spec))
     return result
 
+  # object: An enriched formula.
+  # return: The enriched formula obtained by applying self to object.
   def onObject(self, object):
     return self.right.onObject(self.left.onObject(object))
 

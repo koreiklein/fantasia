@@ -50,8 +50,27 @@ class Formula:
   def __ne__(self, other):
     return not (self == other)
 
-  def top_level_render(self):
-    return self.render(RenderingContext(covariant = True))
+  # Render self as text.
+  # Render And[A, B, C] as
+  #     |   |
+  #   A | B | C
+  #     |   |
+  # Render Or[A, B, C] as
+  #       A
+  #  -----------
+  #       B
+  #  -----------
+  #       C
+  # Render Not(A) by "transposing" the rendering of A.
+  # Render Always(A) by rendering A.
+  # Render Exists(v in X, A) as
+  #          A
+  #   ...............
+  #         x : X
+  # Render Holds(holding = a, held = b) as
+  #      b : a
+  def top_level_render(self, covariant = True):
+    return self.render(RenderingContext(covariant = covariant))
 
   def render(self, context):
     return primitives.newTextStack(colors.genericColor, repr(self))
