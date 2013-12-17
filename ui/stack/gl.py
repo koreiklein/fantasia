@@ -13,6 +13,13 @@ class GLBackend(stack.Backend):
   def render(self):
     return self._render()
 
+  def flip(self):
+    def f():
+      glScale(-1.0, -1.0, 1.0)
+      self.render()
+      glScale(-1.0, -1.0, 1.0)
+    return GLBackend(f)
+
   def below(self, other):
     assert(other.__class__ == GLBackend)
     def render():
@@ -27,10 +34,9 @@ class GLBackend(stack.Backend):
     for i in range(len(offset)):
       t[i] = offset[i]
     def render():
-      glPushMatrix()
       glTranslate(t[0], t[1], t[2])
       self.render()
-      glPopMatrix()
+      glTranslate(-t[0], -t[1], -t[2])
     return GLBackend(render)
 
   @staticmethod

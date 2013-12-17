@@ -1,60 +1,63 @@
 # Copyright (C) 2013 Korei Klein <korei.klein1@gmail.com>
 
-# Colors for gl rendering of enriched are collected here.
 from OpenGL.GL import *
 
 from ui.stack.color import Color
-from calculus import enriched
-from calculus.basic import andType, orType
 
-trueDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
-falseDividerColor = Color(r = 0.0, g = 0.0, b = 0.0)
+genericColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
-# Prefer choosing the colors of dividers based on the underlying basic type.
-chooseColorsByConcreteness = False
+variableColor = Color(r = 0.0, g = 0.0, b = 0.0)
+symbolColor = Color(r = 0.0, g = 0.0, b = 0.0)
 
-concreteDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
-demorganedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
+andColor = Color(r = 0.0, g = 0.0, b = 1.0)
+orColor = Color(r = 0.68, g = 0.09, b = 0.63)
 
-andBasedDividerColor = Color(r = 0.0, g = 0.0, b = 1.0)
-orBasedDividerColor = Color(r = 0.68, g = 0.09, b = 0.63)
+callColor = Color(r = 1.0, g = 0.0, b = 0.0)
 
-quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.5)
-alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 0.2)
-maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 0.8)
-notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 0.8)
+quantifierDividerColor = Color(r = 0.5, g = 0.5, b = 0.3)
+notColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
-textColor = Color(r = 0.2, g = 0.2, b = 0.2, a= 1.0)
-variableColor = Color(r = 0.2, g = 0.5, b = 0.2, a= 1.0)
+alwaysBackgroundColor = Color(r = 0.0, g = 1.0, b = 1.0, a = 1.0)
+maybeBackgroundColor = Color(r = 1.0, g = 0.5, b = 0.0, a = 1.0)
 
-def colorOfConjType(type):
-  if chooseColorsByConcreteness:
-    if type in enriched.concreteConjTypes:
-      return concreteDividerColor
-    else:
-      assert(type in enriched.demorganedConjTypes)
-      return demorganedDividerColor
-  else:
-    basicType = enriched.correspondingConcreteBasicType(type)
-    if basicType == andType:
-      return andBasedDividerColor
-    else:
-      assert(basicType == orType)
-      return orBasedDividerColor
+relationColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
-def colorOfUnitType(type):
-  if type in [enriched.andType, enriched.withType]:
-    return trueDividerColor
-  else:
-    assert(type in [enriched.orType, enriched.parType])
-    return falseDividerColor
+iffColor = Color(r = 1.0, g = 1.0, b = 1.0, a = 1.0)
+applyColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
+hiddenColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
+symbolVariablePairBorderColor = Color(r = 0.0, g = 0.0, b = 0.0, a = 1.0)
 
-# always: a boolean.  True for always, False for maybe.
-# return: the background color associated with the exponential.
-def exponentialColor(always):
-  if always:
+injectionSymbolBackgroundColor = Color(r = 0.4, g = 0.4, b = 0.7, a = 1.0)
+injectionVariableBackgroundColor = Color(r = 0.2, g = 0.2, b = 0.9, a = 1.0)
+
+projectionSymbolBackgroundColor = Color(r = 0.4, g = 0.4, b = 0.7, a = 1.0)
+projectionVariableBackgroundColor = Color(r = 0.2, g = 0.2, b = 0.9, a = 1.0)
+
+callSymbolBackgroundColor = Color(r = 0.4, g = 0.4, b = 0.7, a = 1.0)
+callVariableBackgroundColor = Color(r = 0.2, g = 0.2, b = 0.9, a = 1.0)
+
+_colorPairs = [ ( Color(r = 1.0, g = 0.3, b = 0.3, a = 1.0)
+                , Color(r = 0.8, g = 0.5, b = 0.5, a = 1.0))
+
+              , ( Color(r = 0.3, g = 1.0, b = 0.3, a = 1.0)
+                , Color(r = 0.5, g = 0.8, b = 0.5, a = 1.0))
+
+              , ( Color(r = 0.3, g = 0.3, b = 1.0, a = 1.0)
+                , Color(r = 0.5, g = 0.5, b = 0.8, a = 1.0))
+              ]
+
+def productPairsColor(i):
+  return _colorPairs[i % len(_colorPairs)]
+
+def exponentialColor(isAlways):
+  if isAlways:
     return alwaysBackgroundColor
   else:
     return maybeBackgroundColor
 
+projectDotColor = Color(r = 0.0, g = 0.0, b = 0.0)
+injectDotColor = Color(r = 0.5, g = 0.5, b = 0.5)
+
+trueColor = Color(r = 0.0, g = 0.0, b = 0.0)
+falseColor = Color(r = 0.0, g = 0.0, b = 0.0)
